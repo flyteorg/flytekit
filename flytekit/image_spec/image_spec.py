@@ -30,34 +30,34 @@ class ImageSpec:
     """
     This class is used to specify the docker image that will be used to run the task.
 
-    Args:
-        name: name of the image.
-        python_version: python version of the image. Use default python in the base image if None.
-        builder: Type of plugin to build the image. Use envd by default.
-        source_root: source root of the image.
-        env: environment variables of the image.
-        registry: registry of the image.
-        packages: list of python packages to install.
-        conda_packages: list of conda packages to install.
-        conda_channels: list of conda channels.
-        requirements: path to the requirements.txt file.
-        apt_packages: list of apt packages to install.
-        cuda: version of cuda to install.
-        cudnn: version of cudnn to install.
-        base_image: base image of the image.
-        platform: Specify the target platforms for the build output (for example, windows/amd64 or linux/amd64,darwin/arm64
-        pip_index: Specify the custom pip index url
-        pip_extra_index_url: Specify one or more pip index urls as a list
-        pip_secret_mounts: Specify a list of tuples to mount secret for pip install. Each tuple should contain the path to
+    Attributes:
+        name (str): Name of the image.
+        python_version (str): python version of the image. Use default python in the base image if None.
+        builder (Optional[str]): Type of plugin to build the image. Use envd by default.
+        source_root (Optional[str]): source root of the image.
+        env (Optional[typing.Dict[str, str]]): environment variables of the image.
+        registry (Optional[str]): registry of the image.
+        packages (Optional[List[str]]): list of python packages to install.
+        conda_packages (Optional[List[str]]): list of conda packages to install.
+        conda_channels (Optional[List[str]]): list of conda channels.
+        requirements (Optional[str]): path to the requirements.txt file.
+        apt_packages (Optional[List[str]]): list of apt packages to install.
+        cuda (Optional[str]): version of cuda to install.
+        cudnn (Optional[str]): version of cudnn to install.
+        base_image (Optional[Union[str, "ImageSpec"]]): base image of the image.
+        platform (str): Specify the target platforms for the build output (for example, windows/amd64 or linux/amd64,darwin/arm64
+        pip_index (Optional[str]): Specify the custom pip index url
+        pip_extra_index_url (Optional[List[str]]): Specify one or more pip index urls as a list
+        pip_secret_mounts (Optional[List[Tuple[str, str]]]): Specify a list of tuples to mount secret for pip install. Each tuple should contain the path to
             the secret file and the mount path. For example, [(".gitconfig", "/etc/gitconfig")]. This is experimental and
             the interface may change in the future. Configuring this should not change the built image.
-        pip_extra_args: Specify one or more extra pip install arguments as a space-delimited string
-        registry_config: Specify the path to a JSON registry config file
-        entrypoint: List of strings to overwrite the entrypoint of the base image with, set to [] to remove the entrypoint.
-        commands: Command to run during the building process
-        tag_format: Custom string format for image tag. The ImageSpec hash passed in as `spec_hash`. For example,
+        pip_extra_args (Optional[str]): Specify one or more extra pip install arguments as a space-delimited string
+        registry_config (Optional[str]): Specify the path to a JSON registry config file
+        entrypoint (Optional[List[str]]): List of strings to overwrite the entrypoint of the base image with, set to [] to remove the entrypoint.
+        commands (Optional[List[str]]): Command to run during the building process
+        tag_format (Optional[str]): Custom string format for image tag. The ImageSpec hash passed in as `spec_hash`. For example,
             to add a "dev" suffix to the image tag, set `tag_format="{spec_hash}-dev"`
-        source_copy_mode: This option allows the user to specify which source files to copy from the local host, into the image.
+        source_copy_mode (Optional[CopyFileDetection]): This option allows the user to specify which source files to copy from the local host, into the image.
             Not setting this option means to use the default flytekit behavior. The default behavior is:
                 - if fast register is used, source files are not copied into the image (because they're already copied
                   into the fast register tar layer).
@@ -65,9 +65,9 @@ class ImageSpec:
                   Python files into the image.
 
             If the option is set by the user, then that option is of course used.
-        copy: List of files/directories to copy to /root. e.g. ["src/file1.txt", "src/file2.txt"]
-        python_exec: Python executable to use for install packages
-        builder_config: Custom builder images configuration, such as uv and micromamba images.
+        copy (Optional[List[str]]): List of files/directories to copy to /root. e.g. ["src/file1.txt", "src/file2.txt"]
+        python_exec (Optional[str]): Python executable to use for install packages
+        builder_config (Optional[typing.Dict[str, str]]): Custom builder images configuration, such as uv and micromamba images.
     """
 
     name: str = "flytekit"
@@ -97,7 +97,10 @@ class ImageSpec:
     copy: Optional[List[str]] = None
     python_exec: Optional[str] = None
     builder_config: Optional[typing.Dict[str, str]] = (
-        {"uv_image": "ghcr.io/astral-sh/uv:0.5.1", "micromamba_image": "mambaorg/micromamba:2.0.3-debian12-slim"},
+        {
+            "uv_image": "ghcr.io/astral-sh/uv:0.5.1",
+            "micromamba_image": "mambaorg/micromamba:2.0.3-debian12-slim",
+        },
     )
 
     def __post_init__(self):
