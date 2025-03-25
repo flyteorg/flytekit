@@ -31,7 +31,7 @@ cannot make use of their inputs like native Python values whereas dynamic workfl
 The resulting workflow is passed back to the Flyte engine and is
 run as a :std:ref:`subworkflow <cookbook:subworkflows>`.  Simple usage
 
-.. code-block::
+```python
 
     @dynamic
     def my_dynamic_subwf(a: int) -> (typing.List[str], int):
@@ -39,16 +39,18 @@ run as a :std:ref:`subworkflow <cookbook:subworkflows>`.  Simple usage
         for i in range(a):
             s.append(t1(a=i))
         return s, 5
+```
 
 Note in the code block that we call the Python ``range`` operator on the input. This is typically not allowed in a
 workflow but it is here. You can even express dependencies between tasks.
 
-.. code-block::
+```python
 
     @dynamic
     def my_dynamic_subwf(a: int, b: int) -> int:
         x = t1(a=a)
         return t2(b=b, x=x)
+```
 
 See the :std:ref:`cookbook <cookbook:subworkflows>` for a longer discussion.
 """  # noqa: W293

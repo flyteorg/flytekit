@@ -426,9 +426,9 @@ def array_node_map_task(
 ):
     """Map task that uses the ``ArrayNode`` construct..
 
-    .. important::
+    > [!IMPORTANT]
 
-       This is an experimental drop-in replacement for :py:func:`~flytekit.map_task`.
+    > This is an experimental drop-in replacement for `~flytekit.map_task`.
 
     :param task_function: This argument is implicitly passed and represents the repeatable function
     :param concurrency: If specified, this limits the number of mapped tasks than can run in parallel to the given batch
@@ -454,7 +454,7 @@ class ArrayNodeMapTaskResolver(tracker.TrackedInstance, TaskResolverMixin):
     But in cases in which `j` is bound to a fixed value by using `functools.partial` we need a way to ensure that
     the interface is not simply interpolated, but only the unbound inputs are interpolated.
 
-        .. code-block:: python
+        ```python
 
             def foo((i: int, j: str) -> str:
                 ...
@@ -462,6 +462,7 @@ class ArrayNodeMapTaskResolver(tracker.TrackedInstance, TaskResolverMixin):
             mt = map_task(functools.partial(foo, j=10))
 
             print(mt.interface)
+        ```
 
     output:
 
