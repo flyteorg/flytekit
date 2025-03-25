@@ -28,11 +28,12 @@ class RawSynchronousFlyteClient(object):
     This client should be usable regardless of environment in which this is used. In other words, configurations should
     be explicit as opposed to inferred from the environment or a configuration file. To create a client,
 
-    .. code-block:: python
+    ```python
 
         from flytekit.configuration import PlatformConfig
         RawSynchronousFlyteClient(PlatformConfig(endpoint="a.b.com", insecure=True))  # or
         SynchronousFlyteClient(PlatformConfig(endpoint="a.b.com", insecure=True))
+    ```
     """
 
     _dataproxy_stub: DataProxyServiceStub
@@ -89,9 +90,8 @@ class RawSynchronousFlyteClient(object):
         This will create a task definition in the Admin database. Once successful, the task object can be
         retrieved via the client or viewed via the UI or command-line interfaces.
 
-        .. note ::
-
-            Overwrites are not supported so any request for a given project, domain, name, and version that exists in
+        > [!NOTE]
+        > Overwrites are not supported so any request for a given project, domain, name, and version that exists in
             the database must match the existing definition exactly. This also means that as long as the request
             remains identical, calling this method multiple times will result in success.
 
@@ -109,18 +109,15 @@ class RawSynchronousFlyteClient(object):
         This returns a page of identifiers for the tasks for a given project and domain. Filters can also be
         specified.
 
-        .. note ::
+        > [!NOTE]
+        > The name field in the TaskListRequest is ignored.
 
-            The name field in the TaskListRequest is ignored.
-
-        .. note ::
-
-            This is a paginated API.  Use the token field in the request to specify a page offset token.
+        > [!NOTE]
+        > This is a paginated API.  Use the token field in the request to specify a page offset token.
             The user of the API is responsible for providing this token.
 
-        .. note ::
-
-            If entries are added to the database between requests for different pages, it is possible to receive
+        > [!NOTE]
+        > If entries are added to the database between requests for different pages, it is possible to receive
             entries on the second page that also appeared on the first.
 
         :param: flyteidl.admin.common_pb2.NamedEntityIdentifierListRequest identifier_list_request:
@@ -134,14 +131,12 @@ class RawSynchronousFlyteClient(object):
         This returns a page of task metadata for tasks in a given project and domain.  Optionally,
         specifying a name will limit the results to only tasks with that name in the given project and domain.
 
-        .. note ::
-
-            This is a paginated API.  Use the token field in the request to specify a page offset token.
+        > [!NOTE]
+        > This is a paginated API.  Use the token field in the request to specify a page offset token.
             The user of the API is responsible for providing this token.
 
-        .. note ::
-
-            If entries are added to the database between requests for different pages, it is possible to receive
+        > [!NOTE]
+        > If entries are added to the database between requests for different pages, it is possible to receive
             entries on the second page that also appeared on the first.
 
         :param: flyteidl.admin.common_pb2.ResourceListRequest resource_list_request:
@@ -183,9 +178,8 @@ class RawSynchronousFlyteClient(object):
         This will create a workflow definition in the Admin database.  Once successful, the workflow object can be
         retrieved via the client or viewed via the UI or command-line interfaces.
 
-        .. note ::
-
-            Overwrites are not supported so any request for a given project, domain, name, and version that exists in
+        > [!NOTE]
+        > Overwrites are not supported so any request for a given project, domain, name, and version that exists in
             the database must match the existing definition exactly.  This also means that as long as the request
             remains identical, calling this method multiple times will result in success.
 
@@ -203,18 +197,15 @@ class RawSynchronousFlyteClient(object):
         This returns a page of identifiers for the workflows for a given project and domain. Filters can also be
         specified.
 
-        .. note ::
+        > [!NOTE]
+        > The name field in the WorkflowListRequest is ignored.
 
-            The name field in the WorkflowListRequest is ignored.
-
-        .. note ::
-
-            This is a paginated API.  Use the token field in the request to specify a page offset token.
+        > [!NOTE]
+        > This is a paginated API.  Use the token field in the request to specify a page offset token.
             The user of the API is responsible for providing this token.
 
-        .. note ::
-
-            If entries are added to the database between requests for different pages, it is possible to receive
+        > [!NOTE]
+        > If entries are added to the database between requests for different pages, it is possible to receive
             entries on the second page that also appeared on the first.
 
         :param: flyteidl.admin.common_pb2.NamedEntityIdentifierListRequest identifier_list_request:
@@ -228,14 +219,12 @@ class RawSynchronousFlyteClient(object):
         This returns a page of workflow meta-information for workflows in a given project and domain.  Optionally,
         specifying a name will limit the results to only workflows with that name in the given project and domain.
 
-        .. note ::
-
-            This is a paginated API.  Use the token field in the request to specify a page offset token.
+        > [!NOTE]
+        > This is a paginated API.  Use the token field in the request to specify a page offset token.
             The user of the API is responsible for providing this token.
 
-        .. note ::
-
-            If entries are added to the database between requests for different pages, it is possible to receive
+        > [!NOTE]
+        > If entries are added to the database between requests for different pages, it is possible to receive
             entries on the second page that also appeared on the first.
 
         :param: flyteidl.admin.common_pb2.ResourceListRequest resource_list_request:
@@ -265,9 +254,8 @@ class RawSynchronousFlyteClient(object):
         This will create a launch plan definition in the Admin database.  Once successful, the launch plan object can be
         retrieved via the client or viewed via the UI or command-line interfaces.
 
-        .. note ::
-
-            Overwrites are not supported so any request for a given project, domain, name, and version that exists in
+        > [!NOTE]
+        > Overwrites are not supported so any request for a given project, domain, name, and version that exists in
             the database must match the existing definition exactly.  This also means that as long as the request
             remains identical, calling this method multiple times will result in success.
 
