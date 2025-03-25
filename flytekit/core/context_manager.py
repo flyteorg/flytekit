@@ -68,17 +68,18 @@ class ExecutionParameters(object):
     """
     This is a run-time user-centric context object that is accessible to every @task method. It can be accessed using
 
-    .. code-block:: python
+    
+    ```python
+       flytekit.current_context()
+    ```
 
-        flytekit.current_context()
-
-    This object provides the following
+    This object provides the following objections
     * a statsd handler
     * a logging handler
-    * the execution ID as an :py:class:`flytekit.models.core.identifier.WorkflowExecutionIdentifier` object
+    * the execution ID as an `flytekit.models.core.identifier.WorkflowExecutionIdentifier` object
     * a working directory for the user to write arbitrary files to
 
-    Please do not confuse this object with the :py:class:`flytekit.FlyteContext` object.
+    Please do not confuse this object with the `flytekit.FlyteContext` object.
     """
 
     @dataclass(init=False)
@@ -254,9 +255,9 @@ class ExecutionParameters(object):
         This is a datetime representing the time at which a workflow was started.  This is consistent across all tasks
         executed in a workflow or sub-workflow.
 
-        .. note::
+        > [!NOTE]
 
-            Do NOT use this execution_date to drive any production logic.  It might be useful as a tag for data to help
+        > Do NOT use this execution_date to drive any production logic.  It might be useful as a tag for data to help
             in debugging.
         """
         return self._execution_date
@@ -267,9 +268,9 @@ class ExecutionParameters(object):
         This is the identifier of the workflow execution within the underlying engine.  It will be consistent across all
         task executions in a workflow or sub-workflow execution.
 
-        .. note::
+        > [!NOTE]
 
-            Do NOT use this execution_id to drive any production logic.  This execution ID should only be used as a tag
+        > Do NOT use this execution_id to drive any production logic.  This execution ID should only be used as a tag
             on output data to link back to the workflow run that created it.
         """
         return self._execution_id
@@ -468,8 +469,8 @@ class CompilationState(object):
         prefix (str): This is because we may one day want to be able to have subworkflows inside other workflows. If
             users choose to not specify their node names, then we can end up with multiple "n0"s. This prefix allows
             us to give those nested nodes a distinct name, as well as properly identify them in the workflow.
-        mode (int): refer to :py:class:`flytekit.extend.ExecutionState.Mode`
-        task_resolver (Optional[TaskResolverMixin]): Please see :py:class:`flytekit.extend.TaskResolverMixin`
+        mode (int): refer to `flytekit.extend.ExecutionState.Mode`
+        task_resolver (Optional[TaskResolverMixin]): Please see `flytekit.extend.TaskResolverMixin`
         nodes (Optional[List]): Stores currently compiled nodes so far.
     """
 
@@ -685,9 +686,9 @@ class FlyteContext(object):
     compile workflows, serialize Flyte entities, etc.
 
     Even though this object as a ``current_context`` function on it, it should not be called directly. Please use the
-    :py:class:`flytekit.FlyteContextManager` object instead.
+    `flytekit.FlyteContextManager` object instead.
 
-    Please do not confuse this object with the :py:class:`flytekit.ExecutionParameters` object.
+    Please do not confuse this object with the `flytekit.ExecutionParameters` object.
     """
 
     file_access: FileAccessProvider
@@ -793,18 +794,20 @@ class FlyteContext(object):
         The return value depends on the execution environment. In a notebook, the return value is compatible with
         IPython.display and should be rendered in the notebook.
 
-        .. code-block:: python
+        ```python
 
             with flytekit.new_context() as ctx:
                 my_task(...)
             ctx.get_deck()
+        ```
 
         OR if you wish to explicitly display
 
-        .. code-block:: python
+        ```python
 
             from IPython import display
             display(ctx.get_deck())
+        ```
         """
         from flytekit.deck.deck import _get_deck
 
@@ -915,7 +918,7 @@ class FlyteContextManager(object):
 
     Typical usage is
 
-    .. code-block:: python
+    ```python
 
         FlyteContextManager.initialize()
         with FlyteContextManager.with_context(o) as ctx:
@@ -925,6 +928,7 @@ class FlyteContextManager(object):
         FlyteContextManager.push_context()
         # but correspondingly a pop_context should be called
         FlyteContextManager.pop_context()
+    ```
     """
 
     signal_handlers: typing.List[typing.Callable[[int, FrameType], typing.Any]] = []

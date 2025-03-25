@@ -118,6 +118,7 @@ def upgrade_channel_to_proxy_authenticated(cfg: PlatformConfig, in_channel: grpc
     """
     If activated in the platform config, given a grpc.Channel, preferably a secure channel, it returns a composed
     channel that uses Interceptor to perform authentication with a proxy in front of Flyte
+    
     :param cfg: PlatformConfig
     :param in_channel: grpc.Channel Precreated channel
     :return: grpc.Channel. New composite channel
@@ -179,19 +180,23 @@ def get_channel(cfg: PlatformConfig, **kwargs) -> grpc.Channel:
     Creates a new grpc.Channel given a platformConfig.
     It is possible to pass additional options to the underlying channel. Examples for various options are as below
 
-    .. code-block:: python
+    ```python
 
         get_channel(cfg=PlatformConfig(...))
+    ```
 
-    .. code-block:: python
+    ```python
        :caption: Additional options to insecure / secure channel. Example `options` and `compression` refer to grpc guide
 
         get_channel(cfg=PlatformConfig(...), options=..., compression=...)
 
-    .. code-block:: python
-       :caption: Create secure channel with custom `grpc.ssl_channel_credentials`
+    ```
 
-        get_channel(cfg=PlatformConfig(insecure=False,...), credentials=...)
+   
+    :caption: Create secure channel with custom `grpc.ssl_channel_credentials`
+     ```python
+    get_channel(cfg=PlatformConfig(insecure=False,...), credentials=...)
+    ```
 
 
     :param cfg: PlatformConfig

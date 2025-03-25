@@ -1,68 +1,76 @@
 """
-=====================
-Configuration
-=====================
+# Configuration
 
-.. currentmodule:: flytekit.configuration
-
-Flytekit Configuration Sources
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+## Flytekit Configuration Sources
 
 There are multiple ways to configure flytekit settings:
 
-**Command Line Arguments**: This is the recommended way of setting configuration values for many cases.
-For example, see `pyflyte package <pyflyte.html#pyflyte-package>`_ command.
+### Command Line Arguments
+This is the recommended way of setting configuration values for many cases. For example, see `pyflyte package` command.
 
-**Python Config Object**: A :py:class:`~flytekit.configuration.Config` object can by used directly, e.g. when
-initializing a :py:class:`~flytefit.remote.remote.FlyteRemote` object. See :doc:`here <design/control_plane>` for examples on
-how to specify a ``Config`` object.
+### Python Config Object
+A `Config` object can be used directly, e.g. when initializing a `FlyteRemote` object. See the Control Plane design docs for examples on how to specify a `Config` object.
 
-**Environment Variables**: Users can specify these at compile time, but when your task is run, Flyte Propeller will
-also set configuration to ensure correct interaction with the platform. The environment variables must be specified
-with the format ``FLYTE_{SECTION}_{OPTION}``, all in upper case. For example, to specify the
-:py:class:`PlatformConfig.endpoint <flytekit.configuration.PlatformConfig>` setting, the environment variable would
-be ``FLYTE_PLATFORM_URL``.
+### Environment Variables
+Users can specify these at compile time, but when your task is run, Flyte Propeller will also set configuration to ensure correct interaction with the platform. The environment variables must be specified with the format `FLYTE_{SECTION}_{OPTION}`, all in upper case. For example, to specify the `PlatformConfig.endpoint` setting, the environment variable would be `FLYTE_PLATFORM_URL`.
 
-.. note::
+> [!NOTE]
+> Environment variables won't work for image configuration, which need to be specified with the `pyflyte package --image ...` option or in a configuration file.
 
-   Environment variables won't work for image configuration, which need to be specified with the
-   `pyflyte package --image ... <pyflyte.html#cmdoption-pyflyte-package-i>`_ option or in a configuration
-   file.
+### YAML Format Configuration File
+A configuration file that contains settings for both `flytectl` and `flytekit`. This is the recommended configuration file format. Invoke the `flytectl config init` command to create a boilerplate `~/.flyte/config.yaml` file, and `flytectl --help` to learn about all of the configuration yaml options.
 
-**YAML Format Configuration File**: A configuration file that contains settings for both
-`flytectl <https://docs.flyte.org/en/latest/flytectl/api/overview.html>`__ and ``flytekit``. This is the recommended configuration
-file format. Invoke the :ref:`flytectl config init <flytectl_config_init>` command to create a boilerplate
-``~/.flyte/config.yaml`` file, and  ``flytectl --help`` to learn about all of the configuration yaml options.
+Example `config.yaml` file:
+```yaml
+# Sample config file
 
-.. dropdown:: See example ``config.yaml`` file
-   :animate: fade-in-slide-down
+admin:
+  # For GRPC endpoints you might want to use dns:///flyte.myexample.com
+  endpoint: dns:///localhost:8089
+  authType: Pkce
+  insecure: true
 
-   .. literalinclude:: ../../tests/flytekit/unit/configuration/configs/sample.yaml
-      :language: yaml
-      :caption: config.yaml
+logger:
+  show-source: true
+  level: 0
 
-**INI Format Configuration File**: A configuration file for ``flytekit``. By default, ``flytekit`` will look for a
-file in two places:
+console:
+  endpoint: http://localhost:8080
+  insecure: true
 
-1. First, a file named ``flytekit.config`` in the Python interpreter's working directory.
-2. A file in ``~/.flyte/config`` in the home directory as detected by Python.
+# This section is used only in the control plane to trigger a remote execution
+storage:
+  type: minio
+  stow:
+    kind: s3
+    config:
+      auth_type: accesskey
+      access_key_id: minio
+      secret_key: miniostorage
+      endpoint: http://localhost:9000
+      region: us-east-1
+      disable_ssl: true
+      addressing_style: "path"
 
-.. dropdown:: See example ``flytekit.config`` file
-   :animate: fade-in-slide-down
 
-   .. literalinclude:: ../../tests/flytekit/unit/configuration/configs/images.config
-      :language: ini
-      :caption: flytekit.config
+### INI Format Configuration File
+A configuration file for `flytekit`. By default, `flytekit` will look for a file in two places:
 
-.. warning::
+1. First, a file named `flytekit.config` in the Python interpreter's working directory.
+2. A file in `~/.flyte/config` in the home directory as detected by Python.
 
-   The INI format configuration is considered a legacy configuration format. We recommend using the yaml format
-   instead if you're using a configuration file.
+Example `flytekit.config` file:
+```ini
+[sdk]
+workflow_packages=my_cool_workflows, other_workflows
+```
 
-How is configuration used?
-^^^^^^^^^^^^^^^^^^^^^^^^^^
+> [!WARNING]
+> The INI format configuration is considered a legacy configuration format. We recommend using the yaml format instead if you're using a configuration file.
 
-Configuration usage can roughly be bucketed into the following areas,
+## How is configuration used?
+
+Configuration usage can roughly be bucketed into the following areas:
 
 - **Compile-time settings**: these are settings like the default image and named images, where to look for Flyte code, etc.
 - **Platform settings**: Where to find the Flyte backend (Admin DNS, whether to use SSL)
@@ -70,60 +78,31 @@ Configuration usage can roughly be bucketed into the following areas,
 - **Data access settings**: Is there a custom S3 endpoint in use? Backoff/retry behavior for accessing S3/GCS, key and password, etc.
 - **Other settings** - Statsd configuration, which is a run-time applicable setting but is not necessarily relevant to the Flyte platform.
 
-Configuration Objects
----------------------
+## Configuration Objects
 
-The following objects are encapsulated in a parent object called ``Config``.
+The following objects are encapsulated in a parent object called `Config`:
 
-.. autosummary::
-   :template: custom.rst
-   :toctree: generated/
-   :nosignatures:
+### Serialization Time Settings
 
-   ~Config
+These are serialization/compile-time settings that are used when using commands like `pyflyte package` or `pyflyte register`. These configuration settings are typically passed in as flags to the above CLI commands.
 
-.. _configuration-compile-time-settings:
+The image configurations are typically either passed in via an `--image` flag, or can be specified in the `yaml` or `ini` configuration files (see examples above).
 
-Serialization Time Settings
-^^^^^^^^^^^^^^^^^^^^^^^^^^^
+- **Image**: Represents a container image with optional configuration overrides.
+- **ImageConfig**: Represents an image configuration for a given project/domain combination.
+- **SerializationSettings**: Controls how to serialize Flyte entities when registering with Admin.
+- **FastSerializationSettings**: Configuration for faster serialization settings.
 
-These are serialization/compile-time settings that are used when using commands like
-`pyflyte package <pyflyte.html#pyflyte-package>`_ or `pyflyte register <pyflyte.html#pyflyte-register>`_. These
-configuration settings are typically passed in as flags to the above CLI commands.
+### Execution Time Settings
 
-The image configurations are typically either passed in via an `--image <pyflyte.html#cmdoption-pyflyte-package-i>`_ flag,
-or can be specified in the ``yaml`` or ``ini`` configuration files (see examples above).
+Users typically shouldn't be concerned with these configurations, as they are typically set by FlytePropeller or FlyteAdmin. The configurations below are useful for authenticating to a Flyte backend, configuring data access credentials, secrets, and statsd metrics.
 
-.. autosummary::
-   :template: custom.rst
-   :toctree: generated/
-   :nosignatures:
-
-   ~Image
-   ~ImageConfig
-   ~SerializationSettings
-   ~FastSerializationSettings
-
-.. _configuration-execution-time-settings:
-
-Execution Time Settings
-^^^^^^^^^^^^^^^^^^^^^^^
-
-Users typically shouldn't be concerned with these configurations, as they are typically set by FlytePropeller or
-FlyteAdmin. The configurations below are useful for authenticating to a Flyte backend, configuring data access
-credentials, secrets, and statsd metrics.
-
-.. autosummary::
-   :template: custom.rst
-   :toctree: generated/
-   :nosignatures:
-
-   ~PlatformConfig
-   ~StatsConfig
-   ~SecretsConfig
-   ~S3Config
-   ~GCSConfig
-   ~DataConfig
+- **PlatformConfig**: Configuration for how to connect to the Flyte platform.
+- **StatsConfig**: Configuration for how to emit statsd metrics.
+- **SecretsConfig**: Configuration for how to access secrets.
+- **S3Config**: Amazon S3 specific configuration.
+- **GCSConfig**: Google Cloud Storage specific configuration.
+- **DataConfig**: Configuration for data access.
 
 """
 

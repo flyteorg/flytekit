@@ -25,18 +25,18 @@ class LaunchPlan(object):
     Every workflow is registered with a default launch plan, which is just a launch plan with none of the additional
     attributes set - no default values, fixed values, schedules, etc. Assuming you have the following workflow
 
-    .. code-block:: python
+    ```python
 
         @workflow
         def wf(a: int, c: str) -> str:
             ...
-
+    ```
     Create the default launch plan with
 
-    .. code-block:: python
+    ```python
 
         LaunchPlan.get_or_create(workflow=my_wf)
-
+    ```
     If you specify additional parameters, you'll also have to give the launch plan a unique name. Default and
     fixed inputs can be expressed as Python native values like so:
 
@@ -59,10 +59,10 @@ class LaunchPlan(object):
        :language: python
        :dedent: 4
 
-    .. code-block:: python
+    ```python
 
         from flytekit.models.common import Annotations, AuthRole, Labels, RawOutputDataConfig
-
+    ```
     Then use as follows
 
     .. literalinclude:: ../../../tests/flytekit/unit/core/test_launch_plan.py

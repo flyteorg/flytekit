@@ -81,12 +81,13 @@ class PythonInstanceTask(PythonAutoContainerTask[T], ABC):  # type: ignore
     a platform defined execute method. (Execute needs to be overridden). This base class ensures that the module loader
     will invoke the right class automatically, by capturing the module name and variable in the module name.
 
-    .. code-block: python
+    ```python
 
         x = MyInstanceTask(name="x", .....)
 
         # this can be invoked as
         x(a=5) # depending on the interface of the defined task
+    ```
 
     """
 
@@ -112,12 +113,12 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):  # type: ignore
 
     It is advised this task is used using the @task decorator as follows
 
-    .. code-block: python
+    ```python
 
         @task
         def my_func(a: int) -> str:
            ...
-
+    ```
     In the above code, the name of the function, the module, and the interface (inputs = int and outputs = str) will be
     auto detected.
     """
