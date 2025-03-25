@@ -34,12 +34,12 @@ class TaskPlugins(object):
     Every task that the user wishes to use should be available in this factory.
     Usage
 
-    .. code-block:: python
+    ```python
 
         TaskPlugins.register_pythontask_plugin(config_object_type, plugin_object_type)
         # config_object_type is any class that will be passed to the plugin_object as task_config
         # Plugin_object_type is a derivative of ``PythonFunctionTask``
-
+    ```
     Examples of available task plugins include different query-based plugins such as
     :py:class:`flytekitplugins.athena.task.AthenaTask` and :py:class:`flytekitplugins.hive.task.HiveTask`, kubeflow
     operators like :py:class:`plugins.kfpytorch.flytekitplugins.kfpytorch.task.PyTorchFunctionTask` and
@@ -61,11 +61,12 @@ class TaskPlugins(object):
         """
         Use this method to register a new plugin into Flytekit. Usage ::
 
-        .. code-block:: python
+        ```python
 
             TaskPlugins.register_pythontask_plugin(config_object_type, plugin_object_type)
             # config_object_type is any class that will be passed to the plugin_object as task_config
             # Plugin_object_type is a derivative of ``PythonFunctionTask``
+        ```
         """
         if plugin_config_type in cls._PYTHONFUNCTION_TASK_PLUGINS:
             found = cls._PYTHONFUNCTION_TASK_PLUGINS[plugin_config_type]
@@ -231,20 +232,21 @@ def task(
 
     For a simple python task,
 
-    .. code-block:: python
+    ```python
 
         @task
         def my_task(x: int, y: typing.Dict[str, str]) -> str:
             ...
+    ```
 
     For specific task types
 
-    .. code-block:: python
+    ```python
 
         @task(task_config=Spark(), retries=3)
         def my_task(x: int, y: typing.Dict[str, str]) -> str:
             ...
-
+    ```
     Please see some cookbook :std:ref:`task examples <cookbook:tasks>` for additional information.
 
     :param _task_function: This argument is implicitly passed and represents the decorated function
@@ -281,7 +283,7 @@ def task(
                 bloat because of various dependencies and a dependency is only required for this or a set of tasks,
                 and they vary from the default.
 
-                .. code-block:: python
+                ```python
 
                     # Use default image name `fqn` and alter the tag to `tag-{{default.tag}}` tag of the default image
                     # with a prefix. In this case, it is assumed that the image like
@@ -295,6 +297,7 @@ def task(
                     @task(container_image='{{.images.xyz.fqn}}:{{images.default.tag}}')
                     def foo2():
                         ...
+                ```
     :param environment: Environment variables that should be added for this tasks execution
     :param requests: Specify compute resource requests for your task. For Pod-plugin tasks, these values will apply only
       to the primary container.
@@ -322,7 +325,7 @@ def task(
         For example this is useful to run launchplans dynamically, because launchplans must be registered on flyteadmin
         before they can be run. Tasks and workflows do not have this requirement.
 
-        .. code-block:: python
+        ```python
 
             @workflow
             def workflow0():
@@ -336,6 +339,7 @@ def task(
             def launch_dynamically():
                 # To run a sub-launchplan it must have previously been registered on flyteadmin.
                 return [launchplan0]*10
+        ```
     :param task_resolver: Provide a custom task resolver.
     :param disable_deck: (deprecated) If true, this task will not output deck html file
     :param enable_deck: If true, this task will output deck html file
@@ -573,7 +577,7 @@ def eager(
 
     For example:
 
-    .. code-block:: python
+    ```python
 
         from flytekit import task, eager
 
@@ -596,22 +600,22 @@ def eager(
 
             result = asyncio.run(eager_workflow(x=1))
             print(f"Result: {result}")  # "Result: 4"
-
+    ```
     Unlike :py:func:`dynamic workflows <flytekit.dynamic>`, eager workflows are not compiled into a workflow spec, but
     uses python's `async <https://docs.python.org/3/library/asyncio.html>`__ capabilities to execute flyte entities.
 
-    .. note::
+    > [!NOTE]
 
-       Eager workflows only support `@task`, `@workflow`, and `@eager` entities. Conditionals are not supported, use a
+    > Eager workflows only support `@task`, `@workflow`, and `@eager` entities. Conditionals are not supported, use a
        plain Python if statement instead.
 
-    .. important::
+    > [!IMPORTANT]
 
-       A ``client_secret_group`` and ``client_secret_key`` is needed for authenticating via
+    > A ``client_secret_group`` and ``client_secret_key`` is needed for authenticating via
        :py:class:`~flytekit.remote.remote.FlyteRemote` using the ``client_credentials`` authentication, which is
        configured via :py:class:`~flytekit.configuration.PlatformConfig`.
 
-       .. code-block:: python
+       ```python
 
             from flytekit.remote import FlyteRemote
             from flytekit.configuration import Config
@@ -624,18 +628,19 @@ def eager(
             async def eager_workflow(x: int) -> int:
                 out = await add_one(x)
                 return await double(one)
-
+        ```
        Where ``config.yaml`` contains is a flytectl-compatible config file.
        For more details, see `here <https://docs.flyte.org/en/latest/flytectl/overview.html#configuration>`__.
 
        When using a sandbox cluster started with ``flytectl demo start``, however, the ``client_secret_group``
        and ``client_secret_key`` are not needed, :
 
-       .. code-block:: python
+       ```python
 
             @eager
             async def eager_workflow(x: int) -> int:
                 ...
+     ```
     """
 
     if _fn is None:

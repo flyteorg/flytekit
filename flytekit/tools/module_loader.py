@@ -43,7 +43,7 @@ def just_load_modules(pkgs: List[str]):
 
 def load_object_from_module(object_location: str) -> Any:
     """
-    # TODO: Handle corner cases, like where the first part is [] maybe
+    TODO: Handle corner cases, like where the first part is [] maybe
     """
     class_obj = object_location.split(".")
     class_obj_mod = class_obj[:-1]  # e.g. ['flytekit', 'core', 'python_auto_container']
