@@ -1,5 +1,5 @@
 from flytekit.configuration import Image, ImageConfig, SerializationSettings
-from flytekitplugins.slurm import Slurm, SlurmRemoteScript, SlurmTask, SlurmShellTask
+from flytekitplugins.slurm import SlurmConfig, SlurmScriptConfig, SlurmTask, SlurmShellTask
 
 
 def test_slurm_shell_task():
@@ -13,12 +13,12 @@ def test_slurm_shell_task():
     # SlurmTask
     slurm_task = SlurmTask(
         name="test-slurm-task",
-        task_config=SlurmRemoteScript(
+        task_config=SlurmScriptConfig(
             ssh_config={
                 "host": "<your-slurm-host>",
                 "username": "ubuntu",
             },
-            sbatch_conf={
+            sbatch_config={
                 "partition": "debug",
                 "job-name": "tiny-slurm",
                 "output": "/home/ubuntu/slurm_task.log"
@@ -29,19 +29,19 @@ def test_slurm_shell_task():
 
     assert slurm_task.task_config is not None
     assert slurm_task.task_config.ssh_config == {"host": "<your-slurm-host>", "username": "ubuntu"}
-    assert slurm_task.task_config.sbatch_conf == {"partition": "debug", "job-name": "tiny-slurm", "output": "/home/ubuntu/slurm_task.log"}
+    assert slurm_task.task_config.sbatch_config == {"partition": "debug", "job-name": "tiny-slurm", "output": "/home/ubuntu/slurm_task.log"}
     assert slurm_task.task_config.batch_script_path == batch_script_path
 
     # SlurmShellTask
     slurm_shell_task = SlurmShellTask(
         name="test-slurm-shell-task",
         script=script,
-        task_config=Slurm(
+        task_config=SlurmConfig(
             ssh_config={
                 "host": "<your-slurm-host>",
                 "username": "ubuntu",
             },
-            sbatch_conf={
+            sbatch_config={
                 "partition": "debug",
                 "job-name": "tiny-slurm",
                 "output": "/home/ubuntu/slurm_shell_task.log"
@@ -51,7 +51,7 @@ def test_slurm_shell_task():
 
     assert slurm_shell_task.task_config is not None
     assert slurm_shell_task.task_config.ssh_config == {"host": "<your-slurm-host>", "username": "ubuntu"}
-    assert slurm_shell_task.task_config.sbatch_conf == {"partition": "debug", "job-name": "tiny-slurm", "output": "/home/ubuntu/slurm_shell_task.log"}
+    assert slurm_shell_task.task_config.sbatch_config == {"partition": "debug", "job-name": "tiny-slurm", "output": "/home/ubuntu/slurm_shell_task.log"}
     assert slurm_shell_task.script == script
 
     # Define dummy SerializationSettings
@@ -66,12 +66,12 @@ def test_slurm_shell_task():
 
     custom = slurm_task.get_custom(settings)
     assert custom["ssh_config"] == {"host": "<your-slurm-host>", "username": "ubuntu"}
-    assert custom["sbatch_conf"] == {"partition": "debug", "job-name": "tiny-slurm", "output": "/home/ubuntu/slurm_task.log"}
+    assert custom["sbatch_config"] == {"partition": "debug", "job-name": "tiny-slurm", "output": "/home/ubuntu/slurm_task.log"}
     assert custom["batch_script_path"] == batch_script_path
     assert custom["batch_script_args"] is None
 
     shell_custom = slurm_shell_task.get_custom(settings)
     assert shell_custom["ssh_config"] == {"host": "<your-slurm-host>", "username": "ubuntu"}
-    assert shell_custom["sbatch_conf"] == {"partition": "debug", "job-name": "tiny-slurm", "output": "/home/ubuntu/slurm_shell_task.log"}
+    assert shell_custom["sbatch_config"] == {"partition": "debug", "job-name": "tiny-slurm", "output": "/home/ubuntu/slurm_shell_task.log"}
     assert shell_custom["script"] == script
     assert shell_custom["batch_script_args"] is None

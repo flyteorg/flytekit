@@ -4,12 +4,14 @@ from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Tuple, Type
 
 from asyncssh import SSHClientConnection
+from asyncssh.sftp import SFTPError
 
 import flytekit
 from flytekit.core.type_engine import TypeEngine
 from flytekit.extend.backend.base_connector import AsyncConnectorBase, ConnectorRegistry, Resource, ResourceMeta
 from flytekit.extend.backend.utils import convert_to_flyte_phase
 from flytekit.extras.tasks.shell import OutputLocation, _PythonFStringInterpolizer
+from flytekit.loggers import logger
 from flytekit.models.literals import LiteralMap
 from flytekit.models.task import TaskTemplate
 
@@ -56,7 +58,7 @@ class SlurmScriptConnector(AsyncConnectorBase):
         # Retrieve task config
         ssh_config = task_template.custom["ssh_config"]
         batch_script_args = task_template.custom["batch_script_args"]
-        sbatch_conf = task_template.custom["sbatch_conf"]
+        sbatch_config = task_template.custom["sbatch_config"]
 
         # Construct sbatch command for Slurm cluster
         upload_script = False
@@ -76,7 +78,7 @@ class SlurmScriptConnector(AsyncConnectorBase):
             # Assume the batch script is already on Slurm
             batch_script_path = task_template.custom["batch_script_path"]
         cmd = _get_sbatch_cmd(
-            sbatch_conf=sbatch_conf, batch_script_path=batch_script_path, batch_script_args=batch_script_args
+            sbatch_config=sbatch_config, batch_script_path=batch_script_path, batch_script_args=batch_script_args
         )
 
         # Run Slurm job
@@ -87,6 +89,17 @@ class SlurmScriptConnector(AsyncConnectorBase):
                 f.flush()
                 async with conn.start_sftp_client() as sftp:
                     await sftp.put(f.name, batch_script_path)
+        else:
+            async with conn.start_sftp_client() as sftp:
+                try:
+                    script_exists = await sftp.exists(batch_script_path)
+                except SFTPError as e:
+                    logger.debug(f"Failed to check if the batch script exists on the Slurm cluster: {e}")
+                    raise RuntimeError("Failed to check if the batch script exists on the Slurm cluster.") from e
+
+            if not script_exists:
+                logger.debug(f"The specified batch script at {batch_script_path} doesn't exist on the Slurm cluster.")
+                raise FileNotFoundError(f"The batch script at {batch_script_path} doesn't exist on the Slurm cluster.")
         res = await conn.run(cmd, check=True)
 
         # Retrieve Slurm job id
@@ -160,12 +173,12 @@ class SlurmScriptConnector(AsyncConnectorBase):
         return script, outputs
 
 
-def _get_sbatch_cmd(sbatch_conf: Dict[str, str], batch_script_path: str, batch_script_args: List[str] = None) -> str:
+def _get_sbatch_cmd(sbatch_config: Dict[str, str], batch_script_path: str, batch_script_args: List[str] = None) -> str:
     """
     Construct the Slurm sbatch command.
 
     Args:
-        sbatch_conf (Dict[str, str]): Slurm sbatch configuration options (e.g., partition, job-name, etc.).
+        sbatch_config (Dict[str, str]): Slurm sbatch configuration options (e.g., partition, job-name, etc.).
         batch_script_path (str): Absolute path on the Slurm cluster of the script to run.
         batch_script_args (List[str], optional): Additional arguments to pass to the batch script.
 
@@ -173,7 +186,7 @@ def _get_sbatch_cmd(sbatch_conf: Dict[str, str], batch_script_path: str, batch_s
         str: The sbatch command string that can be executed on the Slurm cluster.
     """
     cmd = ["sbatch"]
-    for opt, val in sbatch_conf.items():
+    for opt, val in sbatch_config.items():
         cmd.extend([f"--{opt}", str(val)])
 
     # Assign the batch script to run

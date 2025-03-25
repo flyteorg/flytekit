@@ -5,13 +5,12 @@ from typing import Dict, List, Optional, Tuple, Union
 
 from asyncssh import SSHClientConnection
 
-from flytekit import logger
 from flytekit.extend.backend.base_connector import AsyncConnectorBase, ConnectorRegistry, Resource, ResourceMeta
 from flytekit.extend.backend.utils import convert_to_flyte_phase
 from flytekit.models.literals import LiteralMap
 from flytekit.models.task import TaskTemplate
 
-from ..ssh_utils import ssh_connect
+from ..ssh_utils import SlurmCluster, get_ssh_conn
 
 
 @dataclass
@@ -33,20 +32,11 @@ class SlurmJobMetadata(ResourceMeta):
     ssh_config: Dict[str, Union[str, List[str], Tuple[str, ...]]]
 
 
-@dataclass
-class SlurmCluster:
-    host: str
-    username: Optional[str] = None
-
-    def __hash__(self):
-        return hash((self.host, self.username))
-
-
 class SlurmFunctionConnector(AsyncConnectorBase):
     name = "Slurm Function Connector"
 
     # SSH connection pool for multi-host environment
-    ssh_config_to_ssh_conn: Dict[SlurmCluster, SSHClientConnection] = {}
+    slurm_cluster_to_ssh_conn: Dict[SlurmCluster, SSHClientConnection] = {}
 
     def __init__(self) -> None:
         super(SlurmFunctionConnector, self).__init__(task_type_name="slurm_fn", metadata_type=SlurmJobMetadata)
@@ -61,19 +51,19 @@ class SlurmFunctionConnector(AsyncConnectorBase):
 
         # Retrieve task config
         ssh_config = task_template.custom["ssh_config"]
-        sbatch_conf = task_template.custom["sbatch_conf"]
+        sbatch_config = task_template.custom["sbatch_config"]
         script = task_template.custom["script"]
 
         # Construct command for Slurm cluster
         cmd, script = _get_sbatch_cmd_and_script(
-            sbatch_conf=sbatch_conf,
+            sbatch_config=sbatch_config,
             entrypoint=" ".join(task_template.container.args),
             script=script,
             batch_script_path=unique_script_name,
         )
 
         # Run Slurm job
-        conn = await self._get_or_create_ssh_connection(ssh_config)
+        conn = await get_ssh_conn(ssh_config=ssh_config, slurm_cluster_to_ssh_conn=self.slurm_cluster_to_ssh_conn)
         with tempfile.NamedTemporaryFile("w") as f:
             f.write(script)
             f.flush()
@@ -87,8 +77,9 @@ class SlurmFunctionConnector(AsyncConnectorBase):
         return SlurmJobMetadata(job_id=job_id, ssh_config=ssh_config)
 
     async def get(self, resource_meta: SlurmJobMetadata, **kwargs) -> Resource:
-        ssh_config = resource_meta.ssh_config
-        conn = await self._get_or_create_ssh_connection(ssh_config)
+        conn = await get_ssh_conn(
+            ssh_config=resource_meta.ssh_config, slurm_cluster_to_ssh_conn=self.slurm_cluster_to_ssh_conn
+        )
         job_res = await conn.run(f"scontrol show job {resource_meta.job_id}", check=True)
 
         # Determine the current flyte phase from Slurm job state
@@ -107,43 +98,14 @@ class SlurmFunctionConnector(AsyncConnectorBase):
         return Resource(phase=cur_phase, message=msg)
 
     async def delete(self, resource_meta: SlurmJobMetadata, **kwargs) -> None:
-        conn = await self._get_or_create_ssh_connection(resource_meta.ssh_config)
+        conn = await get_ssh_conn(
+            ssh_config=resource_meta.ssh_config, slurm_cluster_to_ssh_conn=self.slurm_cluster_to_ssh_conn
+        )
         _ = await conn.run(f"scancel {resource_meta.job_id}", check=True)
-
-    async def _get_or_create_ssh_connection(
-        self, ssh_config: Dict[str, Union[str, List[str], Tuple[str, ...]]]
-    ) -> SSHClientConnection:
-        """Get an existing SSH connection or create a new one if needed.
-
-        Args:
-            ssh_config (Dict[str, Union[str, List[str], Tuple[str, ...]]]): SSH configuration dictionary.
-
-        Returns:
-            SSHClientConnection: An active SSH connection, either pre-existing or newly established.
-        """
-        host = ssh_config.get("host")
-        username = ssh_config.get("username")
-
-        ssh_cluster_config = SlurmCluster(host=host, username=username)
-        if self.ssh_config_to_ssh_conn.get(ssh_cluster_config) is None:
-            logger.info("ssh connection key not found, creating new connection")
-            conn = await ssh_connect(ssh_config=ssh_config)
-            self.ssh_config_to_ssh_conn[ssh_cluster_config] = conn
-        else:
-            conn = self.ssh_config_to_ssh_conn[ssh_cluster_config]
-            try:
-                await conn.run("echo [TEST] SSH connection", check=True)
-                logger.info("re-using new connection")
-            except Exception as e:
-                logger.info(f"Re-establishing SSH connection due to error: {e}")
-                conn = await ssh_connect(ssh_config=ssh_config)
-                self.ssh_config_to_ssh_conn[ssh_cluster_config] = conn
-
-        return conn
 
 
 def _get_sbatch_cmd_and_script(
-    sbatch_conf: Dict[str, str],
+    sbatch_config: Dict[str, str],
     entrypoint: str,
     script: Optional[str] = None,
     batch_script_path: str = "/tmp/task.slurm",
@@ -153,7 +115,7 @@ def _get_sbatch_cmd_and_script(
     Flyte entrypoint, pyflyte-execute, is run within a bash shell process.
 
     Args:
-        sbatch_conf (Dict[str, str]): Options of sbatch command.
+        sbatch_config (Dict[str, str]): Options of sbatch command.
         entrypoint (str): Flyte entrypoint.
         script (Optional[str], optional): User-defined script where "{task.fn}" serves as a placeholder for the
             task function execution. Users should insert "{task.fn}" at the desired
@@ -169,7 +131,7 @@ def _get_sbatch_cmd_and_script(
     """
     # Setup sbatch options
     cmd = ["sbatch"]
-    for opt, val in sbatch_conf.items():
+    for opt, val in sbatch_config.items():
         cmd.extend([f"--{opt}", str(val)])
 
     # Assign the batch script to run
