@@ -405,16 +405,15 @@ def create_docker_context(image_spec: ImageSpec, tmp_dir: Path):
     else:
         extra_copy_cmds = ""
 
-    if image_spec.builder_config.get("uv_image") is None:
+    if image_spec.builder_config.get("uv_image") is not None:
         uv_image = image_spec.builder_config.get("uv_image")
     else:
         uv_image = "ghcr.io/astral-sh/uv:0.5.1"
 
-    if image_spec.builder_config.get("micromamba_image") is None:
+    if image_spec.builder_config.get("micromamba_image") is not None:
         micromamba_image = image_spec.builder_config.get("micromamba_image")
     else:
         micromamba_image = "mambaorg/micromamba:2.0.3-debian12-slim"
-
 
     docker_content = DOCKER_FILE_TEMPLATE.substitute(
         UV_PYTHON_INSTALL_COMMAND=uv_python_install_command,
