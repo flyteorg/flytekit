@@ -21,10 +21,10 @@ class Checkpoint(object):
         Given a path, if a previous checkpoint exists, will be downloaded to this path.
         If download is successful the downloaded path is returned
 
-        .. note:
+        > [!NOTE]
 
-            Download will not be performed, if the checkpoint was previously restored. The method will return the
-            previously downloaded path.
+        > Download will not be performed, if the checkpoint was previously restored. The method will return the
+          previously downloaded path.
 
         """
         raise NotImplementedError("Use one of the derived classes")
@@ -37,10 +37,11 @@ class Checkpoint(object):
 
         Usage: If you have a io.BufferedReader then the following should work
 
-        .. code-block: python
+        ```python
 
             with input_file.open(mode="rb") as b:
                 checkpointer.save(b)
+        ```
         """
         raise NotImplementedError("Use one of the derived classes")
 

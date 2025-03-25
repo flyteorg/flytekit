@@ -26,11 +26,12 @@ class CronSchedule(_schedule_models.Schedule):
     This uses standard `cron format <https://docs.flyte.org/en/latest/concepts/schedules.html#cron-expression-table>`__
     in case where you are using default native scheduler using the schedule attribute.
 
-    .. code-block::
+    ```
 
         CronSchedule(
             schedule="*/1 * * * *",  # Following schedule runs every min
         )
+    ```
 
     See the :std:ref:`User Guide <cookbook:cron schedules>` for further examples.
     """
@@ -160,11 +161,12 @@ class FixedRate(_schedule_models.Schedule):
     """
     Use this class to schedule a fixed-rate interval for a launch plan.
 
-    .. code-block:: python
+    ```python
 
         from datetime import timedelta
 
         FixedRate(duration=timedelta(minutes=10))
+    ```
 
     See the :std:ref:`fixed rate intervals` chapter in the cookbook for additional usage examples.
     """
