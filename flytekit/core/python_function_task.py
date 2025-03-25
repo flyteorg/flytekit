@@ -29,6 +29,7 @@ from enum import Enum
 from typing import Any, Callable, Iterable, List, Optional, Tuple, TypeVar, Union, cast
 
 from flyteidl.core import tasks_pb2
+
 from flytekit.configuration import ImageConfig, ImageSpec, SerializationSettings
 from flytekit.core import launch_plan as _annotated_launch_plan
 from flytekit.core.base_task import Task, TaskMetadata, TaskResolverMixin
@@ -131,9 +132,9 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):  # type: ignore
         def to_flyte_idl(self) -> tasks_pb2.TaskMetadata.ExecutionMode:
             """convert ExecutionBehavior into flyteidl type"""
             return {
-                self.DEFAULT: tasks_pb2.TaskMetadata.ExecutionMode.DEFAULT,
-                self.DYNAMIC: tasks_pb2.TaskMetadata.ExecutionMode.DYNAMIC,
-            }[self]
+                self.__class__.DEFAULT.value: tasks_pb2.TaskMetadata.ExecutionMode.DEFAULT,
+                self.__class__.DYNAMIC.value: tasks_pb2.TaskMetadata.ExecutionMode.DYNAMIC,
+            }[self.value]
 
         @classmethod
         def from_flyte_idl(cls, execution_mode: tasks_pb2.TaskMetadata.ExecutionMode):

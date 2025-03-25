@@ -18,6 +18,8 @@
 
 """
 
+from __future__ import annotations
+
 import asyncio
 import collections
 import datetime
@@ -127,6 +129,7 @@ class TaskMetadata(object):
         pod_template_name (Optional[str]): The name of an existing PodTemplate resource in the cluster which will be used for this task.
         generates_deck (bool): Indicates whether the task will generate a Deck URI.
         is_eager (bool): Indicates whether the task should be treated as eager.
+        execution_mode(Optional[Any]): Indicates whether the task should be treated as dynamic workflow.
     """
 
     cache: bool = False
@@ -140,7 +143,9 @@ class TaskMetadata(object):
     pod_template_name: Optional[str] = None
     generates_deck: bool = False
     is_eager: bool = False
-    execution_mode: "PythonFunctionTask.ExecutionBehavior" = None
+    execution_mode: Optional[Any] = (
+        None  # set type as Any due to circular import, the actual type will be PythonFunctionTask.ExecutionBehavior once class init
+    )
 
     def __post_init__(self):
         if self.timeout:

@@ -288,15 +288,15 @@ def test_default_inputs():
 
 def test_execution_behavior_conversion():
     """Test conversion between ExecutionBehavior and flyteidl ExecutionMode"""
-    
+
     # Test conversion for DEFAULT mode
-    assert (PythonFunctionTask.ExecutionBehavior.DEFAULT.to_flyte_idl() == 
+    assert (PythonFunctionTask.ExecutionBehavior.DEFAULT.to_flyte_idl() ==
             tasks_pb2.TaskMetadata.ExecutionMode.DEFAULT)
-    assert (PythonFunctionTask.ExecutionBehavior.from_flyte_idl(tasks_pb2.TaskMetadata.ExecutionMode.DEFAULT) == 
+    assert (PythonFunctionTask.ExecutionBehavior.from_flyte_idl(tasks_pb2.TaskMetadata.ExecutionMode.DEFAULT) ==
             PythonFunctionTask.ExecutionBehavior.DEFAULT)
-    
+
     # Test conversion for DYNAMIC mode
-    assert (PythonFunctionTask.ExecutionBehavior.DYNAMIC.to_flyte_idl() == 
+    assert (PythonFunctionTask.ExecutionBehavior.DYNAMIC.to_flyte_idl() ==
             tasks_pb2.TaskMetadata.ExecutionMode.DYNAMIC)
-    assert (PythonFunctionTask.ExecutionBehavior.from_flyte_idl(tasks_pb2.TaskMetadata.ExecutionMode.DYNAMIC) == 
+    assert (PythonFunctionTask.ExecutionBehavior.from_flyte_idl(tasks_pb2.TaskMetadata.ExecutionMode.DYNAMIC) ==
             PythonFunctionTask.ExecutionBehavior.DYNAMIC)
