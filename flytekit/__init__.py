@@ -200,9 +200,10 @@ def current_context() -> ExecutionParameters:
 
     Usage
 
-    .. code-block:: python
+    ```python
 
         flytekit.current_context().logging.info(...)
+    ```
 
     Available params are documented in :py:class:`flytekit.core.context_manager.ExecutionParams`.
     There are some special params, that should be available
@@ -223,7 +224,7 @@ def load_implicit_plugins():
     entrypoint specification to their setup.py. The following example shows how we can autoload a module called fsspec
     (whose init files contains the necessary plugin registration step)
 
-    .. code-block::
+    ```
 
         # note the group is always ``flytekit.plugins``
         setup(
@@ -231,17 +232,17 @@ def load_implicit_plugins():
         entry_points={'flytekit.plugins': 'fsspec=flytekitplugins.fsspec'},
         ...
         )
-
+    ```
     This works as long as the fsspec module has
 
-    .. code-block::
+    ```
 
        # For data persistence plugins
        DataPersistencePlugins.register_plugin(f"{k}://", FSSpecPersistence, force=True)
        # OR for type plugins
        TypeEngine.register(PanderaTransformer())
        # etc
-
+    ```
     """
     discovered_plugins = entry_points(group="flytekit.plugins")
     for p in discovered_plugins:

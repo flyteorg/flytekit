@@ -41,7 +41,7 @@ class Deck:
     scatter plots or Markdown text. In addition, users can create new decks to render
     their data with custom renderers.
 
-    .. code-block:: python
+    ```python
 
         iris_df = px.data.iris()
 
@@ -61,6 +61,7 @@ class Deck:
         @task()
         def t2() -> Annotated[pd.DataFrame, TopFrameRenderer(10)]:
             return iris_df
+    ```
     """
 
     def __init__(self, name: str, html: Optional[str] = "", auto_add_to_deck: bool = True):

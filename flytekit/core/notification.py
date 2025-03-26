@@ -2,9 +2,8 @@
 Notifications are primarily used when defining Launch Plans (also can be used when launching executions) and will trigger
 the Flyte platform to send emails when a workflow run reaches certain stages (fails or succeeds, etc.).
 
-.. note::
-
-    Notifications require some setup and configuration on the Flyte platform side. Please contact your Flyte platform
+> [!NOTE]
+> Notifications require some setup and configuration on the Flyte platform side. Please contact your Flyte platform
     admins to get this feature enabled. See :std:ref:`cookbook:setting up workflow notifications`
 
 Each notification type takes a list of :py:class:`flytekit.models.core.execution.WorkflowExecutionPhase` and a list of
