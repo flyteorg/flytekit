@@ -1,10 +1,11 @@
+import json
 import tempfile
 import uuid
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Tuple, Type
 
 from asyncssh import SSHClientConnection
-from asyncssh.sftp import SFTPError
+from asyncssh.sftp import SFTPError, SFTPNoSuchFile
 
 import flytekit
 from flytekit.core.type_engine import TypeEngine
@@ -111,19 +112,24 @@ class SlurmScriptConnector(AsyncConnectorBase):
         conn = await get_ssh_conn(
             ssh_config=resource_meta.ssh_config, slurm_cluster_to_ssh_conn=self.slurm_cluster_to_ssh_conn
         )
-        job_res = await conn.run(f"scontrol show job {resource_meta.job_id}", check=True)
+        job_res = await conn.run(f"scontrol --json show job {resource_meta.job_id}", check=True)
+        job_info = json.loads(job_res.stdout)["jobs"][0]
 
         # Determine the current flyte phase from Slurm job state
-        msg = ""
-        job_state = "running"
-        for o in job_res.stdout.split(" "):
-            if "JobState" in o:
-                job_state = o.split("=")[1].strip().lower()
-            elif "StdOut" in o:
-                stdout_path = o.split("=")[1].strip()
-                msg_res = await conn.run(f"cat {stdout_path}", check=True)
-                msg = msg_res.stdout
+        job_state = job_info["job_state"][0].strip().lower()
         cur_phase = convert_to_flyte_phase(job_state)
+
+        # Read stdout of the Slurm job
+        msg = ""
+        async with conn.start_sftp_client() as sftp:
+            with tempfile.NamedTemporaryFile("w+") as f:
+                try:
+                    await sftp.get(job_info["standard_output"], f.name)
+
+                    msg = f.read()
+                    logger.info(f"[SLURM STDOUT] {msg}")
+                except SFTPNoSuchFile:
+                    logger.debug("Standard output file path doesn't exist on the Slurm cluster.")
 
         return Resource(phase=cur_phase, message=msg, outputs=resource_meta.outputs)
 
