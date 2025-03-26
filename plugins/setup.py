@@ -49,6 +49,7 @@ SOURCES = {
     "flytekitplugins-sqlalchemy": "flytekit-sqlalchemy",
     "flytekitplugins-vaex": "flytekit-vaex",
     "flytekitplugins-whylogs": "flytekit-whylogs",
+    "flytekitplugins-xarray-zarr": "flytekit-xarray-zarr",
 }
 
 
