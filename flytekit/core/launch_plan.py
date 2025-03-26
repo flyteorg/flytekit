@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import typing
+import warnings
 from typing import Any, Callable, Dict, List, Optional, Type
 
 from flytekit.core import workflow as _annotated_workflow
@@ -129,7 +130,8 @@ class LaunchPlan(object):
         labels: Optional[_common_models.Labels] = None,
         annotations: Optional[_common_models.Annotations] = None,
         raw_output_data_config: Optional[_common_models.RawOutputDataConfig] = None,
-        max_parallelism: Optional[int] = None,
+        max_parallelism: Optional[int] = None,  # Deprecated: Use concurrency instead
+        concurrency: Optional[int] = None,
         security_context: Optional[security.SecurityContext] = None,
         auth_role: Optional[_common_models.AuthRole] = None,
         trigger: Optional[LaunchPlanTriggerBase] = None,
@@ -183,7 +185,8 @@ class LaunchPlan(object):
             labels=labels,
             annotations=annotations,
             raw_output_data_config=raw_output_data_config,
-            max_parallelism=max_parallelism,
+            concurrency=concurrency,  # Pass new parameter
+            max_parallelism=max_parallelism,  # Pass deprecated parameter
             security_context=security_context,
             trigger=trigger,
             overwrite_cache=overwrite_cache,
@@ -213,7 +216,8 @@ class LaunchPlan(object):
         labels: Optional[_common_models.Labels] = None,
         annotations: Optional[_common_models.Annotations] = None,
         raw_output_data_config: Optional[_common_models.RawOutputDataConfig] = None,
-        max_parallelism: Optional[int] = None,
+        concurrency: Optional[int] = None,
+        max_parallelism: Optional[int] = None,  # Deprecated
         security_context: Optional[security.SecurityContext] = None,
         auth_role: Optional[_common_models.AuthRole] = None,
         trigger: Optional[LaunchPlanTriggerBase] = None,
@@ -241,9 +245,10 @@ class LaunchPlan(object):
         :param annotations: Optional annotations to attach to executions created by this launch plan.
         :param raw_output_data_config: Optional location of offloaded data for things like S3, etc.
         :param auth_role: Add an auth role if necessary.
-        :param max_parallelism: Controls the maximum number of tasknodes that can be run in parallel for the entire
-            workflow. This is useful to achieve fairness. Note: MapTasks are regarded as one unit, and
-            parallelism/concurrency of MapTasks is independent from this.
+        :param concurrency: Controls the maximum number of tasknodes that can be run in parallel for the entire
+          workflow. This is useful to achieve fairness. Note: MapTasks are regarded as one unit, and
+          parallelism/concurrency of MapTasks is independent from this.
+        :param max_parallelism: [Deprecated] Use concurrency instead.
         :param trigger: [alpha] This is a new syntax for specifying schedules.
         :param overwrite_cache: If set to True, the execution will always overwrite cache
         :param auto_activate: If set to True, the launch plan will be activated automatically on registration.
@@ -258,6 +263,7 @@ class LaunchPlan(object):
             or annotations is not None
             or raw_output_data_config is not None
             or auth_role is not None
+            or concurrency is not None
             or max_parallelism is not None
             or security_context is not None
             or trigger is not None
@@ -296,7 +302,11 @@ class LaunchPlan(object):
                 ("labels", labels, cached_outputs["_labels"]),
                 ("annotations", annotations, cached_outputs["_annotations"]),
                 ("raw_output_data_config", raw_output_data_config, cached_outputs["_raw_output_data_config"]),
-                ("max_parallelism", max_parallelism, cached_outputs["_max_parallelism"]),
+                (
+                    "concurrency",
+                    concurrency if concurrency is not None else max_parallelism,
+                    cached_outputs.get("_concurrency", cached_outputs.get("")),
+                ),
                 ("security_context", security_context, cached_outputs["_security_context"]),
                 ("overwrite_cache", overwrite_cache, cached_outputs["_overwrite_cache"]),
                 ("auto_activate", auto_activate, cached_outputs["_auto_activate"]),
@@ -326,7 +336,8 @@ class LaunchPlan(object):
                 labels,
                 annotations,
                 raw_output_data_config,
-                max_parallelism,
+                concurrency=concurrency,
+                max_parallelism=max_parallelism,
                 auth_role=auth_role,
                 security_context=security_context,
                 trigger=trigger,
@@ -347,7 +358,8 @@ class LaunchPlan(object):
         labels: Optional[_common_models.Labels] = None,
         annotations: Optional[_common_models.Annotations] = None,
         raw_output_data_config: Optional[_common_models.RawOutputDataConfig] = None,
-        max_parallelism: Optional[int] = None,
+        concurrency: Optional[int] = None,
+        max_parallelism: Optional[int] = None,  # Deprecated
         security_context: Optional[security.SecurityContext] = None,
         trigger: Optional[LaunchPlanTriggerBase] = None,
         overwrite_cache: Optional[bool] = None,
@@ -367,7 +379,14 @@ class LaunchPlan(object):
         self._labels = labels
         self._annotations = annotations
         self._raw_output_data_config = raw_output_data_config
-        self._max_parallelism = max_parallelism
+        self._concurrency = concurrency
+        self._max_parallelism = concurrency if concurrency is not None else max_parallelism
+        if max_parallelism is not None:
+            warnings.warn(
+                "max_parallelism is deprecated and will be removed in a future version. Use concurrency instead.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
         self._security_context = security_context
         self._trigger = trigger
         self._overwrite_cache = overwrite_cache
@@ -385,7 +404,8 @@ class LaunchPlan(object):
         labels: Optional[_common_models.Labels] = None,
         annotations: Optional[_common_models.Annotations] = None,
         raw_output_data_config: Optional[_common_models.RawOutputDataConfig] = None,
-        max_parallelism: Optional[int] = None,
+        concurrency: Optional[int] = None,
+        max_parallelism: Optional[int] = None,  # Dreprecated
         security_context: Optional[security.SecurityContext] = None,
         trigger: Optional[LaunchPlanTriggerBase] = None,
         overwrite_cache: Optional[bool] = None,
@@ -401,6 +421,7 @@ class LaunchPlan(object):
             labels=labels or self.labels,
             annotations=annotations or self.annotations,
             raw_output_data_config=raw_output_data_config or self.raw_output_data_config,
+            concurrency=concurrency or self.concurrency,
             max_parallelism=max_parallelism or self.max_parallelism,
             security_context=security_context or self.security_context,
             trigger=trigger,
@@ -466,7 +487,17 @@ class LaunchPlan(object):
 
     @property
     def max_parallelism(self) -> Optional[int]:
-        return self._max_parallelism
+        """[Deprecated] Use concurrency instead. This property is maintained for backward compatibility"""
+        warnings.warn(
+            "max_parallelism is deprecated and will be removed in a future version. Use concurrency instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return self._concurrency
+
+    @property
+    def concurrency(self) -> Optional[int]:
+        return self._concurrency
 
     @property
     def security_context(self) -> Optional[security.SecurityContext]:
