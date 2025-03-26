@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Tuple, Type
 
 from asyncssh import SSHClientConnection
-from asyncssh.sftp import SFTPError
+from asyncssh.sftp import SFTPError, SFTPNoSuchFile
 
 import flytekit
 from flytekit.core.type_engine import TypeEngine
