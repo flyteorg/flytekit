@@ -251,6 +251,11 @@ def test_secrets_manager_env():
     os.environ[sec.get_secrets_env_var(group="group", key="key")] = "value"
     assert sec.get(group="group", key="key") == "value"
 
+    os.environ["LOCAL_ENV_VAR"] = "value"
+    assert sec.get(group="group", key="key2", env_var="LOCAL_ENV_VAR") == "value"
+    assert sec.get(key="key", env_var="LOCAL_ENV_VAR") == "value"
+    assert sec.get(env_var="LOCAL_ENV_VAR") == "value"
+
 
 @pytest.mark.parametrize("is_local_execution, prefix", [(True, ""), (False, "_FSEC_")])
 def test_secrets_manager_execution(monkeypatch, is_local_execution, prefix):
