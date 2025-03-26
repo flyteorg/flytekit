@@ -178,12 +178,13 @@ def isnested(func: Callable) -> bool:
 
     This would essentially be any function with a `.<local>.` (defined within a function) e.g.
 
-    .. code:: python
+    ```python
 
         def foo():
             def foo_inner():
                 pass
             pass
+    ```
 
     In the above example `foo_inner` is the local function or a nested function.
     """
@@ -194,7 +195,7 @@ def isnested(func: Callable) -> bool:
 def is_functools_wrapped_module_level(func: Callable) -> bool:
     """Returns true if the function is a functools.wraps-updated function that is defined in the module-level scope.
 
-    .. code:: python
+    ```python
 
         import functools
 
@@ -221,6 +222,7 @@ def is_functools_wrapped_module_level(func: Callable) -> bool:
 
         is_functools_wrapped_module_level(foo)  # True
         is_functools_wrapped_module_level(bar)  # False
+    ```
 
     In this case, applying this function to ``foo`` returns true because ``foo`` was defined in the module-level scope.
     Applying this function to ``bar`` returns false because it's being assigned to ``foo_inner``, which is a

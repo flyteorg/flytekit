@@ -12,7 +12,7 @@ to specify an accelerator in the task decorator.
 
 If you want to use a specific GPU device, you can pass the device name directly to the task decorator, e.g.:
 
-.. code-block::
+```python
 
     @task(
         limits=Resources(gpu="1"),
@@ -20,7 +20,7 @@ If you want to use a specific GPU device, you can pass the device name directly 
     )
     def my_task() -> None:
         ...
-
+```
 
 Base Classes
 ------------
@@ -51,7 +51,7 @@ a complete list. If you know the name of the accelerator, you can pass the strin
 
 If using the constants, you can import them directly from the module, e.g.:
 
-.. code-block::
+```python
 
     from flytekit.extras.accelerators import T4
 
@@ -61,10 +61,10 @@ If using the constants, you can import them directly from the module, e.g.:
     )
     def my_task() -> None:
         ...
-
+```
 if you want to use a fractional GPU, you can use the ``partitioned`` method on the accelerator constant, e.g.:
 
-.. code-block::
+```python
 
     from flytekit.extras.accelerators import A100
 
@@ -74,7 +74,7 @@ if you want to use a fractional GPU, you can use the ``partitioned`` method on t
     )
     def my_task() -> None:
         ...
-
+```
 .. currentmodule:: flytekit.extras.accelerators
 
 .. autosummary::

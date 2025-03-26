@@ -57,9 +57,8 @@ class SQLite3Task(PythonCustomizedContainerTask[SQLite3Config], SQLTask[SQLite3C
     """
     Run client side SQLite3 queries that optionally return a FlyteSchema object.
 
-    .. note::
-
-       This is a pre-built container task. That is, your user container will not be used at task execution time.
+    > [!NOTE]
+    > This is a pre-built container task. That is, your user container will not be used at task execution time.
        Instead the image defined in this task definition will be used instead.
 
     .. literalinclude:: ../../../tests/flytekit/unit/extras/sqlite3/test_task.py
