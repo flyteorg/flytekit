@@ -337,7 +337,7 @@ class ImageConfig(DataClassJsonMixin):
             Allows you to programmatically create an ImageConfig. Usually only the default_image is required, unless
             your workflow uses multiple images
 
-            .. code:: python
+            ```python
 
               ImageConfig.from_dict(
                   "ghcr.io/flyteorg/flytecookbook:v1.0.0",
@@ -346,6 +346,7 @@ class ImageConfig(DataClassJsonMixin):
                         "other": "...",
                    }
               )
+            ```
 
         :return:
         """

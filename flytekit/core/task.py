@@ -310,9 +310,8 @@ def task(
                      Refer to :py:class:`Secret` to understand how to specify the request for a secret. It
                      may change based on the backend provider.
 
-                     .. note::
-
-                         During local execution, the secrets will be pulled from the local environment variables
+                    > [!NOTE]
+                    > During local execution, the secrets will be pulled from the local environment variables
                          with the format `{GROUP}_{GROUP_VERSION}_{KEY}`, where all the characters are capitalized
                          and the prefix is not used.
 
@@ -610,12 +609,10 @@ def eager(
     uses python's `async <https://docs.python.org/3/library/asyncio.html>`__ capabilities to execute flyte entities.
 
     > [!NOTE]
-
     > Eager workflows only support `@task`, `@workflow`, and `@eager` entities. Conditionals are not supported, use a
        plain Python if statement instead.
 
     > [!IMPORTANT]
-
     > A ``client_secret_group`` and ``client_secret_key`` is needed for authenticating via
        :py:class:`~flytekit.remote.remote.FlyteRemote` using the ``client_credentials`` authentication, which is
        configured via :py:class:`~flytekit.configuration.PlatformConfig`.

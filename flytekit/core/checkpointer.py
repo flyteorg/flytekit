@@ -22,7 +22,6 @@ class Checkpoint(object):
         If download is successful the downloaded path is returned
 
         > [!NOTE]
-
         > Download will not be performed, if the checkpoint was previously restored. The method will return the
           previously downloaded path.
 

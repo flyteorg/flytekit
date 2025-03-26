@@ -399,7 +399,7 @@ class FlyteFile(SerializableType, os.PathLike, typing.Generic[T], DataClassJSONM
     ):
         """Returns a streaming File handle
 
-        .. code-block:: python
+        ```python
 
             @task
             def copy_file(ff: FlyteFile) -> FlyteFile:
@@ -408,6 +408,7 @@ class FlyteFile(SerializableType, os.PathLike, typing.Generic[T], DataClassJSONM
                     with new_file.open("wb") as w:
                         w.write(r.read())
                 return new_file
+        ```
 
         :param mode: Open mode. For example: 'r', 'w', 'rb', 'rt', 'wb', etc.
         :type mode: str

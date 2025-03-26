@@ -43,9 +43,8 @@ def noop(): ...
 class FlyteDirectory(SerializableType, DataClassJsonMixin, os.PathLike, typing.Generic[T]):
     path: PathType = field(default=None, metadata=config(mm_field=fields.String()))  # type: ignore
     """
-    .. warning::
-
-        This class should not be used on very large datasets, as merely listing the dataset will cause
+    > [!WARNING]
+    > This class should not be used on very large datasets, as merely listing the dataset will cause
         the entire dataset to be downloaded. Listing on S3 and other backend object stores is not consistent
         and we should not need data to be downloaded to list.
 
@@ -345,7 +344,7 @@ class FlyteDirectory(SerializableType, DataClassJsonMixin, os.PathLike, typing.G
         In addition, it will return a list of FlyteFile and FlyteDirectory objects that have ability to lazily download the
         contents of the file/folder. For example:
 
-        .. code-block:: python
+        ```python
 
             entity = FlyteDirectory.listdir(directory)
             for e in entity:
@@ -356,6 +355,7 @@ class FlyteDirectory(SerializableType, DataClassJsonMixin, os.PathLike, typing.G
 
             open(entity[0], "r")  # This will download the file to the local disk.
             open(entity[0], "r")  # flytekit will read data from the local disk if you open it again.
+        ```
         """
 
         final_path = directory.path

@@ -1,88 +1,70 @@
 """
-=====================
-Remote Access
-=====================
+# Remote Access
 
-.. currentmodule:: flytekit.remote
+This module provides utilities for performing operations on tasks, workflows, launchplans, and executions. For example, the following code fetches and executes a workflow:
 
-This module provides utilities for performing operations on tasks, workflows, launchplans, and executions, for example,
-the following code fetches and executes a workflow:
+```python
+# create a remote object from flyte config and environment variables
+FlyteRemote(config=Config.auto())
+FlyteRemote(config=Config.auto(config_file=....))
+FlyteRemote(config=Config(....))
+```
 
-.. code-block:: python
+# Or if you need to specify a custom cert chain
+# (options and compression are also respected keyword arguments)
+FlyteRemote(private_key=your_private_key_bytes, root_certificates=..., certificate_chain=...)
 
-    # create a remote object from flyte config and environment variables
-    FlyteRemote(config=Config.auto())
-    FlyteRemote(config=Config.auto(config_file=....))
-    FlyteRemote(config=Config(....))
+# fetch a workflow from the flyte backend
+remote = FlyteRemote(...)
+flyte_workflow = remote.fetch_workflow(name="my_workflow", version="v1")
 
-    # Or if you need to specify a custom cert chain
-    # (options and compression are also respected keyword arguments)
-    FlyteRemote(private_key=your_private_key_bytes, root_certificates=..., certificate_chain=...)
+# execute the workflow, wait=True will return the execution object after it's completed
+workflow_execution = remote.execute(flyte_workflow, inputs={"a": 1, "b": 10}, wait=True)
 
-    # fetch a workflow from the flyte backend
-    remote = FlyteRemote(...)
-    flyte_workflow = remote.fetch_workflow(name="my_workflow", version="v1")
+# inspect the execution's outputs
+print(workflow_execution.outputs)
+```
 
-    # execute the workflow, wait=True will return the execution object after it's completed
-    workflow_execution = remote.execute(flyte_workflow, inputs={"a": 1, "b": 10}, wait=True)
+## Entrypoint
 
-    # inspect the execution's outputs
-    print(workflow_execution.outputs)
+### FlyteRemote
+The main class for interacting with a Flyte backend.
 
-.. _remote-entrypoint:
+### Options
+Configuration options for the FlyteRemote client.
 
-Entrypoint
-==========
+## Entities
 
-.. autosummary::
-   :template: custom.rst
-   :toctree: generated/
-   :nosignatures:
+### FlyteTask
+Represents a registered Flyte task.
 
-   ~remote.FlyteRemote
-   ~remote.Options
+### FlyteWorkflow
+Represents a registered Flyte workflow.
 
-.. _remote-flyte-entities:
+### FlyteLaunchPlan
+Represents a registered Flyte launch plan.
 
-Entities
-========
+## Entity Components
 
-.. autosummary::
-   :template: custom.rst
-   :toctree: generated/
-   :nosignatures:
+### FlyteNode
+Base class for nodes in a Flyte workflow.
 
-   ~entities.FlyteTask
-   ~entities.FlyteWorkflow
-   ~entities.FlyteLaunchPlan
+### FlyteTaskNode
+Represents a task node in a Flyte workflow.
 
-.. _remote-flyte-entity-components:
+### FlyteWorkflowNode
+Represents a subworkflow node in a Flyte workflow.
 
-Entity Components
-=================
+## Execution Objects
 
-.. autosummary::
-   :template: custom.rst
-   :toctree: generated/
-   :nosignatures:
+### FlyteWorkflowExecution
+Represents an execution of a Flyte workflow.
 
-   ~entities.FlyteNode
-   ~entities.FlyteTaskNode
-   ~entities.FlyteWorkflowNode
+### FlyteTaskExecution
+Represents an execution of a Flyte task.
 
-.. _remote-flyte-execution-objects:
-
-Execution Objects
-=================
-
-.. autosummary::
-   :template: custom.rst
-   :toctree: generated/
-   :nosignatures:
-
-   ~executions.FlyteWorkflowExecution
-   ~executions.FlyteTaskExecution
-   ~executions.FlyteNodeExecution
+### FlyteNodeExecution
+Represents an execution of a node within a workflow.
 
 """
 

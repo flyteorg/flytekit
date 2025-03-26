@@ -475,7 +475,7 @@ class DataclassTransformer(TypeTransformer[object]):
 
     Example
 
-    .. code-block:: python
+    ```python
 
         @dataclass
         class Test(DataClassJsonMixin):
@@ -485,10 +485,11 @@ class DataclassTransformer(TypeTransformer[object]):
         from marshmallow_jsonschema import JSONSchema
         t = Test(a=10,b="e")
         JSONSchema().dump(t.schema())
+    ```
 
     Output will look like
 
-    .. code-block:: json
+    ```python
 
         {'$schema': 'http://json-schema.org/draft-07/schema#',
          'definitions': {'TestSchema': {'properties': {'a': {'title': 'a',
@@ -498,10 +499,10 @@ class DataclassTransformer(TypeTransformer[object]):
            'type': 'object',
            'additionalProperties': False}},
          '$ref': '#/definitions/TestSchema'}
+    ```
 
-    .. note::
-
-        The schema support is experimental and is useful for auto-completing in the UI/CLI
+    > [!NOTE]
+    > The schema support is experimental and is useful for auto-completing in the UI/CLI
 
     """
 

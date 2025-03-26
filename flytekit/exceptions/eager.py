@@ -4,7 +4,7 @@ class EagerException(Exception):
     This exception should be used in an :py:func:`@eager <flytekit.core.task.eager>` workflow function to
     catch exceptions that are raised by tasks or subworkflows.
 
-    .. code-block:: python
+    ```python
 
         from flytekit import task
         from flytekit.exceptions.eager import EagerException
@@ -28,4 +28,5 @@ class EagerException(Exception):
                 # and raised as an EagerException
                 raise
             return await double(x=out)
+    ```
     """
