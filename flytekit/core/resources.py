@@ -35,7 +35,6 @@ class Resources(DataClassJSONMixin):
     mem limit and request to 1024.
 
     > [!NOTE]
-
     > Persistent storage is not currently supported on the Flyte backend.
 
     Please see the :std:ref:`User Guide <cookbook:customizing task resources>` for detailed examples.

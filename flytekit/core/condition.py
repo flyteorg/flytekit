@@ -39,8 +39,7 @@ class ConditionalSection:
     to override the compilation behavior
 
     > [!NOTE]
-
-        > Conditions can only be used within a workflow context.
+    > Conditions can only be used within a workflow context.
 
     Usage:
 
