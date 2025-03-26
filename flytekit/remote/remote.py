@@ -1714,9 +1714,8 @@ class FlyteRemote(object):
         :param serialization_settings: Optionally provide serialization settings, in case the entity being run needs
           to first be registered. If not provided, a default will be used.
 
-        .. note:
-
-            The ``name`` and ``version`` arguments do not apply to ``FlyteTask``, ``FlyteLaunchPlan``, and
+        > [!NOTE]
+        > The ``name`` and ``version`` arguments do not apply to ``FlyteTask``, ``FlyteLaunchPlan``, and
             ``FlyteWorkflow`` entity inputs. These values are determined by referencing the entity identifier values.
         """
         if entity.python_interface:
