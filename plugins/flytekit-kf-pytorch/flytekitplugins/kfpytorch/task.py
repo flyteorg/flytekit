@@ -1,6 +1,6 @@
 """
 This Plugin adds the capability of running distributed pytorch training to Flyte using backend plugins, natively on
-Kubernetes. It leverages `Pytorch Job <https://github.com/kubeflow/pytorch-operator>`_ Plugin from kubeflow.
+Kubernetes. It leverages [`Pytorch Job`](https://github.com/kubeflow/pytorch-operator) Plugin from kubeflow.
 """
 
 import os
@@ -95,7 +95,7 @@ class Master:
 @dataclass
 class PyTorch(object):
     """
-    Configuration for an executable `PyTorch Job <https://github.com/kubeflow/pytorch-operator>`_. Use this
+    Configuration for an executable [`PyTorch Job`](https://github.com/kubeflow/pytorch-operator). Use this
     to run distributed PyTorch training on Kubernetes. Please notice, in most cases, you should not worry
     about the configuration of the master and worker groups. The default configuration should work. The only
     field you should change is the number of workers. Both replicas will use the same image, and the same
@@ -125,12 +125,12 @@ class PyTorch(object):
 @dataclass
 class Elastic(object):
     """
-    Configuration for `torch elastic training <https://pytorch.org/docs/stable/elastic/run.html>`_.
+    Configuration for [`torch elastic training`](https://pytorch.org/docs/stable/elastic/run.html).
 
     Use this to run single- or multi-node distributed pytorch elastic training on k8s.
 
     Single-node elastic training is executed in a k8s pod when `nnodes` is set to 1.
-    Multi-node training is executed otherwise using a `Pytorch Job <https://github.com/kubeflow/training-operator>`_.
+    Multi-node training is executed otherwise using a [`Pytorch Job`](https://github.com/kubeflow/training-operator).
 
     Like `torchrun`, this plugin sets the environment variable `OMP_NUM_THREADS` to 1 if it is not set.
     Please see https://pytorch.org/tutorials/recipes/recipes/tuning_guide.html for potential performance improvements.

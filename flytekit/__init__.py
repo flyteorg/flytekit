@@ -1,11 +1,8 @@
 """
-Core Flytekit
-------------
-
 This package contains all of the most common abstractions you'll need to write Flyte workflows and extend Flytekit.
 
-Basic Authoring
---------------
+## Basic Authoring
+
 
 These are the essentials needed to get started writing tasks and workflows.
 
@@ -28,25 +25,23 @@ These are the essentials needed to get started writing tasks and workflows.
 > This is useful for unit testing.
 
 
-Branching and Conditionals
--------------------------
+### Branching and Conditionals
+
 
 Branches and conditionals can be expressed explicitly in Flyte. These conditions are evaluated
 in the flyte engine and hence should be used for control flow. "dynamic workflows" can be used to perform custom conditional logic not supported by flytekit.
 
-- conditional
 
 
-Customizing Tasks & Workflows
-----------------------------
+### Customizing Tasks & Workflows
 
 - TaskMetadata - Wrapper object that allows users to specify Task
 - Resources - Things like CPUs/Memory, etc.
 - WorkflowFailurePolicy - Customizes what happens when a workflow fails.
 - PodTemplate - Custom PodTemplate for a task.
 
-Dynamic and Nested Workflows
----------------------------
+#### Dynamic and Nested Workflows
+
 See the Dynamic module for more information.
 
 - dynamic
@@ -112,22 +107,6 @@ Common Flyte IDL Objects
 - LiteralType
 - BlobType
 
-Task Utilities
-------------
-
-- HashMethod
-
-Artifacts
---------
-
-- Artifact
-
-Documentation
------------
-
-- Description
-- Documentation
-- SourceCode
 """
 
 import os

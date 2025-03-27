@@ -42,9 +42,8 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
     first. Create a client by 
 
     ```python
-
-        SynchronousFlyteClient("your.domain:port", insecure=True)
-        # insecure should be True if your flyteadmin deployment doesn't have SSL enabled
+       SynchronousFlyteClient("your.domain:port", insecure=True)
+       # insecure should be True if your flyteadmin deployment doesn't have SSL enabled
     ```
 
     """
@@ -69,9 +68,9 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
         retrieved via the client or viewed via the UI or command-line interfaces.
 
         > [!NOTE]
-        >  Overwrites are not supported so any request for a given project, domain, name, and version that exists in
-            the database must match the existing definition exactly. Furthermore, as long as the request
-            remains identical, calling this method multiple times will result in success.
+        > Overwrites are not supported so any request for a given project, domain, name, and version that exists in
+          the database must match the existing definition exactly. Furthermore, as long as the request
+          remains identical, calling this method multiple times will result in success.
 
         :param flytekit.models.core.identifier.Identifier task_identifer: The identifier for this task.
         :param flytekit.models.task.TaskSpec task_spec: This is the actual definition of the task that
