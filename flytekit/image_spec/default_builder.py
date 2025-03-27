@@ -144,6 +144,7 @@ RUN mkdir -p $$HOME && \
 DEFAULT_UV_IMAGE = "ghcr.io/astral-sh/uv:0.5.1"
 DEFAULT_MICROMAMBA_IMAGE = "mambaorg/micromamba:2.0.3-debian12-slim"
 
+
 def get_flytekit_for_pypi():
     """Get flytekit version on PyPI."""
     from flytekit import __version__
