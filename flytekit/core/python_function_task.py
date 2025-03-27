@@ -1,20 +1,3 @@
-"""
-=========================================
-:mod:`flytekit.core.python_function_task`
-=========================================
-
-.. currentmodule:: flytekit.core.python_function_task
-
-.. autosummary::
-   :nosignatures:
-   :template: custom.rst
-   :toctree: generated/
-
-   PythonFunctionTask
-   PythonInstanceTask
-
-"""
-
 from __future__ import annotations
 
 import inspect

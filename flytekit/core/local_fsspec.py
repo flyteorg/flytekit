@@ -1,17 +1,5 @@
 """
-======================================
-:mod:`flytekit.core.local_fsspec`
-======================================
 
-.. currentmodule:: flytekit.core.local_fsspec
-
-
-.. autosummary::
-   :toctree: generated/
-   :template: custom.rst
-   :nosignatures:
-
-   FlyteLocalFileSystem
 
 """
 

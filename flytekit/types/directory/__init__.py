@@ -1,17 +1,12 @@
 """
-Flytekit Directory Type
-==========================================================
-.. currentmodule:: flytekit.types.directory
-
 Similar to :py:class:`flytekit.types.file.FlyteFile` there are some 'preformatted' directory types.
 
-.. autosummary::
-   :toctree: generated/
-   :template: file_types.rst
+| Class | Description |
+|-------| ---- |
+| {{< py_class_ref FlyteDirectory >}} | {{< py_class_docsum FlyteDirectory >}} |
+| {{< py_class_ref TensorboardLogs >}} | {{< py_class_docsum TensorboardLogs >}} |
+| {{< py_class_ref TFRecordsDirectory >}} | {{< py_class_docsum TFRecordsDirectory >}} |
 
-   FlyteDirectory
-   TensorboardLogs
-   TFRecordsDirectory
 """
 
 import typing
