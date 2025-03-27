@@ -1,10 +1,13 @@
+import json
 import tempfile
 import uuid
 from dataclasses import dataclass
 from typing import Dict, List, Optional, Tuple, Union
 
 from asyncssh import SSHClientConnection
+from asyncssh.sftp import SFTPNoSuchFile
 
+from flytekit import logger
 from flytekit.extend.backend.base_connector import AsyncConnectorBase, ConnectorRegistry, Resource, ResourceMeta
 from flytekit.extend.backend.utils import convert_to_flyte_phase
 from flytekit.models.literals import LiteralMap
@@ -80,20 +83,24 @@ class SlurmFunctionConnector(AsyncConnectorBase):
         conn = await get_ssh_conn(
             ssh_config=resource_meta.ssh_config, slurm_cluster_to_ssh_conn=self.slurm_cluster_to_ssh_conn
         )
-        job_res = await conn.run(f"scontrol show job {resource_meta.job_id}", check=True)
+        job_res = await conn.run(f"scontrol --json show job {resource_meta.job_id}", check=True)
+        job_info = json.loads(job_res.stdout)["jobs"][0]
 
         # Determine the current flyte phase from Slurm job state
-        job_state = "running"
-        msg = "No stdout available"
-        for o in job_res.stdout.split(" "):
-            if "JobState" in o:
-                job_state = o.split("=")[1].strip().lower()
-            elif "StdOut" in o:
-                stdout_path = o.split("=")[1].strip()
-                msg_res = await conn.run(f"cat {stdout_path}", check=True)
-                msg = msg_res.stdout
-
+        job_state = job_info["job_state"][0].strip().lower()
         cur_phase = convert_to_flyte_phase(job_state)
+
+        # Read stdout of the Slurm job
+        msg = ""
+        async with conn.start_sftp_client() as sftp:
+            with tempfile.NamedTemporaryFile("w+") as f:
+                try:
+                    await sftp.get(job_info["standard_output"], f.name)
+
+                    msg = f.read()
+                    logger.info(f"[SLURM STDOUT] {msg}")
+                except SFTPNoSuchFile:
+                    logger.debug("Standard output file path doesn't exist on the Slurm cluster.")
 
         return Resource(phase=cur_phase, message=msg)
 
