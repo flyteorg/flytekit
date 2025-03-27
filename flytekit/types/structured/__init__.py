@@ -1,15 +1,4 @@
 """
-Flytekit StructuredDataset
-==========================================================
-.. currentmodule:: flytekit.types.structured
-
-.. autosummary::
-   :template: custom.rst
-   :toctree: generated/
-
-    StructuredDataset
-    StructuredDatasetDecoder
-    StructuredDatasetEncoder
 """
 
 import functools
