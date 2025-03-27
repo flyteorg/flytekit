@@ -1,3 +1,7 @@
+import importlib
+import os
+import sys
+import warnings
 from concurrent import futures
 
 import grpc
@@ -51,28 +55,107 @@ def serve(ctx: click.Context):
     help="It will wait for the specified number of seconds before shutting down grpc server. It should only be used "
     "for testing.",
 )
+@click.option(
+    "--modules",
+    required=False,
+    multiple=True,
+    type=str,
+    help="List of additional files or module that defines the agent",
+)
 @click.pass_context
-def agent(_: click.Context, port, prometheus_port, worker, timeout):
+def agent(_: click.Context, port, prometheus_port, worker, timeout, modules):
     """
     Start a grpc server for the agent service.
     """
     import asyncio
 
-    asyncio.run(_start_grpc_server(port, prometheus_port, worker, timeout))
+    warnings.warn("This command is deprecated. Please use `flyte serve connector` instead.", DeprecationWarning)
+
+    working_dir = os.getcwd()
+    if all(os.path.realpath(path) != working_dir for path in sys.path):
+        sys.path.append(working_dir)
+    for m in modules:
+        importlib.import_module(m)
+
+    asyncio.run(_start_grpc_server("Agent", port, prometheus_port, worker, timeout))
 
 
-async def _start_grpc_server(port: int, prometheus_port: int, worker: int, timeout: int):
-    from flytekit.extend.backend.agent_service import AgentMetadataService, AsyncAgentService, SyncAgentService
+@serve.command()
+@click.option(
+    "--port",
+    default="8000",
+    is_flag=False,
+    type=int,
+    help="Grpc port for the connector service",
+)
+@click.option(
+    "--prometheus_port",
+    default="9090",
+    is_flag=False,
+    type=int,
+    help="Prometheus port for the connector service",
+)
+@click.option(
+    "--worker",
+    default="10",
+    is_flag=False,
+    type=int,
+    help="Number of workers for the grpc server",
+)
+@click.option(
+    "--timeout",
+    default=None,
+    is_flag=False,
+    type=int,
+    help="It will wait for the specified number of seconds before shutting down grpc server. It should only be used "
+    "for testing.",
+)
+@click.option(
+    "--modules",
+    required=False,
+    multiple=True,
+    type=str,
+    help="List of additional files or module that defines the connector",
+)
+@click.pass_context
+def connector(_: click.Context, port, prometheus_port, worker, timeout, modules):
+    """
+    Start a grpc server for the connector service.
+    """
+    import asyncio
 
-    click.secho("🚀 Starting the agent service...")
+    working_dir = os.getcwd()
+    if all(os.path.realpath(path) != working_dir for path in sys.path):
+        sys.path.append(working_dir)
+    for m in modules:
+        importlib.import_module(m)
+
+    asyncio.run(_start_grpc_server("Connector", port, prometheus_port, worker, timeout))
+
+
+async def _start_grpc_server(name: str, port: int, prometheus_port: int, worker: int, timeout: int):
+    try:
+        from flytekit.extend.backend.connector_service import (
+            AsyncConnectorService,
+            ConnectorMetadataService,
+            SyncConnectorService,
+        )
+        from flytekit.extras.webhook import WebhookConnector  # noqa: F401 Webhook Connector Registration
+    except ImportError as e:
+        raise ImportError(
+            f"Flyte connector dependencies are not installed. Please install it using `pip install flytekit[{name.lower()}]`"
+        ) from e
+
+    click.secho(f"🚀 Starting the {name.lower()} service...")
     _start_http_server(prometheus_port)
-    print_agents_metadata()
+
+    print_metadata(name)
 
     server = grpc.aio.server(futures.ThreadPoolExecutor(max_workers=worker))
 
-    add_AsyncAgentServiceServicer_to_server(AsyncAgentService(), server)
-    add_SyncAgentServiceServicer_to_server(SyncAgentService(), server)
-    add_AgentMetadataServiceServicer_to_server(AgentMetadataService(), server)
+    add_AsyncAgentServiceServicer_to_server(AsyncConnectorService(), server)
+    add_SyncAgentServiceServicer_to_server(SyncConnectorService(), server)
+    add_AgentMetadataServiceServicer_to_server(ConnectorMetadataService(), server)
     _start_health_check_server(server, worker)
 
     server.add_insecure_port(f"[::]:{port}")
@@ -109,21 +192,21 @@ def _start_health_check_server(server: grpc.Server, worker: int):
         click.secho(f"Failed to start the health check servicer with error {e}", fg="red")
 
 
-def print_agents_metadata():
-    from flytekit.extend.backend.base_agent import AgentRegistry
+def print_metadata(name: str):
+    from flytekit.extend.backend.base_connector import ConnectorRegistry
 
-    agents = AgentRegistry.list_agents()
+    connectors = ConnectorRegistry.list_connectors()
 
-    table = Table(title="Agent Metadata")
-    table.add_column("Agent Name", style="cyan", no_wrap=True)
+    table = Table(title=f"{name} Metadata")
+    table.add_column(f"{name} Name", style="cyan", no_wrap=True)
     table.add_column("Support Task Types", style="cyan")
     table.add_column("Is Sync", style="green")
 
-    for a in agents:
+    for connector in connectors:
         categories = ""
-        for c in a.supported_task_categories:
-            categories += f"{c.name} (v{c.version}) "
-        table.add_row(a.name, categories, str(a.is_sync))
+        for category in connector.supported_task_categories:
+            categories += f"{category.name} ({category.version}) "
+        table.add_row(connector.name, categories, str(connector.is_sync))
 
     console = Console()
     console.print(table)

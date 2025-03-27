@@ -3,10 +3,17 @@ from __future__ import annotations
 import datetime
 import typing
 from typing import Any, Dict, List, Optional, Union
+from typing import Literal as L
 
 from flyteidl.core import tasks_pb2
 
-from flytekit.core.resources import Resources, convert_resources_to_resource_model
+from flytekit.core.pod_template import PodTemplate
+from flytekit.core.resources import (
+    Resources,
+    ResourceSpec,
+    construct_extended_resources,
+    convert_resources_to_resource_model,
+)
 from flytekit.core.utils import _dnsify
 from flytekit.extras.accelerators import BaseAccelerator
 from flytekit.loggers import logger
@@ -47,6 +54,8 @@ class Node(object):
     ID, which from the registration step
     """
 
+    TIMEOUT_OVERRIDE_SENTINEL = object()
+
     def __init__(
         self,
         id: str,
@@ -67,6 +76,7 @@ class Node(object):
         self._resources: typing.Optional[_resources_model] = None
         self._extended_resources: typing.Optional[tasks_pb2.ExtendedResources] = None
         self._container_image: typing.Optional[str] = None
+        self._pod_template: typing.Optional[PodTemplate] = None
 
     def runs_before(self, other: Node):
         """
@@ -127,7 +137,7 @@ class Node(object):
     def _override_node_metadata(
         self,
         name,
-        timeout: Optional[Union[int, datetime.timedelta]] = None,
+        timeout: Optional[Union[int, datetime.timedelta, object]] = TIMEOUT_OVERRIDE_SENTINEL,
         retries: Optional[int] = None,
         interruptible: typing.Optional[bool] = None,
         cache: typing.Optional[bool] = None,
@@ -142,14 +152,16 @@ class Node(object):
         else:
             node_metadata = self._metadata
 
-        if timeout is None:
-            node_metadata._timeout = datetime.timedelta()
-        elif isinstance(timeout, int):
-            node_metadata._timeout = datetime.timedelta(seconds=timeout)
-        elif isinstance(timeout, datetime.timedelta):
-            node_metadata._timeout = timeout
-        else:
-            raise ValueError("timeout should be duration represented as either a datetime.timedelta or int seconds")
+        if timeout is not Node.TIMEOUT_OVERRIDE_SENTINEL:
+            if timeout is None:
+                node_metadata._timeout = datetime.timedelta()
+            elif isinstance(timeout, int):
+                node_metadata._timeout = datetime.timedelta(seconds=timeout)
+            elif isinstance(timeout, datetime.timedelta):
+                node_metadata._timeout = timeout
+            else:
+                raise ValueError("timeout should be duration represented as either a datetime.timedelta or int seconds")
+
         if retries is not None:
             assert_not_promise(retries, "retries")
             node_metadata._retries = (
@@ -181,7 +193,7 @@ class Node(object):
         aliases: Optional[Dict[str, str]] = None,
         requests: Optional[Resources] = None,
         limits: Optional[Resources] = None,
-        timeout: Optional[Union[int, datetime.timedelta]] = None,
+        timeout: Optional[Union[int, datetime.timedelta, object]] = TIMEOUT_OVERRIDE_SENTINEL,
         retries: Optional[int] = None,
         interruptible: Optional[bool] = None,
         name: Optional[str] = None,
@@ -191,6 +203,9 @@ class Node(object):
         cache: Optional[bool] = None,
         cache_version: Optional[str] = None,
         cache_serialize: Optional[bool] = None,
+        shared_memory: Optional[Union[L[True], str]] = None,
+        pod_template: Optional[PodTemplate] = None,
+        resources: Optional[Resources] = None,
         *args,
         **kwargs,
     ):
@@ -207,6 +222,14 @@ class Node(object):
             for k, v in aliases.items():
                 self._aliases.append(_workflow_model.Alias(var=k, alias=v))
 
+        if resources is not None:
+            if limits is not None or requests is not None:
+                msg = "`resource` can not be used together with the `limits` or `requests`. Please only set `resource`."
+                raise ValueError(msg)
+            resource_spec = ResourceSpec.from_multiple_resource(resources)
+            requests = resource_spec.requests
+            limits = resource_spec.limits
+
         if requests is not None or limits is not None:
             if requests and not isinstance(requests, Resources):
                 raise AssertionError("requests should be specified as flytekit.Resources")
@@ -221,9 +244,9 @@ class Node(object):
                     )
                 )
 
-            resources = convert_resources_to_resource_model(requests=requests, limits=limits)
-            assert_no_promises_in_resources(resources)
-            self._resources = resources
+            resources_ = convert_resources_to_resource_model(requests=requests, limits=limits)
+            assert_no_promises_in_resources(resources_)
+            self._resources = resources_
 
         if task_config is not None:
             logger.warning("This override is beta. We may want to revisit this in the future.")
@@ -237,9 +260,17 @@ class Node(object):
 
         if accelerator is not None:
             assert_not_promise(accelerator, "accelerator")
-            self._extended_resources = tasks_pb2.ExtendedResources(gpu_accelerator=accelerator.to_flyte_idl())
+
+        if shared_memory is not None:
+            assert_not_promise(shared_memory, "shared_memory")
+
+        self._extended_resources = construct_extended_resources(accelerator=accelerator, shared_memory=shared_memory)
 
         self._override_node_metadata(name, timeout, retries, interruptible, cache, cache_version, cache_serialize)
+
+        if pod_template is not None:
+            assert_not_promise(pod_template, "podtemplate")
+            self._pod_template = pod_template
 
         return self
 

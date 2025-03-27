@@ -4,10 +4,11 @@ import datetime
 from flytekit.core.task import task
 from flytekit.remote.remote import FlyteRemote
 from flytekit.core.worker_queue import Controller, WorkItem, ItemStatus, Update
-from flytekit.configuration import ImageConfig, LocalConfig, SerializationSettings
+from flytekit.configuration import ImageConfig, LocalConfig, SerializationSettings, Image
 from flytekit.utils.asyn import loop_manager
 from flytekit.models.execution import ExecutionSpec, ExecutionClosure, ExecutionMetadata, NotificationList, Execution, AbortMetadata
 from flytekit.models.core import identifier
+from flytekit.remote.executions import FlyteWorkflowExecution
 from flytekit.models import common as common_models
 from flytekit.models.core import execution
 from flytekit.exceptions.eager import EagerException
@@ -63,11 +64,12 @@ def test_controller_launch(mock_thread_target):
             image_config,
             options,
             envs,
+            serialization_settings,
     ):
         assert entity is t2
         assert execution_name.startswith("e-unit-test-t2-")
         assert envs == {'_F_EE_ROOT': 'exec-id'}
-        print(entity, execution_name, inputs, version, image_config, options, envs)
+        assert serialization_settings == ss
         return wf_exec
 
     remote = mock.MagicMock()
@@ -249,3 +251,46 @@ def test_work_item_hashing_equality():
     wi2 = WorkItem(entity=t1, wf_exec=fwex, input_kwargs={})
     wi2.uuid = wi1.uuid
     assert wi1 == wi2
+
+
+default_img = Image(name="default", fqn="test", tag="tag")
+serialization_settings = SerializationSettings(
+    project="project",
+    domain="domain",
+    version="version",
+    env=None,
+    image_config=ImageConfig(default_image=default_img, images=[default_img]),
+)
+
+
+@pytest.mark.parametrize("phase,expected_update_status", [
+    (execution.WorkflowExecutionPhase.SUCCEEDED, ItemStatus.SUCCESS),
+    (execution.WorkflowExecutionPhase.FAILED, ItemStatus.FAILED),
+    (execution.WorkflowExecutionPhase.ABORTED, ItemStatus.FAILED),
+    (execution.WorkflowExecutionPhase.TIMED_OUT, ItemStatus.FAILED),
+])
+def test_reconcile(phase, expected_update_status):
+    mock_remote = mock.MagicMock()
+    wf_exec = FlyteWorkflowExecution(
+        id=identifier.WorkflowExecutionIdentifier("project", "domain", "exec-name"),
+        spec=ExecutionSpec(
+            identifier.Identifier(identifier.ResourceType.LAUNCH_PLAN, "project", "domain", "name", "version"),
+            ExecutionMetadata(ExecutionMetadata.ExecutionMode.MANUAL, "tester", 1),
+        ),
+        closure=ExecutionClosure(
+            phase=phase,
+            started_at=datetime.datetime(year=2024, month=1, day=2, tzinfo=datetime.timezone.utc),
+            duration=datetime.timedelta(seconds=10),
+        )
+    )
+    mock_remote.sync_execution.return_value = wf_exec
+
+    @task
+    def t1():
+        ...
+
+    wi = WorkItem(entity=t1, wf_exec=wf_exec, input_kwargs={})
+    c = Controller(mock_remote, serialization_settings, tag="exec-id", root_tag="exec-id", exec_prefix="e-unit-test")
+    u = Update(wi, 0)
+    c.reconcile_one(u)
+    assert u.status == expected_update_status

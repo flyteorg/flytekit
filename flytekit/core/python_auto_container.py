@@ -5,6 +5,7 @@ import re
 from abc import ABC
 from dataclasses import dataclass
 from typing import Callable, Dict, List, Optional, TypeVar, Union
+from typing import Literal as L
 
 from flyteidl.core import tasks_pb2
 
@@ -13,7 +14,7 @@ from flytekit.constants import CopyFileDetection
 from flytekit.core.base_task import PythonTask, TaskMetadata, TaskResolverMixin
 from flytekit.core.context_manager import FlyteContextManager
 from flytekit.core.pod_template import PodTemplate
-from flytekit.core.resources import Resources, ResourceSpec
+from flytekit.core.resources import Resources, ResourceSpec, construct_extended_resources
 from flytekit.core.tracked_abc import FlyteTrackedABC
 from flytekit.core.tracker import TrackedInstance, extract_task_module
 from flytekit.core.utils import _get_container_definition, _serialize_pod_spec, timeit
@@ -51,6 +52,8 @@ class PythonAutoContainerTask(PythonTask[T], ABC, metaclass=FlyteTrackedABC):
         pod_template: Optional[PodTemplate] = None,
         pod_template_name: Optional[str] = None,
         accelerator: Optional[BaseAccelerator] = None,
+        shared_memory: Optional[Union[L[True], str]] = None,
+        resources: Optional[Resources] = None,
         **kwargs,
     ):
         """
@@ -78,6 +81,12 @@ class PythonAutoContainerTask(PythonTask[T], ABC, metaclass=FlyteTrackedABC):
         :param pod_template: Custom PodTemplate for this task.
         :param pod_template_name: The name of the existing PodTemplate resource which will be used in this task.
         :param accelerator: The accelerator to use for this task.
+        :param shared_memory: If True, then shared memory will be attached to the container where the size is equal
+            to the allocated memory. If str, then the shared memory is set to that size.
+        :param resources: Specify both the request and the limit. When the value is set to a tuple or list, the
+            first value is the request and the second value is the limit. If the value is a single value, then both the
+            requests and limit is set to that value. For example, the `Resource(cpu=("1", "2"), mem="1Gi")` will set
+            the cpu request to 1, cpu limit to 2, and mem request to 1Gi.
         """
         sec_ctx = None
         if secret_requests:
@@ -92,9 +101,17 @@ class PythonAutoContainerTask(PythonTask[T], ABC, metaclass=FlyteTrackedABC):
 
         self._container_image = container_image
         # TODO(katrogan): Implement resource overrides
-        self._resources = ResourceSpec(
-            requests=requests if requests else Resources(), limits=limits if limits else Resources()
-        )
+
+        if resources is not None:
+            if limits is not None or requests is not None:
+                msg = "`resource` can not be used together with the `limits` or `requests`. Please only set `resource`."
+                raise ValueError(msg)
+            self._resources = ResourceSpec.from_multiple_resource(resources)
+        else:
+            self._resources = ResourceSpec(
+                requests=Resources() if requests is None else requests,
+                limits=Resources() if limits is None else limits,
+            )
 
         # The serialization of the other tasks (Task -> protobuf), as well as the initialization of the current task, may occur simultaneously.
         # We should make sure super().__init__ is being called after setting _container_image because PythonAutoContainerTask
@@ -128,6 +145,7 @@ class PythonAutoContainerTask(PythonTask[T], ABC, metaclass=FlyteTrackedABC):
 
         self.pod_template = pod_template
         self.accelerator = accelerator
+        self.shared_memory = shared_memory
 
     @property
     def task_resolver(self) -> TaskResolverMixin:
@@ -215,18 +233,11 @@ class PythonAutoContainerTask(PythonTask[T], ABC, metaclass=FlyteTrackedABC):
                 env.update(elem)
         return _get_container_definition(
             image=self.get_image(settings),
+            resource_spec=self.resources,
             command=[],
             args=self.get_command(settings=settings),
             data_loading_config=None,
             environment=env,
-            ephemeral_storage_request=self.resources.requests.ephemeral_storage,
-            cpu_request=self.resources.requests.cpu,
-            gpu_request=self.resources.requests.gpu,
-            memory_request=self.resources.requests.mem,
-            ephemeral_storage_limit=self.resources.limits.ephemeral_storage,
-            cpu_limit=self.resources.limits.cpu,
-            gpu_limit=self.resources.limits.gpu,
-            memory_limit=self.resources.limits.mem,
         )
 
     def get_k8s_pod(self, settings: SerializationSettings) -> _task_model.K8sPod:
@@ -250,10 +261,7 @@ class PythonAutoContainerTask(PythonTask[T], ABC, metaclass=FlyteTrackedABC):
         """
         Returns the extended resources to allocate to the task on hosted Flyte.
         """
-        if self.accelerator is None:
-            return None
-
-        return tasks_pb2.ExtendedResources(gpu_accelerator=self.accelerator.to_flyte_idl())
+        return construct_extended_resources(accelerator=self.accelerator, shared_memory=self.shared_memory)
 
 
 class DefaultTaskResolver(TrackedInstance, TaskResolverMixin):

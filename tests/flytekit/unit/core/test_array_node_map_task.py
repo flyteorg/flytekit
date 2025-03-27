@@ -9,19 +9,22 @@ from typing import List
 import pytest
 from flyteidl.core import workflow_pb2 as _core_workflow
 
-from flytekit import dynamic, map_task, task, workflow, eager, PythonFunctionTask, Resources
+from flytekit import dynamic, map_task, task, workflow, eager, PythonFunctionTask
 from flytekit.configuration import FastSerializationSettings, Image, ImageConfig, SerializationSettings
 from flytekit.core import context_manager
 from flytekit.core.array_node_map_task import ArrayNodeMapTask, ArrayNodeMapTaskResolver
 from flytekit.core.task import TaskMetadata
 from flytekit.core.type_engine import TypeEngine
 from flytekit.extras.accelerators import GPUAccelerator
+from flytekit.models import types
 from flytekit.models.literals import (
+    BindingData,
     Literal,
     LiteralMap,
     LiteralOffloadedMetadata,
+    Scalar,
+    Primitive,
 )
-from flytekit.models.task import Resources as _resources_models
 from flytekit.tools.translator import get_serializable
 from flytekit.types.directory import FlyteDirectory
 
@@ -287,7 +290,7 @@ def test_inputs_outputs_length():
         _ = map_task(many_outputs)
 
 
-def test_parameter_order():
+def test_partials_local_execute():
     @task()
     def task1(a: int, b: float, c: str) -> str:
         return f"{a} - {b} - {c}"
@@ -300,15 +303,39 @@ def test_parameter_order():
     def task3(c: str, a: int, b: float) -> str:
         return f"{a} - {b} - {c}"
 
+    @task()
+    def task4(c: list[str], a: list[int], b: list[float]) -> list[str]:
+        return [f"{a[i]} - {b[i]} - {c[i]}" for i in range(len(a))]
+
     param_a = [1, 2, 3]
     param_b = [0.1, 0.2, 0.3]
-    param_c = "c"
+    fixed_param_c = "c"
 
-    m1 = map_task(functools.partial(task1, c=param_c))(a=param_a, b=param_b)
-    m2 = map_task(functools.partial(task2, c=param_c))(a=param_a, b=param_b)
-    m3 = map_task(functools.partial(task3, c=param_c))(a=param_a, b=param_b)
+    m1 = map_task(functools.partial(task1, c=fixed_param_c))(a=param_a, b=param_b)
+    m2 = map_task(functools.partial(task2, c=fixed_param_c))(a=param_a, b=param_b)
+    m3 = map_task(functools.partial(task3, c=fixed_param_c))(a=param_a, b=param_b)
 
-    assert m1 == m2 == m3 == ["1 - 0.1 - c", "2 - 0.2 - c", "3 - 0.3 - c"]
+    m4 = ArrayNodeMapTask(task1, bound_inputs_values={"c": fixed_param_c})(a=param_a, b=param_b)
+    m5 = ArrayNodeMapTask(task2, bound_inputs_values={"c": fixed_param_c})(a=param_a, b=param_b)
+    m6 = ArrayNodeMapTask(task3, bound_inputs_values={"c": fixed_param_c})(a=param_a, b=param_b)
+
+    assert m1 == m2 == m3 == m4 == m5 == m6 == ["1 - 0.1 - c", "2 - 0.2 - c", "3 - 0.3 - c"]
+
+    list_param_a = [[1, 2, 3], [4, 5, 6], [7, 8, 9]]
+    list_param_b = [[0.1, 0.2, 0.3], [0.4, 0.5, 0.6], [0.7, 0.8, 0.9]]
+    fixed_list_param_c = ["c", "d", "e"]
+
+    m7 = map_task(functools.partial(task4, c=fixed_list_param_c))(a=list_param_a, b=list_param_b)
+    m8 = ArrayNodeMapTask(task4, bound_inputs_values={"c": fixed_list_param_c})(a=list_param_a, b=list_param_b)
+
+    assert m7 == m8 == [
+        ['1 - 0.1 - c', '2 - 0.2 - d', '3 - 0.3 - e'],
+        ['4 - 0.4 - c', '5 - 0.5 - d', '6 - 0.6 - e'],
+        ['7 - 0.7 - c', '8 - 0.8 - d', '9 - 0.9 - e']
+    ]
+
+    with pytest.raises(ValueError):
+        map_task(functools.partial(task1, c=fixed_list_param_c))(a=param_a, b=param_b)
 
 
 def test_bounded_inputs_vars_order(serialization_settings):
@@ -321,6 +348,143 @@ def test_bounded_inputs_vars_order(serialization_settings):
     args = mtr.loader_args(serialization_settings, mt)
 
     assert args[1] == "a,b,c"
+
+
+def test_bound_inputs_collision():
+    @task()
+    def task1(a: int, b: float, c: str) -> str:
+        return f"{a} - {b} - {c}"
+
+    param_a = [1, 2, 3]
+    param_b = [0.1, 0.2, 0.3]
+    param_c = "c"
+    param_d = "d"
+
+    partial_task = functools.partial(task1, c=param_c)
+    m1 = ArrayNodeMapTask(partial_task, bound_inputs_values={"c": param_d})(a=param_a, b=param_b)
+
+    assert m1 == ["1 - 0.1 - d", "2 - 0.2 - d", "3 - 0.3 - d"]
+
+    with pytest.raises(ValueError, match="bound_inputs and bound_inputs_values should have the same keys if both set"):
+        ArrayNodeMapTask(task1, bound_inputs_values={"c": param_c}, bound_inputs={"b"})(a=param_a, b=param_b)
+
+    # no error raised
+    ArrayNodeMapTask(task1, bound_inputs_values={"c": param_c}, bound_inputs={"c"})(a=param_a, b=param_b)
+
+
+@task()
+def task_1(a: int, b: int, c: str) -> str:
+    return f"{a} - {b} - {c}"
+
+
+@task()
+def task_2() -> int:
+    return 2
+
+
+def get_wf_bound_input(serialization_settings):
+    @workflow()
+    def wf1() -> List[str]:
+        return ArrayNodeMapTask(task_1, bound_inputs_values={"a": 1})(b=[1, 2, 3], c=["a", "b", "c"])
+
+    return wf1
+
+
+def get_wf_partials(serialization_settings):
+    @workflow()
+    def wf2() -> List[str]:
+        return ArrayNodeMapTask(functools.partial(task_1, a=1))(b=[1, 2, 3], c=["a", "b", "c"])
+
+    return wf2
+
+
+def get_wf_bound_input_upstream(serialization_settings):
+
+    @workflow()
+    def wf3() -> List[str]:
+        a = task_2()
+        return ArrayNodeMapTask(task_1, bound_inputs_values={"a": a})(b=[1, 2, 3], c=["a", "b", "c"])
+
+    return wf3
+
+
+def get_wf_partials_upstream(serialization_settings):
+
+    @workflow()
+    def wf4() -> List[str]:
+        a = task_2()
+        return ArrayNodeMapTask(functools.partial(task_1, a=a))(b=[1, 2, 3], c=["a", "b", "c"])
+
+    return wf4
+
+
+def get_wf_bound_input_partials_collision(serialization_settings):
+
+    @workflow()
+    def wf5() -> List[str]:
+        return ArrayNodeMapTask(functools.partial(task_1, a=1), bound_inputs_values={"a": 2})(b=[1, 2, 3], c=["a", "b", "c"])
+
+    return wf5
+
+
+def get_wf_bound_input_overrides(serialization_settings):
+
+    @workflow()
+    def wf6() -> List[str]:
+        return ArrayNodeMapTask(task_1, bound_inputs_values={"a": 1})(a=[1, 2, 3], b=[1, 2, 3], c=["a", "b", "c"])
+
+    return wf6
+
+
+def get_int_binding(value):
+    return BindingData(scalar=Scalar(primitive=Primitive(integer=value)))
+
+
+def get_str_binding(value):
+    return BindingData(scalar=Scalar(primitive=Primitive(string_value=value)))
+
+
+def promise_binding(node_id, var):
+    return BindingData(promise=types.OutputReference(node_id=node_id, var=var))
+
+
+B_BINDINGS_LIST = [get_int_binding(1), get_int_binding(2), get_int_binding(3)]
+C_BINDINGS_LIST = [get_str_binding("a"), get_str_binding("b"), get_str_binding("c")]
+
+
+@pytest.mark.parametrize(
+    ("wf", "upstream_nodes", "expected_inputs"),
+    [
+        (get_wf_bound_input, {}, {"a": get_int_binding(1), "b": B_BINDINGS_LIST, "c": C_BINDINGS_LIST}),
+        (get_wf_partials, {}, {"a": get_int_binding(1), "b": B_BINDINGS_LIST, "c": C_BINDINGS_LIST}),
+        (get_wf_bound_input_upstream, {"n0"}, {"a": promise_binding("n0", "o0"), "b": B_BINDINGS_LIST, "c": C_BINDINGS_LIST}),
+        (get_wf_partials_upstream, {"n0"}, {"a": promise_binding("n0", "o0"), "b": B_BINDINGS_LIST, "c": C_BINDINGS_LIST}),
+        (get_wf_bound_input_partials_collision, {}, {"a": get_int_binding(2), "b": B_BINDINGS_LIST, "c": C_BINDINGS_LIST}),
+        (get_wf_bound_input_overrides, {}, {"a": get_int_binding(1), "b": B_BINDINGS_LIST, "c": C_BINDINGS_LIST}),
+    ]
+)
+def test_bound_inputs_serialization(wf, upstream_nodes, expected_inputs, serialization_settings):
+    wf_spec = get_serializable(OrderedDict(), serialization_settings, wf(serialization_settings))
+    assert len(wf_spec.template.nodes) == len(upstream_nodes) + 1
+    parent_node = wf_spec.template.nodes[len(upstream_nodes)]
+
+    assert len(parent_node.inputs) == len(expected_inputs)
+    inputs_map = {x.var: x for x in parent_node.inputs}
+
+    for param, expected_input in expected_inputs.items():
+        node_input = inputs_map[param]
+        assert node_input
+        if isinstance(expected_input, list):
+            bindings = node_input.binding.collection.bindings
+            assert len(bindings) == len(expected_inputs[param])
+            for i, binding in enumerate(bindings):
+                assert binding == expected_input[i]
+        else:
+            binding = node_input.binding
+            assert binding == expected_input
+
+    assert parent_node.array_node._bound_inputs == {"a"}
+    assert set(parent_node.upstream_node_ids) == set(upstream_nodes)
 
 
 @pytest.mark.parametrize(
@@ -350,59 +514,16 @@ def test_raw_execute_with_min_success_ratio(min_success_ratio, should_raise_erro
         assert my_wf1() == [1, None, 3, 4]
 
 
-@task
-def my_mappable_task(a: int) -> typing.Optional[str]:
-    return str(a)
-
-
-@task(
-    container_image="original-image",
-    timeout=timedelta(seconds=10),
-    interruptible=False,
-    retries=10,
-    cache=True,
-    cache_version="original-version",
-    requests=Resources(cpu=1)
-)
-def my_mappable_task_1(a: int) -> typing.Optional[str]:
-    return str(a)
-
-
-@pytest.mark.parametrize(
-    "task_func",
-    [my_mappable_task, my_mappable_task_1]
-)
-def test_map_task_override(serialization_settings, task_func):
-    array_node_map_task = map_task(task_func)
+def test_map_task_override(serialization_settings):
+    @task
+    def my_mappable_task(a: int) -> typing.Optional[str]:
+        return str(a)
 
     @workflow
     def wf(x: typing.List[int]):
-        array_node_map_task(a=x).with_overrides(
-            container_image="new-image",
-            timeout=timedelta(seconds=20),
-            interruptible=True,
-            retries=5,
-            cache=True,
-            cache_version="new-version",
-            requests=Resources(cpu=2)
-        )
+        map_task(my_mappable_task)(a=x).with_overrides(container_image="random:image")
 
-    assert wf.nodes[0]._container_image == "new-image"
-
-    od = OrderedDict()
-    wf_spec = get_serializable(od, serialization_settings, wf)
-
-    array_node = wf_spec.template.nodes[0]
-    assert array_node.metadata.timeout == timedelta()
-    sub_node_spec = array_node.array_node.node
-    assert sub_node_spec.metadata.timeout == timedelta(seconds=20)
-    assert sub_node_spec.metadata.interruptible
-    assert sub_node_spec.metadata.retries.retries == 5
-    assert sub_node_spec.metadata.cacheable
-    assert sub_node_spec.metadata.cache_version == "new-version"
-    assert sub_node_spec.target.overrides.resources.requests == [
-        _resources_models.ResourceEntry(_resources_models.ResourceName.CPU, "2")
-    ]
+    assert wf.nodes[0]._container_image == "random:image"
 
 
 def test_serialization_metadata(serialization_settings):
@@ -485,6 +606,26 @@ def test_serialization_extended_resources(serialization_settings):
     task_spec = od[arraynode_maptask]
 
     assert task_spec.template.extended_resources.gpu_accelerator.device == "test_gpu"
+
+
+def test_serialization_extended_resources_shared_memory(serialization_settings):
+    @task(
+        shared_memory="2Gi"
+    )
+    def t1(a: int) -> int:
+        return a + 1
+
+    arraynode_maptask = map_task(t1)
+
+    @workflow
+    def wf(x: typing.List[int]):
+        return arraynode_maptask(a=x)
+
+    od = OrderedDict()
+    get_serializable(od, serialization_settings, wf)
+    task_spec = od[arraynode_maptask]
+
+    assert task_spec.template.extended_resources.shared_memory.size_limit == "2Gi"
 
 
 def test_supported_node_type():

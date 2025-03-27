@@ -5,10 +5,13 @@ from kubernetes.client import V1Container, V1PodSpec, V1ResourceRequirements
 
 import flytekit.models.task as _task_models
 from flytekit import Resources
+from flytekit.core.resources import ResourceSpec
 from flytekit.core.resources import (
     pod_spec_from_resources,
     convert_resources_to_resource_model,
+    construct_extended_resources,
 )
+from flytekit.extras.accelerators import T4
 
 _ResourceName = _task_models.Resources.ResourceName
 
@@ -18,6 +21,16 @@ def test_convert_no_requests_no_limits():
     assert isinstance(resource_model, _task_models.Resources)
     assert resource_model.requests == []
     assert resource_model.limits == []
+
+
+@pytest.mark.parametrize("kwargs", [
+    {"requests": Resources(cpu=[1, 2])},
+    {"limits": Resources(mem=[1, 2])}
+])
+def test_convert_tuple_request(kwargs):
+    msg = "can not be a list or tuple"
+    with pytest.raises(ValueError, match=msg):
+        convert_resources_to_resource_model(**kwargs)
 
 
 @pytest.mark.parametrize(
@@ -79,6 +92,45 @@ def test_incorrect_type_resources():
         Resources(gpu=0.1)  # type: ignore
     with pytest.raises(AssertionError):
         Resources(ephemeral_storage=0.1)  # type: ignore
+    with pytest.raises(ValueError):
+        Resources(cpu=[1])
+    with pytest.raises(ValueError):
+        Resources(cpu=[1, 2, 3])
+
+
+@pytest.mark.parametrize(
+    "resource, expected_spec", [
+        (Resources(cpu=[1, 2]), ResourceSpec(requests=Resources(cpu=1), limits=Resources(cpu=2))),
+        (
+            Resources(mem=["1Gi", "4Gi"]),
+            ResourceSpec(requests=Resources(mem="1Gi"), limits=Resources(mem="4Gi"))
+        ),
+        (Resources(gpu=[1, 2]), ResourceSpec(requests=Resources(gpu=1), limits=Resources(gpu=2))),
+        (
+            Resources(cpu="1", mem=[1024, 2058], ephemeral_storage="2Gi"),
+            ResourceSpec(
+                requests=Resources(cpu="1", mem=1024, ephemeral_storage="2Gi"),
+                limits=Resources(mem=2058)
+            )
+        ),
+        (
+            Resources(cpu="10", mem=1024, ephemeral_storage="2Gi", gpu=1),
+            ResourceSpec(
+                requests=Resources(cpu="10", mem=1024, ephemeral_storage="2Gi", gpu=1),
+                limits=Resources()
+            )
+        ),
+        (
+            Resources(ephemeral_storage="2Gi"),
+            ResourceSpec(
+                requests=Resources(ephemeral_storage="2Gi"),
+                limits=Resources()
+            )
+         ),
+    ]
+)
+def test_to_resource_spec(resource: Resources, expected_spec: ResourceSpec):
+    assert ResourceSpec.from_multiple_resource(resource) == expected_spec
 
 
 def test_resources_serialization():
@@ -155,3 +207,28 @@ def test_pod_spec_from_resources_requests_set():
     )
     pod_spec = pod_spec_from_resources(primary_container_name=primary_container_name, requests=requests, limits=limits)
     assert expected_pod_spec == pod_spec
+
+
+@pytest.mark.parametrize("shared_memory", [None, False])
+def test_construct_extended_resources_shared_memory_none(shared_memory):
+    resources = construct_extended_resources(shared_memory=shared_memory)
+    assert resources is None
+
+
+@pytest.mark.parametrize("shared_memory, expected_size_limit", [
+    ("2Gi", "2Gi"),
+    (True, ""),
+])
+def test_construct_extended_resources_shared_memory(shared_memory, expected_size_limit):
+    resources = construct_extended_resources(shared_memory=shared_memory)
+    assert resources.shared_memory.size_limit == expected_size_limit
+
+
+@pytest.mark.parametrize("kwargs", [
+    {"requests": Resources(cpu=[1, 2])},
+    {"limits": Resources(mem=[1, 2])}
+])
+def test_pod_spec_from_resources_error(kwargs):
+    msg = "can not be a list or tuple"
+    with pytest.raises(ValueError, match=msg):
+        pod_spec_from_resources(primary_container_name="primary", **kwargs)

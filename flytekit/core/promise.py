@@ -586,7 +586,7 @@ class Promise(object):
         aliases: Optional[Dict[str, str]] = None,
         requests: Optional[Resources] = None,
         limits: Optional[Resources] = None,
-        timeout: Optional[Union[int, datetime.timedelta]] = None,
+        timeout: Optional[Union[int, datetime.timedelta, object]] = Node.TIMEOUT_OVERRIDE_SENTINEL,
         retries: Optional[int] = None,
         interruptible: Optional[bool] = None,
         name: Optional[str] = None,
@@ -947,7 +947,7 @@ async def binding_data_from_python_std(
             if transformer_override and hasattr(transformer_override, "extract_types_or_metadata"):
                 _, v_type = transformer_override.extract_types_or_metadata(t_value_type)  # type: ignore
             else:
-                _, v_type = DictTransformer.extract_types_or_metadata(t_value_type)  # type: ignore
+                _, v_type = DictTransformer.extract_types(cast(typing.Type[dict], t_value_type))
             m = _literals_models.BindingDataMap(
                 bindings={
                     k: await binding_data_from_python_std(
@@ -1482,7 +1482,7 @@ def flyte_entity_call_handler(
         # call the blocking version of the async call handler
         # This is a recursive call, the async handler also calls this function, so this conditional must match
         # the one in the async function perfectly, otherwise you'll get infinite recursion.
-        loop_manager.run_sync(async_flyte_entity_call_handler, entity, **kwargs)
+        return loop_manager.run_sync(async_flyte_entity_call_handler, entity, **kwargs)
 
     if ctx.execution_state and (
         ctx.execution_state.mode == ExecutionState.Mode.TASK_EXECUTION
@@ -1539,7 +1539,7 @@ def flyte_entity_call_handler(
             else:
                 raise ValueError(f"Received an output when workflow local execution expected None. Received: {result}")
 
-        if ctx.execution_state and ctx.execution_state.mode == ExecutionState.Mode.DYNAMIC_TASK_EXECUTION:
+        if ctx.execution_state and ctx.execution_state.mode == ExecutionState.Mode.LOCAL_DYNAMIC_TASK_EXECUTION:
             return result
 
         if (1 < expected_outputs == len(cast(Tuple[Promise], result))) or (

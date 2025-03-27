@@ -1,4 +1,3 @@
-import re
 from typing import Any, Dict, Optional
 
 import aioboto3
@@ -7,6 +6,7 @@ from botocore.exceptions import ClientError
 
 from flytekit.interaction.string_literals import literal_map_string_repr
 from flytekit.models.literals import LiteralMap
+from flytekit.utils.dict_formatter import format_dict
 
 
 class CustomException(Exception):
@@ -52,97 +52,16 @@ account_id_map = {
 }
 
 
-def get_nested_value(d: Dict[str, Any], keys: list[str]) -> Any:
+class Boto3ConnectorMixin:
     """
-    Retrieve the nested value from a dictionary based on a list of keys.
-    """
-    for key in keys:
-        if key not in d:
-            raise ValueError(f"Could not find the key {key} in {d}.")
-        d = d[key]
-    return d
-
-
-def replace_placeholder(
-    service: str,
-    original_dict: str,
-    placeholder: str,
-    replacement: str,
-) -> str:
-    """
-    Replace a placeholder in the original string and handle the specific logic for the sagemaker service and idempotence token.
-    """
-    temp_dict = original_dict.replace(f"{{{placeholder}}}", replacement)
-    if service == "sagemaker" and placeholder in [
-        "inputs.idempotence_token",
-        "idempotence_token",
-    ]:
-        if len(temp_dict) > 63:
-            truncated_token = replacement[: 63 - len(original_dict.replace(f"{{{placeholder}}}", ""))]
-            return original_dict.replace(f"{{{placeholder}}}", truncated_token)
-        else:
-            return temp_dict
-    return temp_dict
-
-
-def update_dict_fn(
-    service: str,
-    original_dict: Any,
-    update_dict: Dict[str, Any],
-    idempotence_token: Optional[str] = None,
-) -> Any:
-    """
-    Recursively update a dictionary with values from another dictionary.
-    For example, if original_dict is {"EndpointConfigName": "{endpoint_config_name}"},
-    and update_dict is {"endpoint_config_name": "my-endpoint-config"},
-    then the result will be {"EndpointConfigName": "my-endpoint-config"}.
-
-    :param service: The AWS service to use
-    :param original_dict: The dictionary to update (in place)
-    :param update_dict: The dictionary to use for updating
-    :param idempotence_token: Hash of config -- this is to ensure the execution ID is deterministic
-    :return: The updated dictionary
-    """
-    if original_dict is None:
-        return None
-
-    if isinstance(original_dict, str) and "{" in original_dict and "}" in original_dict:
-        matches = re.findall(r"\{([^}]+)\}", original_dict)
-        for match in matches:
-            if "." in match:
-                keys = match.split(".")
-                nested_value = get_nested_value(update_dict, keys)
-                if f"{{{match}}}" == original_dict:
-                    return nested_value
-                else:
-                    original_dict = replace_placeholder(service, original_dict, match, nested_value)
-            elif match == "idempotence_token" and idempotence_token:
-                original_dict = replace_placeholder(service, original_dict, match, idempotence_token)
-        return original_dict
-
-    if isinstance(original_dict, list):
-        return [update_dict_fn(service, item, update_dict, idempotence_token) for item in original_dict]
-
-    if isinstance(original_dict, dict):
-        for key, value in original_dict.items():
-            original_dict[key] = update_dict_fn(service, value, update_dict, idempotence_token)
-
-    return original_dict
-
-
-class Boto3AgentMixin:
-    """
-    This mixin facilitates the creation of a Boto3 agent for any AWS service.
+    This mixin facilitates the creation of a Boto3 connector for any AWS service.
     It provides a single method, `_call`, which can be employed to invoke any Boto3 method.
+
+    :param service: The AWS service to use, e.g., sagemaker.
+    :param region: The region for the boto3 client; can be overridden when calling boto3 methods.
     """
 
     def __init__(self, *, service: str, region: Optional[str] = None, **kwargs):
-        """
-        Initialize the Boto3AgentMixin.
-
-        :param service: The AWS service to use, e.g., sagemaker.
-        :param region: The region for the boto3 client; can be overridden when calling boto3 methods.
-        """
         self._service = service
         self._region = region
 
@@ -199,13 +118,13 @@ class Boto3AgentMixin:
             }
             args["images"] = images
 
-        updated_config = update_dict_fn(self._service, config, args)
+        updated_config = format_dict(self._service, config, args)
 
         hash = ""
         if "idempotence_token" in str(updated_config):
             # compute hash of the config
             hash = xxhash.xxh64(sorted_dict_str(updated_config)).hexdigest()
-            updated_config = update_dict_fn(self._service, updated_config, args, idempotence_token=hash)
+            updated_config = format_dict(self._service, updated_config, args, idempotence_token=hash)
 
         # Asynchronous Boto3 session
         session = aioboto3.Session()

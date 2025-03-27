@@ -16,8 +16,9 @@ from urllib.parse import urlparse
 import uuid
 import pytest
 from unittest import mock
+from dataclasses import dataclass
 
-from flytekit import LaunchPlan, kwtypes, WorkflowExecutionPhase
+from flytekit import LaunchPlan, kwtypes, WorkflowExecutionPhase, task, workflow
 from flytekit.configuration import Config, ImageConfig, SerializationSettings
 from flytekit.core.launch_plan import reference_launch_plan
 from flytekit.core.task import reference_task
@@ -27,6 +28,7 @@ from flytekit.extras.sqlite3.task import SQLite3Config, SQLite3Task
 from flytekit.remote.remote import FlyteRemote
 from flyteidl.service import dataproxy_pb2 as _data_proxy_pb2
 from flytekit.types.schema import FlyteSchema
+from flytekit.types.structured import StructuredDataset
 from flytekit.clients.friendly import SynchronousFlyteClient as _SynchronousFlyteClient
 from flytekit.configuration import PlatformConfig
 
@@ -160,6 +162,7 @@ def test_fetch_execute_launch_plan(register):
     remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
     flyte_launch_plan = remote.fetch_launch_plan(name="basic.hello_world.my_wf", version=VERSION)
     execution = remote.execute(flyte_launch_plan, inputs={}, wait=True)
+    print("Execution Error:", execution.error)
     assert execution.outputs["o0"] == "hello world"
 
 
@@ -242,6 +245,55 @@ def test_monitor_workflow_execution(register):
     assert execution.node_executions["n0"].task_executions[0].outputs["o0"] == "hello world"
     assert execution.inputs == {}
     assert execution.outputs["o0"] == "hello world"
+
+
+def test_sync_execution_sync_nodes_get_all_executions(register):
+    remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
+    flyte_launch_plan = remote.fetch_launch_plan(name="basic.deep_child_workflow.parent_wf", version=VERSION)
+    execution = remote.execute(
+        flyte_launch_plan,
+        inputs={"a": 3},
+    )
+
+    poll_interval = datetime.timedelta(seconds=1)
+    time_to_give_up = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(seconds=600)
+
+    execution = remote.sync_execution(execution, sync_nodes=True)
+    while datetime.datetime.now(datetime.timezone.utc) < time_to_give_up:
+        if execution.is_done:
+            break
+
+        with pytest.raises(
+                FlyteAssertion, match="Please wait until the execution has completed before requesting the outputs.",
+        ):
+            execution.outputs
+
+        time.sleep(poll_interval.total_seconds())
+        execution = remote.sync_execution(execution, sync_nodes=True)
+
+        if execution.node_executions:
+            assert execution.node_executions["start-node"].closure.phase == 3  # SUCCEEDED
+
+    for key in execution.node_executions:
+        assert execution.node_executions[key].closure.phase == 3
+
+    # check node execution getting correct number of nested workflows and executions
+    assert len(execution.node_executions) == 5
+    execution_n0 = execution.node_executions["n0"]
+    execution_n1 = execution.node_executions["n1"]
+    assert len(execution_n1.workflow_executions[0].node_executions) == 4
+    execution_n1_n0 = execution_n1.workflow_executions[0].node_executions["n0"]
+    assert len(execution_n1_n0.workflow_executions[0].node_executions) == 3
+    execution_n1_n0_n0 = execution_n1_n0.workflow_executions[0].node_executions["n0"]
+
+    # check inputs and outputs each node execution
+    assert execution_n0.inputs == {"a": 3}
+    assert execution_n0.outputs["o0"] == 6
+    assert execution_n1.inputs == {"a": 6}
+    assert execution_n1_n0.inputs == {"a": 6}
+    assert execution_n1_n0_n0.inputs == {"a": 6}
+    assert execution_n1_n0_n0.outputs["o0"] == 12
+
 
 
 def test_fetch_execute_launch_plan_with_subworkflows(register):
@@ -506,8 +558,16 @@ def test_execute_reference_task(register):
         ...
 
     remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
-    execution = remote.execute(
+    remote_entity = remote.register_script(
         t1,
+        project=PROJECT,
+        domain=DOMAIN,
+        image_config=ImageConfig.auto(img_name=IMAGE),
+        destination_dir=DEST_DIR,
+        source_path=str(MODULE_PATH),
+    )
+    execution = remote.execute(
+        remote_entity,
         inputs={"a": 10},
         wait=True,
         overwrite_cache=True,
@@ -533,8 +593,16 @@ def test_execute_reference_workflow(register):
         return a + 2, b + "world"
 
     remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
-    execution = remote.execute(
+    remote_entity = remote.register_script(
         my_wf,
+        project=PROJECT,
+        domain=DOMAIN,
+        image_config=ImageConfig.auto(img_name=IMAGE),
+        destination_dir=DEST_DIR,
+        source_path=str(MODULE_PATH),
+    )
+    execution = remote.execute(
+        remote_entity,
         inputs={"a": 10, "b": "xyz"},
         wait=True,
         overwrite_cache=True,
@@ -560,8 +628,16 @@ def test_execute_reference_launchplan(register):
         return 3, "world"
 
     remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
-    execution = remote.execute(
+    remote_entity = remote.register_script(
         my_wf,
+        project=PROJECT,
+        domain=DOMAIN,
+        image_config=ImageConfig.auto(img_name=IMAGE),
+        destination_dir=DEST_DIR,
+        source_path=str(MODULE_PATH),
+    )
+    execution = remote.execute(
+        remote_entity,
         inputs={"a": 10, "b": "xyz"},
         wait=True,
         overwrite_cache=True,
@@ -587,6 +663,49 @@ def test_execute_workflow_with_maptask(register):
         wait=True,
     )
     assert execution.outputs["o0"] == [4, 5, 6]
+    assert len(execution.node_executions["n0"].task_executions) == 1
+    assert len(execution.node_executions["n0"].task_executions[0].closure.metadata.external_resources) == len(d)
+    for i in range(len(d)):
+        assert execution.node_executions["n0"].task_executions[0].closure.metadata.external_resources[i].phase == 3 # SUCCEEDED
+
+def test_execution_workflow_with_maptask_in_dynamic(register):
+    remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
+    d: typing.List[int] = [1, 2, 3]
+    flyte_launch_plan = remote.fetch_launch_plan(name="basic.dynamic_array_map.workflow_with_maptask_in_dynamic", version=VERSION)
+    execution = remote.execute(
+        flyte_launch_plan,
+        inputs={"data": d},
+        version=VERSION,
+        wait=True,
+    )
+    assert execution.outputs["o0"] == [2, 3, 4]
+    assert "n0" in execution.node_executions
+    assert execution.node_executions["n0"].subworkflow_node_executions is not None
+    assert "n0-0-dn0" in execution.node_executions["n0"].subworkflow_node_executions
+    assert len(execution.node_executions["n0"].subworkflow_node_executions["n0-0-dn0"].task_executions) == 1
+    assert len(execution.node_executions["n0"].subworkflow_node_executions["n0-0-dn0"].task_executions[0].closure.metadata.external_resources) == len(d)
+    for i in range(len(d)):
+        assert execution.node_executions["n0"].subworkflow_node_executions["n0-0-dn0"].task_executions[0].closure.metadata.external_resources[i].phase == 3 # SUCCEEDED
+
+
+def test_executes_nested_workflow_dictating_interruptible(register):
+    remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
+    flyte_launch_plan = remote.fetch_launch_plan(name="basic.child_workflow.parent_wf", version=VERSION)
+    # The values we want to test for
+    interruptible_values = [True, False, None]
+    executions = []
+    for creation_interruptible in interruptible_values:
+        execution = remote.execute(flyte_launch_plan, inputs={"a": 10}, wait=False, interruptible=creation_interruptible)
+        executions.append(execution)
+    # Wait for all executions to complete
+    for execution, expected_interruptible in zip(executions, interruptible_values):
+        execution = remote.wait(execution, timeout=300)
+        # Check that the parent workflow is interruptible as expected
+        assert execution.spec.interruptible == expected_interruptible
+        # Check that the child workflow is interruptible as expected
+        subwf_execution_id = execution.node_executions["n1"].closure.workflow_node_metadata.execution_id.name
+        subwf_execution = remote.fetch_execution(project=PROJECT, domain=DOMAIN, name=subwf_execution_id)
+        assert subwf_execution.spec.interruptible == expected_interruptible
 
 
 @pytest.mark.lftransfers
@@ -869,13 +988,58 @@ def test_attr_access_sd():
     execution_id = run("attr_access_sd.py", "wf", "--uri", remote_file_path)
     remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
     execution = remote.fetch_execution(name=execution_id)
-    execution = remote.wait(execution=execution, timeout=datetime.timedelta(minutes=5))
+    execution = remote.wait(execution=execution, timeout=datetime.timedelta(minutes=15))
+    assert execution.error is None, f"Execution failed with error: {execution.error}"
     assert execution.closure.phase == WorkflowExecutionPhase.SUCCEEDED, f"Execution failed with phase: {execution.closure.phase}"
 
     # Delete the remote file to free the space
     url = urlparse(remote_file_path)
     bucket, key = url.netloc, url.path.lstrip("/")
     file_transfer.delete_file(bucket=bucket, key=key)
+
+
+def test_sd_attr():
+    """Test correctness of StructuredDataset attributes.
+
+    This test considers only the following condition:
+    1. Check StructuredDataset (wrapped in a dataclass) file_format attribute
+
+    We'll make sure uri aligns with the user-specified one in the future.
+    """
+    from workflows.basic.sd_attr import wf
+
+    @dataclass
+    class DC:
+        sd: StructuredDataset
+
+    FILE_FORMAT = "parquet"
+
+    # Upload a file to minio s3 bucket
+    file_transfer = SimpleFileTransfer()
+    remote_file_path = file_transfer.upload_file(file_type=FILE_FORMAT)
+
+    # Create a dataclass as the workflow input because `pyflyte run`
+    # can't properly handle input arg `dc` as a json str so far
+    dc = DC(sd=StructuredDataset(uri=remote_file_path, file_format=FILE_FORMAT))
+
+    remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN, interactive_mode_enabled=True)
+    wf_exec = remote.execute(
+        wf,
+        inputs={"dc": dc, "file_format": FILE_FORMAT},
+        wait=True,
+        version=VERSION,
+        image_config=ImageConfig.from_images(IMAGE),
+    )
+    assert wf_exec.closure.phase == WorkflowExecutionPhase.SUCCEEDED, f"Execution failed with phase: {wf_exec.closure.phase}"
+    assert wf_exec.outputs["o0"].file_format == FILE_FORMAT, (
+        f"Workflow output StructuredDataset file_format should align with the user-specified file_format: {FILE_FORMAT}."
+    )
+
+    # Delete the remote file to free the space
+    url = urlparse(remote_file_path)
+    bucket, key = url.netloc, url.path.lstrip("/")
+    file_transfer.delete_file(bucket=bucket, key=key)
+
 
 def test_signal_approve_reject(register):
     from flytekit.models.types import LiteralType, SimpleType
@@ -898,7 +1062,7 @@ def test_signal_approve_reject(register):
     retry_operation(lambda: remote.set_input("title-input", execution.id.name, value="my report", project=PROJECT, domain=DOMAIN, python_type=str, literal_type=LiteralType(simple=SimpleType.STRING)))
     retry_operation(lambda: remote.approve("review-passes", execution.id.name, project=PROJECT, domain=DOMAIN))
 
-    remote.wait(execution=execution, timeout=datetime.timedelta(minutes=5))
+    remote.wait(execution=execution, timeout=datetime.timedelta(minutes=20))
     assert execution.outputs["o0"] == {"title": "my report", "data": [1.0, 2.0, 3.0, 4.0, 5.0]}
 
     with pytest.raises(FlyteAssertion, match="Outputs could not be found because the execution ended in failure"):
@@ -907,7 +1071,7 @@ def test_signal_approve_reject(register):
         retry_operation(lambda: remote.set_input("title-input", execution.id.name, value="my report", project=PROJECT, domain=DOMAIN, python_type=str, literal_type=LiteralType(simple=SimpleType.STRING)))
         retry_operation(lambda: remote.reject("review-passes", execution.id.name, project=PROJECT, domain=DOMAIN))
 
-        remote.wait(execution=execution, timeout=datetime.timedelta(minutes=5))
+        remote.wait(execution=execution, timeout=datetime.timedelta(minutes=15))
         assert execution.outputs["o0"] == {"title": "my report", "data": [1.0, 2.0, 3.0, 4.0, 5.0]}
 
 
@@ -955,3 +1119,54 @@ def test_check_secret(kubectl_secret, task):
         f"Execution failed with phase: {execution.closure.phase}"
     )
     assert execution.outputs['o0'] == kubectl_secret
+
+
+def test_execute_workflow_with_dataclass():
+    """Test remote execution of a workflow with dataclass input."""
+    from tests.flytekit.integration.remote.workflows.basic.dataclass_wf import wf, MyConfig
+
+    remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN, interactive_mode_enabled=True)
+
+    config = MyConfig(op_list=["a", "b", "c"])
+    out = remote.execute(
+        wf,
+        inputs={"config": config},
+        wait=True,
+        version=VERSION,
+        image_config=ImageConfig.from_images(IMAGE),
+    )
+    assert out.outputs["o0"] == "a,b,c"
+
+    # Test with None value
+    config = MyConfig(op_list=None)
+    out = remote.execute(
+        wf,
+        inputs={"config": config},
+        wait=True,
+        version=VERSION + "_none",
+        image_config=ImageConfig.from_images(IMAGE),
+    )
+    assert out.outputs["o0"] == ""
+
+
+def test_register_wf_twice(register):
+    # Register the same workflow again should not raise an error
+    out = subprocess.run(
+        [
+            "pyflyte",
+            "--verbose",
+            "-c",
+            CONFIG,
+            "register",
+            "--image",
+            IMAGE,
+            "--project",
+            PROJECT,
+            "--domain",
+            DOMAIN,
+            "--version",
+            VERSION,
+            MODULE_PATH / "pickle_wf.py",
+        ]
+    )
+    assert out.returncode == 0
