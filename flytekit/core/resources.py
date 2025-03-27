@@ -38,7 +38,7 @@ class Resources(DataClassJSONMixin):
     > Persistent storage is not currently supported on the Flyte backend.
 
     Please see the :std:ref:`User Guide <cookbook:customizing task resources>` for detailed examples.
-    Also refer to the `K8s conventions. <https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/#resource-units-in-kubernetes>`__
+    Also refer to the [`K8s conventions.`](https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/#resource-units-in-kubernetes)
     """
 
     cpu: Optional[Union[str, int, float, list, tuple]] = None
