@@ -38,16 +38,15 @@ class ConditionalSection:
     for Compilation mode. It is advised to derive the class and re-implement the `start_branch` and `end_branch` methods
     to override the compilation behavior
 
-    .. note::
-
-        Conditions can only be used within a workflow context.
+    > [!NOTE]
+    > Conditions can only be used within a workflow context.
 
     Usage:
 
-    .. code-block:: python
+    ```python
 
         v =  conditional("fractions").if_((my_input > 0.1) & (my_input < 1.0)).then(...)...
-
+    ```
     """
 
     def __init__(self, name: str):
@@ -488,7 +487,7 @@ def conditional(name: str) -> ConditionalSection:
 
     Example of a condition usage. Note the nesting and the assignment to a LHS variable
 
-    .. code-block:: python
+    ```python
 
          v = (
             conditional("fractions")
@@ -507,6 +506,7 @@ def conditional(name: str) -> ConditionalSection:
             .else_()
             .then(double(n=my_input))
         )
+    ```
     """
     ctx = FlyteContextManager.current_context()
 

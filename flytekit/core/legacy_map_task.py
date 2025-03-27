@@ -329,9 +329,9 @@ def map_task(
     There are two plugins to run maptasks that ship as part of flyteplugins:
 
     1. K8s Array
-    2. `AWS batch <https://docs.flyte.org/en/latest/deployment/plugin_setup/aws/batch.html>`_
+    2. [`AWS batch`](https://docs.flyte.org/en/latest/deployment/plugin_setup/aws/batch.html)
 
-    Enabling a plugin is controlled in the plugin configuration at `values-sandbox.yaml <https://github.com/flyteorg/flyte/blob/10cee9f139824512b6c5be1667d321bdbc8835fa/charts/flyte/values-sandbox.yaml#L152-L162>`_.
+    Enabling a plugin is controlled in the plugin configuration at [`values-sandbox.yaml`](https://github.com/flyteorg/flyte/blob/10cee9f139824512b6c5be1667d321bdbc8835fa/charts/flyte/values-sandbox.yaml#L152-L162).
 
     **K8s Array**
 
@@ -339,7 +339,7 @@ def map_task(
 
     **AWS batch**
 
-    Learn more about ``AWS batch`` setup configuration `here <https://docs.flyte.org/en/latest/deployment/plugin_setup/aws/batch.html#deployment-plugin-setup-aws-array>`_.
+    Learn more about ``AWS batch`` setup configuration [`here`](https://docs.flyte.org/en/latest/deployment/plugin_setup/aws/batch.html#deployment-plugin-setup-aws-array).
 
     A custom plugin can also be implemented to handle the task type.
 
@@ -367,7 +367,7 @@ class MapTaskResolver(TrackedInstance, TaskResolverMixin):
     But in cases in which `j` is bound to a fixed value by using `functools.partial` we need a way to ensure that
     the interface is not simply interpolated, but only the unbound inputs are interpolated.
 
-        .. code-block:: python
+        ```python
 
             def foo((i: int, j: str) -> str:
                 ...
@@ -375,6 +375,7 @@ class MapTaskResolver(TrackedInstance, TaskResolverMixin):
             mt = map_task(functools.partial(foo, j=10))
 
             print(mt.interface)
+       ```
 
     output:
 

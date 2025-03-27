@@ -285,9 +285,8 @@ def set_if_exists(d: dict, k: str, v: typing.Any) -> dict:
     Given a dict ``d`` sets the key ``k`` with value of config ``v``, if the config value ``v`` is set
     and return the updated dictionary.
 
-    .. note::
-
-        The input dictionary ``d`` will be mutated.
+    > [!NOTE]
+    > The input dictionary ``d`` will be mutated.
     """
     if _exists(v):
         d[k] = v

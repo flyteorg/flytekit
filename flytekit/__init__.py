@@ -1,208 +1,111 @@
 """
-=====================
-Core Flytekit
-=====================
-
-.. currentmodule:: flytekit
-
 This package contains all of the most common abstractions you'll need to write Flyte workflows and extend Flytekit.
 
-Basic Authoring
-===============
+## Basic Authoring
+
 
 These are the essentials needed to get started writing tasks and workflows.
 
-.. autosummary::
-   :nosignatures:
-   :template: custom.rst
-   :toctree: generated/
+- task
+- workflow
+- kwtypes
+- current_context
+- ExecutionParameters
+- FlyteContext
+- map_task
+- ImperativeWorkflow
+- create_node
+- NodeOutput
+- FlyteContextManager
 
-   task
-   workflow
-   kwtypes
-   current_context
-   ExecutionParameters
-   FlyteContext
-   map_task
-   ~core.workflow.ImperativeWorkflow
-   ~core.node_creation.create_node
-   ~core.promise.NodeOutput
-   FlyteContextManager
-
-.. important::
-
-   Tasks and Workflows can both be locally run, assuming the relevant tasks are capable of local execution.
-   This is useful for unit testing.
+> [!NOTE]
+> **Local Execution**
+>
+> Tasks and Workflows can both be locally run, assuming the relevant tasks are capable of local execution.
+> This is useful for unit testing.
 
 
-Branching and Conditionals
-==========================
+### Branching and Conditionals
+
 
 Branches and conditionals can be expressed explicitly in Flyte. These conditions are evaluated
-in the flyte engine and hence should be used for control flow. ``dynamic workflows`` can be used to perform custom conditional logic not supported by flytekit
-
-.. autosummary::
-   :nosignatures:
-   :template: custom.rst
-   :toctree: generated/
-
-   conditional
+in the flyte engine and hence should be used for control flow. "dynamic workflows" can be used to perform custom conditional logic not supported by flytekit.
 
 
-Customizing Tasks & Workflows
-==============================
 
-.. autosummary::
-   :nosignatures:
-   :template: custom.rst
-   :toctree: generated/
+### Customizing Tasks & Workflows
 
-   TaskMetadata - Wrapper object that allows users to specify Task
-   Resources - Things like CPUs/Memory, etc.
-   WorkflowFailurePolicy - Customizes what happens when a workflow fails.
-   PodTemplate - Custom PodTemplate for a task.
+- TaskMetadata - Wrapper object that allows users to specify Task
+- Resources - Things like CPUs/Memory, etc.
+- WorkflowFailurePolicy - Customizes what happens when a workflow fails.
+- PodTemplate - Custom PodTemplate for a task.
 
-Dynamic and Nested Workflows
-==============================
-See the :py:mod:`Dynamic <flytekit.core.dynamic_workflow_task>` module for more information.
+#### Dynamic and Nested Workflows
 
-.. autosummary::
-   :nosignatures:
-   :template: custom.rst
-   :toctree: generated/
+See the Dynamic module for more information.
 
-   dynamic
+- dynamic
 
 Signaling
-=========
+--------
 
-.. autosummary::
-   :nosignatures:
-   :template: custom.rst
-   :toctree: generated/
-
-   approve
-   sleep
-   wait_for_input
+- approve
+- sleep
+- wait_for_input
 
 Scheduling
-============================
+----------
 
-.. autosummary::
-   :nosignatures:
-   :template: custom.rst
-   :toctree: generated/
-
-   CronSchedule
-   FixedRate
+- CronSchedule
+- FixedRate
 
 Notifications
-============================
+-----------
 
-.. autosummary::
-   :nosignatures:
-   :template: custom.rst
-   :toctree: generated/
-
-   Email
-   PagerDuty
-   Slack
+- Email
+- PagerDuty
+- Slack
 
 Reference Entities
-====================
+-----------------
 
-.. autosummary::
-   :nosignatures:
-   :template: custom.rst
-   :toctree: generated/
-
-   get_reference_entity
-   LaunchPlanReference
-   TaskReference
-   WorkflowReference
-   reference_task
-   reference_workflow
-   reference_launch_plan
+- get_reference_entity
+- LaunchPlanReference
+- TaskReference
+- WorkflowReference
+- reference_task
+- reference_workflow
+- reference_launch_plan
 
 Core Task Types
-=================
+-------------
 
-.. autosummary::
-   :nosignatures:
-   :template: custom.rst
-   :toctree: generated/
-
-   SQLTask
-   ContainerTask
-   PythonFunctionTask
-   PythonInstanceTask
-   LaunchPlan
+- SQLTask
+- ContainerTask
+- PythonFunctionTask
+- PythonInstanceTask
+- LaunchPlan
 
 Secrets and SecurityContext
-============================
+--------------------------
 
-.. autosummary::
-   :nosignatures:
-   :template: custom.rst
-   :toctree: generated/
-
-   Secret
-   SecurityContext
+- Secret
+- SecurityContext
 
 
 Common Flyte IDL Objects
-=========================
+-----------------------
 
-.. autosummary::
-   :nosignatures:
-   :template: custom.rst
-   :toctree: generated/
-
-   AuthRole
-   Labels
-   Annotations
-   WorkflowExecutionPhase
-   Blob
-   BlobMetadata
-   Literal
-   Scalar
-   LiteralType
-   BlobType
-
-Task Utilities
-==============
-
-.. autosummary::
-   :nosignatures:
-   :template: custom.rst
-   :toctree: generated/
-
-   HashMethod
-   Cache
-   CachePolicy
-   VersionParameters
-
-Artifacts
-=========
-
-.. autosummary::
-   :nosignatures:
-   :template: custom.rst
-   :toctree: generated/
-
-   Artifact
-
-Documentation
-=============
-
-.. autosummary::
-   :nosignatures:
-   :template: custom.rst
-   :toctree: generated/
-
-   Description
-   Documentation
-   SourceCode
+- AuthRole
+- Labels
+- Annotations
+- WorkflowExecutionPhase
+- Blob
+- BlobMetadata
+- Literal
+- Scalar
+- LiteralType
+- BlobType
 
 """
 
@@ -276,9 +179,10 @@ def current_context() -> ExecutionParameters:
 
     Usage
 
-    .. code-block:: python
+    ```python
 
         flytekit.current_context().logging.info(...)
+    ```
 
     Available params are documented in :py:class:`flytekit.core.context_manager.ExecutionParams`.
     There are some special params, that should be available
@@ -299,7 +203,7 @@ def load_implicit_plugins():
     entrypoint specification to their setup.py. The following example shows how we can autoload a module called fsspec
     (whose init files contains the necessary plugin registration step)
 
-    .. code-block::
+    ```
 
         # note the group is always ``flytekit.plugins``
         setup(
@@ -307,17 +211,17 @@ def load_implicit_plugins():
         entry_points={'flytekit.plugins': 'fsspec=flytekitplugins.fsspec'},
         ...
         )
-
+    ```
     This works as long as the fsspec module has
 
-    .. code-block::
+    ```
 
        # For data persistence plugins
        DataPersistencePlugins.register_plugin(f"{k}://", FSSpecPersistence, force=True)
        # OR for type plugins
        TypeEngine.register(PanderaTransformer())
        # etc
-
+    ```
     """
     discovered_plugins = entry_points(group="flytekit.plugins")
     for p in discovered_plugins:

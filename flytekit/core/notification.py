@@ -2,9 +2,8 @@
 Notifications are primarily used when defining Launch Plans (also can be used when launching executions) and will trigger
 the Flyte platform to send emails when a workflow run reaches certain stages (fails or succeeds, etc.).
 
-.. note::
-
-    Notifications require some setup and configuration on the Flyte platform side. Please contact your Flyte platform
+> [!NOTE]
+> Notifications require some setup and configuration on the Flyte platform side. Please contact your Flyte platform
     admins to get this feature enabled. See :std:ref:`cookbook:setting up workflow notifications`
 
 Each notification type takes a list of :py:class:`flytekit.models.core.execution.WorkflowExecutionPhase` and a list of
@@ -60,11 +59,12 @@ class PagerDuty(Notification):
     """
     This notification should be used when sending emails to the PagerDuty service.
 
-    .. code-block:: python
+    ```python
 
         from flytekit.models.core.execution import WorkflowExecutionPhase
 
         PagerDuty(phases=[WorkflowExecutionPhase.SUCCEEDED], recipients_email=["my-team@email.com"])
+    ```
     """
 
     def __init__(self, phases: List[int], recipients_email: List[str]):
@@ -72,6 +72,7 @@ class PagerDuty(Notification):
         :param list[int] phases: A required list of phases for which to fire the event.  Events can only be fired for
             terminal phases.  Phases should be as defined in: flytekit.models.core.execution.WorkflowExecutionPhase
         :param list[str] recipients_email: A required non-empty list of recipients for the notification.
+    
         """
         super(PagerDuty, self).__init__(phases, pager_duty=_common_model.PagerDutyNotification(recipients_email))
 
@@ -80,11 +81,12 @@ class Email(Notification):
     """
     This notification should be used when sending regular emails to people.
 
-    .. code-block:: python
+    ```python
 
         from flytekit.models.core.execution import WorkflowExecutionPhase
 
         Email(phases=[WorkflowExecutionPhase.SUCCEEDED], recipients_email=["my-team@email.com"])
+    ```
     """
 
     def __init__(self, phases: List[int], recipients_email: List[str]):
@@ -100,11 +102,12 @@ class Slack(Notification):
     """
     This notification should be used when sending emails to the Slack.
 
-    .. code-block:: python
+    ```python
 
         from flytekit.models.core.execution import WorkflowExecutionPhase
 
         Slack(phases=[WorkflowExecutionPhase.SUCCEEDED], recipients_email=["my-team@email.com"])
+    ```
     """
 
     def __init__(self, phases: List[int], recipients_email: List[str]):
