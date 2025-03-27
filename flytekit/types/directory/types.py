@@ -449,9 +449,8 @@ class FlyteDirToMultipartBlobTransformer(AsyncTypeTransformer[FlyteDirectory]):
     This transformer handles conversion between the Python native FlyteDirectory class defined above, and the Flyte
     IDL literal/type of Multipart Blob. Please see the FlyteDirectory comments for additional information.
 
-    .. caution:
-
-       The transformer will not check if the given path is actually a directory. This is because the path could be
+    > [!CAUTION] caution:
+    > The transformer will not check if the given path is actually a directory. This is because the path could be
        a remote reference.
 
     """
@@ -470,7 +469,8 @@ class FlyteDirToMultipartBlobTransformer(AsyncTypeTransformer[FlyteDirectory]):
     def assert_type(self, t: typing.Type[FlyteDirectory], v: typing.Union[FlyteDirectory, os.PathLike, str]):
         if isinstance(v, FlyteDirectory) or isinstance(v, str) or isinstance(v, os.PathLike):
             """
-            NOTE: we do not do a isdir check because the given path could be remote reference
+            >[!NOTE] 
+            > we do not do a isdir check because the given path could be remote reference
             """
             return
         raise TypeError(

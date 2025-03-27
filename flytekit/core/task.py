@@ -606,7 +606,7 @@ def eager(
             print(f"Result: {result}")  # "Result: 4"
     ```
     Unlike :py:func:`dynamic workflows <flytekit.dynamic>`, eager workflows are not compiled into a workflow spec, but
-    uses python's `async <https://docs.python.org/3/library/asyncio.html>`__ capabilities to execute flyte entities.
+    uses python's [`async`](https://docs.python.org/3/library/asyncio.html) capabilities to execute flyte entities.
 
     > [!NOTE]
     > Eager workflows only support `@task`, `@workflow`, and `@eager` entities. Conditionals are not supported, use a
@@ -632,7 +632,7 @@ def eager(
                 return await double(one)
         ```
        Where ``config.yaml`` contains is a flytectl-compatible config file.
-       For more details, see `here <https://docs.flyte.org/en/latest/flytectl/overview.html#configuration>`__.
+       For more details, see [`here`](https://docs.flyte.org/en/latest/flytectl/overview.html#configuration).
 
        When using a sandbox cluster started with ``flytectl demo start``, however, the ``client_secret_group``
        and ``client_secret_key`` are not needed, :
