@@ -21,6 +21,6 @@ RUN wget https://github.com/GoogleCloudDataproc/hadoop-connectors/releases/downl
 
 RUN chown -R ${spark_uid}:${spark_uid} /root
 # Ability to write to jars directory
-RUN chown -R ${spark_uid}:${spark_uid} /opt/spark/jars  
+RUN chown -R ${spark_uid}:${spark_uid} /opt/spark/jars
 WORKDIR /root
 USER ${spark_uid}
