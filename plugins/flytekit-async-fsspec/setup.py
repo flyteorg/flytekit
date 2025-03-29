@@ -4,7 +4,7 @@ PLUGIN_NAME = "async_fsspec"
 
 microlib_name = "flytekitplugins-async-fsspec"
 
-plugin_requires = ["flytekit"]
+plugin_requires = ["flytekit", "s3fs>=2023.3.0,!=2024.3.1"]
 
 __version__ = "0.0.0+develop"
 
