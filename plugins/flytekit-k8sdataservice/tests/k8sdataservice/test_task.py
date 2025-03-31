@@ -11,7 +11,7 @@ from flytekit.extend import get_serializable
 
 @pytest.fixture
 def mock_k8s_manager():
-    with patch('flytekitplugins.k8sdataservice.agent.K8sManager') as MockK8sManager:
+    with patch('flytekitplugins.k8sdataservice.connector.K8sManager') as MockK8sManager:
         mock_k8s_manager = MagicMock()
         MockK8sManager.return_value = mock_k8s_manager
         yield mock_k8s_manager

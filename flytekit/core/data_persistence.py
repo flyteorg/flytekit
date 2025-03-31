@@ -412,7 +412,7 @@ class FileAccessProvider(object):
         If lpath is a streamable, then it can only be a single file.
 
         Writes to:
-            <raw output prefix>/<upload_prefix>/<file_name>
+            {raw output prefix}/{upload_prefix}/{file_name}
 
         :param lpath: A file-like object or a string path
         :param upload_prefix: A prefix to add to the path, see above for usage, can be an "". If None then a random
