@@ -150,6 +150,7 @@ class Node(object):
         # while cleaning up the task function definition.
         cache_serialize = kwargs.get("cache_serialize")
         cache_version = kwargs.get("cache_version")
+        # TODO support ignore_input_vars in with_overrides
         cache_ignore_input_vars = kwargs.get("cache_ignore_input_vars")
 
         if isinstance(self.flyte_entity, ArrayNodeMapTask):
@@ -199,16 +200,15 @@ class Node(object):
                         "cache_serialize, cache_version, and cache_ignore_input_vars are deprecated. Please use Cache object"
                     )
 
-                # TODO support unset cache version
+                # TODO support unset cache version in with_overrides
                 if cache.version is None:
                     raise ValueError("must specify cache version when overriding")
 
                 cache_version = cache.version
                 cache_serialize = cache.serialize
-                cache_ignore_input_vars = cache.get_ignored_inputs()
                 cache = True
 
-            node_metadata._cacheable = cache
+        node_metadata._cacheable = cache
 
         if cache_version is not None:
             assert_not_promise(cache_version, "cache_version")
@@ -217,10 +217,6 @@ class Node(object):
         if cache_serialize is not None:
             assert_not_promise(cache_serialize, "cache_serialize")
             node_metadata._cache_serializable = cache_serialize
-
-        if cache_ignore_input_vars is not None:
-            assert_not_promise(cache_serialize, "cache_serialize")
-            node_metadata._cache_cache_ignore_input_vars = cache_serialize
 
     def with_overrides(
         self,
