@@ -15,6 +15,7 @@ from flytekit.core import constants as _common_constants
 from flytekit.core import context_manager as _flyte_context
 from flytekit.core import interface as flyte_interface
 from flytekit.core import type_engine
+from flytekit.core.cache import Cache
 from flytekit.core.context_manager import (
     BranchEvalMode,
     ExecutionParameters,
@@ -593,9 +594,7 @@ class Promise(object):
         task_config: Optional[Any] = None,
         container_image: Optional[str] = None,
         accelerator: Optional[BaseAccelerator] = None,
-        cache: Optional[bool] = None,
-        cache_version: Optional[str] = None,
-        cache_serialize: Optional[bool] = None,
+        cache: Optional[Union[bool, Cache]] = None,
         *args,
         **kwargs,
     ):
@@ -614,8 +613,6 @@ class Promise(object):
                 container_image=container_image,
                 accelerator=accelerator,
                 cache=cache,
-                cache_version=cache_version,
-                cache_serialize=cache_serialize,
                 *args,
                 **kwargs,
             )
