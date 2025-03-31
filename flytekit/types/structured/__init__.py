@@ -11,6 +11,7 @@ Flytekit StructuredDataset
     StructuredDatasetDecoder
     StructuredDatasetEncoder
 """
+
 import functools
 
 from flytekit.deck.renderer import ArrowRenderer, TopFrameRenderer
@@ -25,12 +26,14 @@ from .structured_dataset import (
     StructuredDatasetTransformerEngine,
 )
 
+
 @functools.lru_cache(maxsize=None)
 def register_csv_handlers():
     from .basic_dfs import CSVToPandasDecodingHandler, PandasToCSVEncodingHandler
 
     StructuredDatasetTransformerEngine.register(PandasToCSVEncodingHandler(), default_format_for_type=True)
     StructuredDatasetTransformerEngine.register(CSVToPandasDecodingHandler(), default_format_for_type=True)
+
 
 @functools.lru_cache(maxsize=None)
 def register_pandas_handlers():
@@ -42,6 +45,7 @@ def register_pandas_handlers():
     StructuredDatasetTransformerEngine.register(ParquetToPandasDecodingHandler(), default_format_for_type=True)
     StructuredDatasetTransformerEngine.register_renderer(pd.DataFrame, TopFrameRenderer())
 
+
 @functools.lru_cache(maxsize=None)
 def register_arrow_handlers():
     import pyarrow as pa
@@ -51,6 +55,7 @@ def register_arrow_handlers():
     StructuredDatasetTransformerEngine.register(ArrowToParquetEncodingHandler(), default_format_for_type=True)
     StructuredDatasetTransformerEngine.register(ParquetToArrowDecodingHandler(), default_format_for_type=True)
     StructuredDatasetTransformerEngine.register_renderer(pa.Table, ArrowRenderer())
+
 
 @functools.lru_cache(maxsize=None)
 def register_bigquery_handlers():
@@ -71,6 +76,7 @@ def register_bigquery_handlers():
             "We won't register bigquery handler for structured dataset because "
             "we can't find the packages google-cloud-bigquery-storage and google-cloud-bigquery"
         )
+
 
 @functools.lru_cache(maxsize=None)
 def register_snowflake_handlers():
