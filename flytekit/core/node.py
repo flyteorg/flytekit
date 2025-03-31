@@ -184,6 +184,8 @@ class Node(object):
 
         if cache is not None:
             assert_not_promise(cache, "cache")
+
+            # Note: any future changes should look into how these cache params are set in tasks
             # If the cache is of type bool but cache_version is not set, then assume that we want to use the
             # default cache policies in Cache
             if isinstance(cache, bool) and cache is True and cache_version is None:
