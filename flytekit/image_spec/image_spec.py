@@ -67,7 +67,7 @@ class ImageSpec:
             If the option is set by the user, then that option is of course used.
         copy (Optional[List[str]]): List of files/directories to copy to /root. e.g. ["src/file1.txt", "src/file2.txt"]
         python_exec (Optional[str]): Python executable to use for install packages
-        builder_config (Optional[typing.Dict[str, str]]): Custom builder images configuration, such as uv and micromamba images.
+        builder_config (Optional[typing.Dict[str, typing.Any]]): Custom builder images configuration, such as uv and micromamba images.
     """
 
     name: str = "flytekit"
@@ -96,7 +96,7 @@ class ImageSpec:
     source_copy_mode: Optional[CopyFileDetection] = None
     copy: Optional[List[str]] = None
     python_exec: Optional[str] = None
-    builder_config: Optional[typing.Dict[str, str]] = None
+    builder_config: Optional[typing.Dict[str, typing.Any]] = None
 
     def __post_init__(self):
         self.name = self.name.lower()
