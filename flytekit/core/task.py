@@ -360,6 +360,7 @@ def task(
     def wrapper(fn: Callable[P, FuncOut]) -> PythonFunctionTask[T]:
         nonlocal cache, cache_serialize, cache_version, cache_ignore_input_vars
 
+        # Note: any future changes should look into how these cache params are set in with_overrides for nodes
         # If the cache is of type bool but cache_version is not set, then assume that we want to use the
         # default cache policies in Cache
         if isinstance(cache, bool) and cache is True and cache_version is None:
