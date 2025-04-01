@@ -362,6 +362,7 @@ def transform_types_to_list_of_type(
             om[k] = v
         else:
             om[k] = typing.List[typing.Optional[v] if list_as_optional else v]  # type: ignore
+    print("om", om)
     return om  # type: ignore
 
 
