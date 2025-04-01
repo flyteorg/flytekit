@@ -92,7 +92,8 @@ class ArrayNodeMapTask(PythonTask):
             self._bound_inputs.update(set(self._bound_inputs_values))
 
         # Transform the interface to List[Optional[T]] in case `min_success_ratio` is set
-        output_as_list_of_optionals = min_success_ratio is not None and min_success_ratio != 1 and n_outputs == 1
+        # output_as_list_of_optionals = min_success_ratio is not None and min_success_ratio != 1 and n_outputs == 1
+        output_as_list_of_optionals = False
         collection_interface = transform_interface_to_list_interface(
             actual_task.python_interface, self._bound_inputs, set(), output_as_list_of_optionals
         )
