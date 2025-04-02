@@ -7,6 +7,7 @@ from flytekit.extras.accelerators import A100, T4
 from flytekit.models import interface, literals, security, task, types
 from flytekit.models.core import identifier
 from flytekit.models.core import types as _core_types
+from flytekit.core.python_function_task import PythonFunctionTask
 
 LIST_OF_SCALAR_LITERAL_TYPES = [
     types.LiteralType(simple=types.SimpleType.BINARY),
@@ -125,8 +126,9 @@ LIST_OF_TASK_METADATA = [
         cache_serializable,
         pod_template_name,
         cache_ignore_input_vars,
+        execution_mode,
     )
-    for discoverable, runtime_metadata, timeout, retry_strategy, interruptible, discovery_version, deprecated, cache_serializable, pod_template_name, cache_ignore_input_vars in product(
+    for discoverable, runtime_metadata, timeout, retry_strategy, interruptible, discovery_version, deprecated, cache_serializable, pod_template_name, cache_ignore_input_vars, execution_mode in product(
         [True, False],
         LIST_OF_RUNTIME_METADATA,
         [timedelta(days=i) for i in range(3)],
@@ -137,6 +139,7 @@ LIST_OF_TASK_METADATA = [
         [True, False],
         ["A", "B"],
         [()],
+        [PythonFunctionTask.ExecutionBehavior.DEFAULT]
     )
 ]
 
