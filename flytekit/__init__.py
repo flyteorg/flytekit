@@ -32,7 +32,6 @@ Branches and conditionals can be expressed explicitly in Flyte. These conditions
 in the flyte engine and hence should be used for control flow. "dynamic workflows" can be used to perform custom conditional logic not supported by flytekit.
 
 
-
 ### Customizing Tasks & Workflows
 
 - TaskMetadata - Wrapper object that allows users to specify Task
@@ -44,30 +43,25 @@ in the flyte engine and hence should be used for control flow. "dynamic workflow
 
 See the Dynamic module for more information.
 
-- dynamic
 
-Signaling
---------
+##### Signaling
 
 - approve
 - sleep
 - wait_for_input
 
 Scheduling
-----------
 
 - CronSchedule
 - FixedRate
 
-Notifications
------------
+##### Notifications
 
 - Email
 - PagerDuty
 - Slack
 
-Reference Entities
------------------
+##### Reference Entities
 
 - get_reference_entity
 - LaunchPlanReference
@@ -77,8 +71,7 @@ Reference Entities
 - reference_workflow
 - reference_launch_plan
 
-Core Task Types
--------------
+##### Core Task Types
 
 - SQLTask
 - ContainerTask
@@ -86,15 +79,13 @@ Core Task Types
 - PythonInstanceTask
 - LaunchPlan
 
-Secrets and SecurityContext
---------------------------
+##### Secrets and SecurityContext
 
 - Secret
 - SecurityContext
 
 
-Common Flyte IDL Objects
------------------------
+##### Common Flyte IDL Objects
 
 - AuthRole
 - Labels
@@ -181,7 +172,7 @@ def current_context() -> ExecutionParameters:
 
     ```python
 
-        flytekit.current_context().logging.info(...)
+       flytekit.current_context().logging.info(...)
     ```
 
     Available params are documented in :py:class:`flytekit.core.context_manager.ExecutionParams`.
@@ -203,24 +194,31 @@ def load_implicit_plugins():
     entrypoint specification to their setup.py. The following example shows how we can autoload a module called fsspec
     (whose init files contains the necessary plugin registration step)
 
-    ```
+    
+    > [!NOTE] 
+    > The group is always ``flytekit.plugins``
 
-        # note the group is always ``flytekit.plugins``
-        setup(
+
+    ```python
+    setup(
         ...
         entry_points={'flytekit.plugins': 'fsspec=flytekitplugins.fsspec'},
         ...
-        )
+    )
     ```
     This works as long as the fsspec module has
 
-    ```
+    > [!NOTE] 
+    > For data persistence plugins:
 
-       # For data persistence plugins
-       DataPersistencePlugins.register_plugin(f"{k}://", FSSpecPersistence, force=True)
-       # OR for type plugins
-       TypeEngine.register(PanderaTransformer())
-       # etc
+    ```python
+    DataPersistencePlugins.register_plugin(f"{k}://", FSSpecPersistence, force=True)
+    ```
+    OR for type plugins:
+
+    ```python
+    TypeEngine.register(PanderaTransformer())
+    # etc
     ```
     """
     discovered_plugins = entry_points(group="flytekit.plugins")
