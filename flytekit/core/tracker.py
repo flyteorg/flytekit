@@ -179,11 +179,10 @@ def isnested(func: Callable) -> bool:
     This would essentially be any function with a `.<local>.` (defined within a function) e.g.
 
     ```python
-
-        def foo():
-            def foo_inner():
-                pass
+    def foo():
+        def foo_inner():
             pass
+        pass
     ```
 
     In the above example `foo_inner` is the local function or a nested function.
@@ -196,32 +195,31 @@ def is_functools_wrapped_module_level(func: Callable) -> bool:
     """Returns true if the function is a functools.wraps-updated function that is defined in the module-level scope.
 
     ```python
+    import functools
 
-        import functools
+    def decorator(fn):
+        @functools.wraps(fn)
+        def wrapper(*args, **kwargs):
+            return fn(*arks, **kwargs)
 
-        def decorator(fn):
-            @functools.wraps(fn)
-            def wrapper(*args, **kwargs):
-                return fn(*arks, **kwargs)
+        return wrapper
 
-            return wrapper
+    @decorator
+    def foo():
+        ...
+
+    def define_inner_wrapped_fn():
 
         @decorator
-        def foo():
-            ...
+        def foo_inner(*args, **kwargs):
+            return fn(*arks, **kwargs)
 
-        def define_inner_wrapped_fn():
+        return foo_inner
 
-            @decorator
-            def foo_inner(*args, **kwargs):
-                return fn(*arks, **kwargs)
+    bar = define_inner_wrapped_fn()
 
-            return foo_inner
-
-        bar = define_inner_wrapped_fn()
-
-        is_functools_wrapped_module_level(foo)  # True
-        is_functools_wrapped_module_level(bar)  # False
+    is_functools_wrapped_module_level(foo)  # True
+    is_functools_wrapped_module_level(bar)  # False
     ```
 
     In this case, applying this function to ``foo`` returns true because ``foo`` was defined in the module-level scope.

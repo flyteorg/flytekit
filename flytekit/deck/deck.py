@@ -42,25 +42,24 @@ class Deck:
     their data with custom renderers.
 
     ```python
+    iris_df = px.data.iris()
 
-        iris_df = px.data.iris()
-
-        @task()
-        def t1() -> str:
-            md_text = '#Hello Flyte##Hello Flyte###Hello Flyte'
-            m = MarkdownRenderer()
-            s = BoxRenderer("sepal_length")
-            deck = flytekit.Deck("demo", s.to_html(iris_df))
-            deck.append(m.to_html(md_text))
-            default_deck = flytekit.current_context().default_deck
-            default_deck.append(m.to_html(md_text))
-            return md_text
+    @task()
+    def t1() -> str:
+        md_text = '#Hello Flyte##Hello Flyte###Hello Flyte'
+        m = MarkdownRenderer()
+        s = BoxRenderer("sepal_length")
+        deck = flytekit.Deck("demo", s.to_html(iris_df))
+        deck.append(m.to_html(md_text))
+        default_deck = flytekit.current_context().default_deck
+        default_deck.append(m.to_html(md_text))
+        return md_text
 
 
-        # Use Annotated to override default renderer
-        @task()
-        def t2() -> Annotated[pd.DataFrame, TopFrameRenderer(10)]:
-            return iris_df
+    # Use Annotated to override default renderer
+    @task()
+    def t2() -> Annotated[pd.DataFrame, TopFrameRenderer(10)]:
+        return iris_df
     ```
     """
 

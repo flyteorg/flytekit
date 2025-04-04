@@ -19,14 +19,13 @@ class Resources(DataClassJSONMixin):
     This class is used to specify both resource requests and resource limits.
 
     ```python
+    Resources(cpu="1", mem="2048")  # This is 1 CPU and 2 KB of memory
+    Resources(cpu="100m", mem="2Gi")  # This is 1/10th of a CPU and 2 gigabytes of memory
+    Resources(cpu=0.5, mem=1024) # This is 500m CPU and 1 KB of memory
 
-        Resources(cpu="1", mem="2048")  # This is 1 CPU and 2 KB of memory
-        Resources(cpu="100m", mem="2Gi")  # This is 1/10th of a CPU and 2 gigabytes of memory
-        Resources(cpu=0.5, mem=1024) # This is 500m CPU and 1 KB of memory
-
-        # For Kubernetes-based tasks, pods use ephemeral local storage for scratch space, caching, and for logs.
-        # This allocates 1Gi of such local storage.
-        Resources(ephemeral_storage="1Gi")
+    # For Kubernetes-based tasks, pods use ephemeral local storage for scratch space, caching, and for logs.
+    # This allocates 1Gi of such local storage.
+    Resources(ephemeral_storage="1Gi")
     ```
     When used together with `@task(resources=)`, you a specific the request and limits with one object.
     When the value is set to a tuple or list, the first value is the request and the
