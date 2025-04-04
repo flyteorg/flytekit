@@ -37,9 +37,8 @@ class Checkpoint(object):
         Usage: If you have a io.BufferedReader then the following should work
 
         ```python
-
-            with input_file.open(mode="rb") as b:
-                checkpointer.save(b)
+        with input_file.open(mode="rb") as b:
+            checkpointer.save(b)
         ```
         """
         raise NotImplementedError("Use one of the derived classes")

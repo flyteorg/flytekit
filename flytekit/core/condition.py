@@ -44,8 +44,7 @@ class ConditionalSection:
     Usage:
 
     ```python
-
-        v =  conditional("fractions").if_((my_input > 0.1) & (my_input < 1.0)).then(...)...
+    v =  conditional("fractions").if_((my_input > 0.1) & (my_input < 1.0)).then(...)...
     ```
     """
 
@@ -488,24 +487,23 @@ def conditional(name: str) -> ConditionalSection:
     Example of a condition usage. Note the nesting and the assignment to a LHS variable
 
     ```python
-
-         v = (
-            conditional("fractions")
-            .if_((my_input > 0.1) & (my_input < 1.0))
-            .then(
-                conditional("inner_fractions")
-                .if_(my_input < 0.5)
-                .then(double(n=my_input))
-                .elif_((my_input > 0.5) & (my_input < 0.7))
-                .then(square(n=my_input))
-                .else_()
-                .fail("Only <0.7 allowed")
-            )
-            .elif_((my_input > 1.0) & (my_input < 10.0))
-            .then(square(n=my_input))
-            .else_()
-            .then(double(n=my_input))
-        )
+    v = (
+    conditional("fractions")
+    .if_((my_input > 0.1) & (my_input < 1.0))
+    .then(
+        conditional("inner_fractions")
+        .if_(my_input < 0.5)
+        .then(double(n=my_input))
+        .elif_((my_input > 0.5) & (my_input < 0.7))
+        .then(square(n=my_input))
+        .else_()
+        .fail("Only <0.7 allowed")
+    )
+    .elif_((my_input > 1.0) & (my_input < 10.0))
+    .then(square(n=my_input))
+    .else_()
+    .then(double(n=my_input))
+    )
     ```
     """
     ctx = FlyteContextManager.current_context()

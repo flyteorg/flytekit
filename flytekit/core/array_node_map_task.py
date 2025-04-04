@@ -454,14 +454,13 @@ class ArrayNodeMapTaskResolver(tracker.TrackedInstance, TaskResolverMixin):
     But in cases in which `j` is bound to a fixed value by using `functools.partial` we need a way to ensure that
     the interface is not simply interpolated, but only the unbound inputs are interpolated.
 
-        ```python
+    ```python
+    def foo((i: int, j: str) -> str:
+        ...
 
-            def foo((i: int, j: str) -> str:
-                ...
+    mt = map_task(functools.partial(foo, j=10))
 
-            mt = map_task(functools.partial(foo, j=10))
-
-            print(mt.interface)
+    print(mt.interface)
         ```
 
     output:
