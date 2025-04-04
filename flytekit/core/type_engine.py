@@ -476,30 +476,28 @@ class DataclassTransformer(TypeTransformer[object]):
     Example
 
     ```python
+    @dataclass
+    class Test(DataClassJsonMixin):
+        a: int
+        b: str
 
-        @dataclass
-        class Test(DataClassJsonMixin):
-           a: int
-           b: str
-
-        from marshmallow_jsonschema import JSONSchema
-        t = Test(a=10,b="e")
-        JSONSchema().dump(t.schema())
+    from marshmallow_jsonschema import JSONSchema
+    t = Test(a=10,b="e")
+    JSONSchema().dump(t.schema())
     ```
 
     Output will look like
 
     ```python
-
-        {'$schema': 'http://json-schema.org/draft-07/schema#',
-         'definitions': {'TestSchema': {'properties': {'a': {'title': 'a',
-             'type': 'number',
-             'format': 'integer'},
-            'b': {'title': 'b', 'type': 'string'}},
-           'type': 'object',
-           'additionalProperties': False}},
-         '$ref': '#/definitions/TestSchema'}
-    ```
+    {'$schema': 'http://json-schema.org/draft-07/schema#',
+        'definitions': {'TestSchema': {'properties': {'a': {'title': 'a',
+            'type': 'number',
+            'format': 'integer'},
+        'b': {'title': 'b', 'type': 'string'}},
+        'type': 'object',
+        'additionalProperties': False}},
+        '$ref': '#/definitions/TestSchema'}
+```
 
     > [!NOTE]
     > The schema support is experimental and is useful for auto-completing in the UI/CLI

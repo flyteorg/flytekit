@@ -102,8 +102,7 @@ def kwtypes(**kwargs) -> OrderedDict[str, Type]:
     This is a small helper function to convert the keyword arguments to an OrderedDict of types.
 
     ```python
-
-        kwtypes(a=int, b=str)
+    kwtypes(a=int, b=str)
     ```
     """
     d = collections.OrderedDict()

@@ -162,10 +162,9 @@ class FixedRate(_schedule_models.Schedule):
     Use this class to schedule a fixed-rate interval for a launch plan.
 
     ```python
+    from datetime import timedelta
 
-        from datetime import timedelta
-
-        FixedRate(duration=timedelta(minutes=10))
+    FixedRate(duration=timedelta(minutes=10))
     ```
 
     See the :std:ref:`fixed rate intervals` chapter in the cookbook for additional usage examples.

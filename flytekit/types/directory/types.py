@@ -345,16 +345,15 @@ class FlyteDirectory(SerializableType, DataClassJsonMixin, os.PathLike, typing.G
         contents of the file/folder. For example:
 
         ```python
+        entity = FlyteDirectory.listdir(directory)
+        for e in entity:
+            print("s3 object:", e.remote_source)
+            # s3 object: s3://test-flytedir/file1.txt
+            # s3 object: s3://test-flytedir/file2.txt
+            # s3 object: s3://test-flytedir/sub_dir
 
-            entity = FlyteDirectory.listdir(directory)
-            for e in entity:
-                print("s3 object:", e.remote_source)
-                # s3 object: s3://test-flytedir/file1.txt
-                # s3 object: s3://test-flytedir/file2.txt
-                # s3 object: s3://test-flytedir/sub_dir
-
-            open(entity[0], "r")  # This will download the file to the local disk.
-            open(entity[0], "r")  # flytekit will read data from the local disk if you open it again.
+        open(entity[0], "r")  # This will download the file to the local disk.
+        open(entity[0], "r")  # flytekit will read data from the local disk if you open it again.
         ```
         """
 

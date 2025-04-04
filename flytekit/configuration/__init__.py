@@ -338,14 +338,13 @@ class ImageConfig(DataClassJsonMixin):
             your workflow uses multiple images
 
             ```python
-
-              ImageConfig.from_dict(
-                  "ghcr.io/flyteorg/flytecookbook:v1.0.0",
-                   {
-                        "spark": "ghcr.io/flyteorg/myspark:...",
-                        "other": "...",
-                   }
-              )
+            ImageConfig.from_dict(
+                "ghcr.io/flyteorg/flytecookbook:v1.0.0",
+                {
+                    "spark": "ghcr.io/flyteorg/myspark:...",
+                    "other": "...",
+                }
+            )
             ```
 
         :return:

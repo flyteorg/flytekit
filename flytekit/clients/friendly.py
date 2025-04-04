@@ -42,8 +42,8 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
     first. Create a client by 
 
     ```python
-       SynchronousFlyteClient("your.domain:port", insecure=True)
-       # insecure should be True if your flyteadmin deployment doesn't have SSL enabled
+    SynchronousFlyteClient("your.domain:port", insecure=True)
+    # insecure should be True if your flyteadmin deployment doesn't have SSL enabled
     ```
 
     """

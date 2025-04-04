@@ -23,35 +23,35 @@ class WebhookTask(SyncConnectorExecutorMixin, PythonTask):
         url="http://localhost:8000/",
         method=http.HTTPMethod.GET,
         headers={"Content-Type": "application/json"},
-    )
+        )
 
-    get_with_params = WebhookTask(
-        name="get-with-params",
-        url="http://localhost:8000/items/{inputs.item_id}",
-        method=http.HTTPMethod.GET,
-        headers={"Content-Type": "application/json"},
-        dynamic_inputs={"s": str, "item_id": int},
-        show_data=True,
-        show_url=True,
-        description="Test Webhook Task",
-        data={"q": "{inputs.s}"},
-    )
-
-
-    @fk.workflow
-    def wf(s: str) -> (dict, dict, dict):
-        v = hello(s=s)
-        w = WebhookTask(
-            name="invoke-slack",
-            url="https://hooks.slack.com/services/xyz/zaa/aaa",
+        get_with_params = WebhookTask(
+            name="get-with-params",
+            url="http://localhost:8000/items/{inputs.item_id}",
+            method=http.HTTPMethod.GET,
             headers={"Content-Type": "application/json"},
-            data={"text": "{inputs.s}"},
+            dynamic_inputs={"s": str, "item_id": int},
             show_data=True,
             show_url=True,
             description="Test Webhook Task",
-            dynamic_inputs={"s": str},
+            data={"q": "{inputs.s}"},
         )
-        return simple_get(), get_with_params(s=v, item_id=10), w(s=v)
+
+
+        @fk.workflow
+        def wf(s: str) -> (dict, dict, dict):
+            v = hello(s=s)
+            w = WebhookTask(
+                name="invoke-slack",
+                url="https://hooks.slack.com/services/xyz/zaa/aaa",
+                headers={"Content-Type": "application/json"},
+                data={"text": "{inputs.s}"},
+                show_data=True,
+                show_url=True,
+                description="Test Webhook Task",
+                dynamic_inputs={"s": str},
+            )
+            return simple_get(), get_with_params(s=v, item_id=10), w(s=v)
         ```
 
          All the parameters can be formatted using python format strings. The following parameters are available for

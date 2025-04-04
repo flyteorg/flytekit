@@ -26,25 +26,17 @@ class LaunchPlan(object):
     attributes set - no default values, fixed values, schedules, etc. Assuming you have the following workflow
 
     ```python
-
-        @workflow
-        def wf(a: int, c: str) -> str:
+    @workflow
+    def wf(a: int, c: str) -> str:
             ...
     ```
     Create the default launch plan with
 
     ```python
-
-        LaunchPlan.get_or_create(workflow=my_wf)
+    LaunchPlan.get_or_create(workflow=my_wf)
     ```
     If you specify additional parameters, you'll also have to give the launch plan a unique name. Default and
     fixed inputs can be expressed as Python native values like so:
-
-    .. literalinclude:: ../../../tests/flytekit/unit/core/test_launch_plan.py
-       :start-after: # fixed_and_default_start
-       :end-before: # fixed_and_default_end
-       :language: python
-       :dedent: 4
 
     Additionally, a launch plan can be configured to run on a schedule and emit notifications.
 
@@ -53,23 +45,10 @@ class LaunchPlan(object):
 
     To configure the remaining parameters, you'll need to import the relevant model objects as well.
 
-    .. literalinclude:: ../../../tests/flytekit/unit/core/test_launch_plan.py
-       :start-after: # schedule_start
-       :end-before: # schedule_end
-       :language: python
-       :dedent: 4
-
     ```python
-
-        from flytekit.models.common import Annotations, AuthRole, Labels, RawOutputDataConfig
+    from flytekit.models.common import Annotations, AuthRole, Labels, RawOutputDataConfig
     ```
-    Then use as follows
-
-    .. literalinclude:: ../../../tests/flytekit/unit/core/test_launch_plan.py
-       :start-after: # auth_role_start
-       :end-before: # auth_role_end
-       :language: python
-       :dedent: 4
+    Then use as follows:
 
     """
 
