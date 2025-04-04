@@ -171,8 +171,7 @@ def current_context() -> ExecutionParameters:
     Usage
 
     ```python
-
-       flytekit.current_context().logging.info(...)
+    flytekit.current_context().logging.info(...)
     ```
 
     Available params are documented in :py:class:`flytekit.core.context_manager.ExecutionParams`.
