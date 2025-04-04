@@ -9,6 +9,8 @@ plugin_requires = ["flytekit>=1.3.0b2,<2.0.0", "torch>=1.11.0", "onnx-pytorch", 
 __version__ = "0.0.0+develop"
 
 setup(
+    title="ONNX PyTorch",
+    title_expanded="Flytekit ONNX PyTorch Plugin",
     name=f"flytekitplugins-{PLUGIN_NAME}",
     version=__version__,
     author="flyteorg",
