@@ -38,7 +38,7 @@ class SparkJob(_common.FlyteIdlEntity):
         :param dict[Text, Text] spark_conf: A definition of key-value pairs for spark config for the job.
         :param dict[Text, Text] hadoop_conf: A definition of key-value pairs for hadoop config for the job.
         :param Optional[dict[Text, dict]] databricks_conf: A definition of key-value pairs for databricks config for the job. Refer to https://docs.databricks.com/dev-tools/api/latest/jobs.html#operation/JobsRunsSubmit.
-        :param Optional[str] databricks_instance: Domain name of your deployment. Use the form <account>.cloud.databricks.com.
+        :param Optional[str] databricks_instance: Domain name of your deployment. Use the form &lt;account&gt;.cloud.databricks.com.
         """
         self._application_file = application_file
         self._spark_type = spark_type
@@ -141,7 +141,7 @@ class SparkJob(_common.FlyteIdlEntity):
     @property
     def databricks_instance(self) -> str:
         """
-        Domain name of your deployment. Use the form <account>.cloud.databricks.com.
+        Domain name of your deployment. Use the form &lt;account&gt;.cloud.databricks.com.
         :rtype: str
         """
         return self._databricks_instance
