@@ -9,6 +9,8 @@ plugin_requires = ["flytekit>=1.15.1", "pyspark>=3.4.0", "aiohttp", "flyteidl>=1
 __version__ = "0.0.0+develop"
 
 setup(
+    title="Spark",
+    title_expanded="Flytekit Spark Plugin",
     name=microlib_name,
     version=__version__,
     author="flyteorg",
