@@ -60,10 +60,9 @@ class PagerDuty(Notification):
     This notification should be used when sending emails to the PagerDuty service.
 
     ```python
+    from flytekit.models.core.execution import WorkflowExecutionPhase
 
-        from flytekit.models.core.execution import WorkflowExecutionPhase
-
-        PagerDuty(phases=[WorkflowExecutionPhase.SUCCEEDED], recipients_email=["my-team@email.com"])
+    PagerDuty(phases=[WorkflowExecutionPhase.SUCCEEDED], recipients_email=["my-team@email.com"])
     ```
     """
 
@@ -82,10 +81,9 @@ class Email(Notification):
     This notification should be used when sending regular emails to people.
 
     ```python
+    from flytekit.models.core.execution import WorkflowExecutionPhase
 
-        from flytekit.models.core.execution import WorkflowExecutionPhase
-
-        Email(phases=[WorkflowExecutionPhase.SUCCEEDED], recipients_email=["my-team@email.com"])
+    Email(phases=[WorkflowExecutionPhase.SUCCEEDED], recipients_email=["my-team@email.com"])
     ```
     """
 
@@ -103,10 +101,9 @@ class Slack(Notification):
     This notification should be used when sending emails to the Slack.
 
     ```python
+    from flytekit.models.core.execution import WorkflowExecutionPhase
 
-        from flytekit.models.core.execution import WorkflowExecutionPhase
-
-        Slack(phases=[WorkflowExecutionPhase.SUCCEEDED], recipients_email=["my-team@email.com"])
+    Slack(phases=[WorkflowExecutionPhase.SUCCEEDED], recipients_email=["my-team@email.com"])
     ```
     """
 
