@@ -70,7 +70,7 @@ class ExecutionParameters(object):
 
     
     ```python
-       flytekit.current_context()
+    flytekit.current_context()
     ```
 
     This object provides the following objections
@@ -796,18 +796,16 @@ class FlyteContext(object):
         IPython.display and should be rendered in the notebook.
 
         ```python
-
-            with flytekit.new_context() as ctx:
-                my_task(...)
-            ctx.get_deck()
+        with flytekit.new_context() as ctx:
+            my_task(...)
+        ctx.get_deck()
         ```
 
         OR if you wish to explicitly display
 
         ```python
-
-            from IPython import display
-            display(ctx.get_deck())
+        from IPython import display
+        display(ctx.get_deck())
         ```
         """
         from flytekit.deck.deck import _get_deck
@@ -920,15 +918,14 @@ class FlyteContextManager(object):
     Typical usage is
 
     ```python
+    FlyteContextManager.initialize()
+    with FlyteContextManager.with_context(o) as ctx:
+        pass
 
-        FlyteContextManager.initialize()
-        with FlyteContextManager.with_context(o) as ctx:
-          pass
-
-        # If required - not recommended you can use
-        FlyteContextManager.push_context()
-        # but correspondingly a pop_context should be called
-        FlyteContextManager.pop_context()
+    # If required - not recommended you can use
+    FlyteContextManager.push_context()
+    # but correspondingly a pop_context should be called
+    FlyteContextManager.pop_context()
     ```
     """
 

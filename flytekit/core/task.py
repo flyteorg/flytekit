@@ -35,10 +35,9 @@ class TaskPlugins(object):
     Usage
 
     ```python
-
-        TaskPlugins.register_pythontask_plugin(config_object_type, plugin_object_type)
-        # config_object_type is any class that will be passed to the plugin_object as task_config
-        # Plugin_object_type is a derivative of ``PythonFunctionTask``
+    TaskPlugins.register_pythontask_plugin(config_object_type, plugin_object_type)
+    # config_object_type is any class that will be passed to the plugin_object as task_config
+    # Plugin_object_type is a derivative of ``PythonFunctionTask``
     ```
     Examples of available task plugins include different query-based plugins such as
     :py:class:`flytekitplugins.athena.task.AthenaTask` and :py:class:`flytekitplugins.hive.task.HiveTask`, kubeflow
@@ -62,10 +61,9 @@ class TaskPlugins(object):
         Use this method to register a new plugin into Flytekit. Usage ::
 
         ```python
-
-            TaskPlugins.register_pythontask_plugin(config_object_type, plugin_object_type)
-            # config_object_type is any class that will be passed to the plugin_object as task_config
-            # Plugin_object_type is a derivative of ``PythonFunctionTask``
+        TaskPlugins.register_pythontask_plugin(config_object_type, plugin_object_type)
+        # config_object_type is any class that will be passed to the plugin_object as task_config
+        # Plugin_object_type is a derivative of ``PythonFunctionTask``
         ```
         """
         if plugin_config_type in cls._PYTHONFUNCTION_TASK_PLUGINS:
@@ -233,19 +231,17 @@ def task(
     For a simple python task,
 
     ```python
-
-        @task
-        def my_task(x: int, y: typing.Dict[str, str]) -> str:
-            ...
+    @task
+    def my_task(x: int, y: typing.Dict[str, str]) -> str:
+        ...
     ```
 
     For specific task types
 
     ```python
-
-        @task(task_config=Spark(), retries=3)
-        def my_task(x: int, y: typing.Dict[str, str]) -> str:
-            ...
+    @task(task_config=Spark(), retries=3)
+    def my_task(x: int, y: typing.Dict[str, str]) -> str:
+        ...
     ```
     Please see some cookbook :std:ref:`task examples <cookbook:tasks>` for additional information.
 
@@ -284,19 +280,18 @@ def task(
                 and they vary from the default.
 
                 ```python
+                # Use default image name `fqn` and alter the tag to `tag-{{default.tag}}` tag of the default image
+                # with a prefix. In this case, it is assumed that the image like
+                # flytecookbook:tag-gitsha is published alongwith the default of flytecookbook:gitsha
+                @task(container_image='{{.images.default.fqn}}:tag-{{images.default.tag}}')
+                def foo():
+                    ...
 
-                    # Use default image name `fqn` and alter the tag to `tag-{{default.tag}}` tag of the default image
-                    # with a prefix. In this case, it is assumed that the image like
-                    # flytecookbook:tag-gitsha is published alongwith the default of flytecookbook:gitsha
-                    @task(container_image='{{.images.default.fqn}}:tag-{{images.default.tag}}')
-                    def foo():
-                        ...
-
-                    # Refer to configurations to configure fqns for other images besides default. In this case it will
-                    # lookup for an image named xyz
-                    @task(container_image='{{.images.xyz.fqn}}:{{images.default.tag}}')
-                    def foo2():
-                        ...
+                # Refer to configurations to configure fqns for other images besides default. In this case it will
+                # lookup for an image named xyz
+                @task(container_image='{{.images.xyz.fqn}}:{{images.default.tag}}')
+                def foo2():
+                    ...
                 ```
     :param environment: Environment variables that should be added for this tasks execution
     :param requests: Specify compute resource requests for your task. For Pod-plugin tasks, these values will apply only
@@ -325,19 +320,18 @@ def task(
         before they can be run. Tasks and workflows do not have this requirement.
 
         ```python
+        @workflow
+        def workflow0():
+            ...
 
-            @workflow
-            def workflow0():
-                ...
+        launchplan0 = LaunchPlan.get_or_create(workflow0)
 
-            launchplan0 = LaunchPlan.get_or_create(workflow0)
-
-            # Specify node_dependency_hints so that launchplan0 will be registered on flyteadmin, despite this being a
-            # dynamic task.
-            @dynamic(node_dependency_hints=[launchplan0])
-            def launch_dynamically():
-                # To run a sub-launchplan it must have previously been registered on flyteadmin.
-                return [launchplan0]*10
+        # Specify node_dependency_hints so that launchplan0 will be registered on flyteadmin, despite this being a
+        # dynamic task.
+        @dynamic(node_dependency_hints=[launchplan0])
+        def launch_dynamically():
+            # To run a sub-launchplan it must have previously been registered on flyteadmin.
+            return [launchplan0]*10
         ```
     :param task_resolver: Provide a custom task resolver.
     :param disable_deck: (deprecated) If true, this task will not output deck html file
@@ -577,28 +571,27 @@ def eager(
     For example:
 
     ```python
+    from flytekit import task, eager
 
-        from flytekit import task, eager
+    @task
+    def add_one(x: int) -> int:
+        return x + 1
 
-        @task
-        def add_one(x: int) -> int:
-            return x + 1
+    @task
+    def double(x: int) -> int:
+        return x * 2
 
-        @task
-        def double(x: int) -> int:
-            return x * 2
+    @eager
+    async def eager_workflow(x: int) -> int:
+        out = add_one(x=x)
+        return double(x=out)
 
-        @eager
-        async def eager_workflow(x: int) -> int:
-            out = add_one(x=x)
-            return double(x=out)
+    # run locally with asyncio
+    if __name__ == "__main__":
+        import asyncio
 
-        # run locally with asyncio
-        if __name__ == "__main__":
-            import asyncio
-
-            result = asyncio.run(eager_workflow(x=1))
-            print(f"Result: {result}")  # "Result: 4"
+        result = asyncio.run(eager_workflow(x=1))
+        print(f"Result: {result}")  # "Result: 4"
     ```
     Unlike :py:func:`dynamic workflows <flytekit.dynamic>`, eager workflows are not compiled into a workflow spec, but
     uses python's [`async`](https://docs.python.org/3/library/asyncio.html) capabilities to execute flyte entities.
@@ -613,18 +606,17 @@ def eager(
        configured via :py:class:`~flytekit.configuration.PlatformConfig`.
 
        ```python
+        from flytekit.remote import FlyteRemote
+        from flytekit.configuration import Config
 
-            from flytekit.remote import FlyteRemote
-            from flytekit.configuration import Config
-
-            @eager(
-                remote=FlyteRemote(config=Config.auto(config_file="config.yaml")),
-                client_secret_group="my_client_secret_group",
-                client_secret_key="my_client_secret_key",
-            )
-            async def eager_workflow(x: int) -> int:
-                out = await add_one(x)
-                return await double(one)
+        @eager(
+            remote=FlyteRemote(config=Config.auto(config_file="config.yaml")),
+            client_secret_group="my_client_secret_group",
+            client_secret_key="my_client_secret_key",
+        )
+        async def eager_workflow(x: int) -> int:
+            out = await add_one(x)
+            return await double(one)
         ```
        Where ``config.yaml`` contains is a flytectl-compatible config file.
        For more details, see [`here`](https://docs.flyte.org/en/latest/flytectl/overview.html#configuration).
@@ -633,10 +625,9 @@ def eager(
        and ``client_secret_key`` are not needed, :
 
        ```python
-
-            @eager
-            async def eager_workflow(x: int) -> int:
-                ...
+        @eager
+        async def eager_workflow(x: int) -> int:
+            ...
      ```
     """
 

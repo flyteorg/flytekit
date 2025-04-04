@@ -181,19 +181,20 @@ def get_channel(cfg: PlatformConfig, **kwargs) -> grpc.Channel:
     It is possible to pass additional options to the underlying channel. Examples for various options are as below
 
     ```python
-
-        get_channel(cfg=PlatformConfig(...))
+    get_channel(cfg=PlatformConfig(...))
     ```
 
+    > [!NOTE] 
+    > Additional options to insecure / secure channel. Example `options` and `compression` refer to grpc guide
+
     ```python
-       :caption: Additional options to insecure / secure channel. Example `options` and `compression` refer to grpc guide
-
-        get_channel(cfg=PlatformConfig(...), options=..., compression=...)
-
+    get_channel(cfg=PlatformConfig(...), options=..., compression=...)
     ```
 
    
-    :caption: Create secure channel with custom `grpc.ssl_channel_credentials`
+    > [!NOTE] 
+    > Create secure channel with custom `grpc.ssl_channel_credentials`
+    
      ```python
     get_channel(cfg=PlatformConfig(insecure=False,...), credentials=...)
     ```

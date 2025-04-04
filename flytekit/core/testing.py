@@ -21,15 +21,14 @@ def task_mock(t: PythonTask) -> typing.Generator[MagicMock, None, None]:
     Usage:
 
         ```python
+        @task
+        def t1(i: int) -> int:
+            pass
 
-            @task
-            def t1(i: int) -> int:
-               pass
-
-            with task_mock(t1) as m:
-               m.side_effect = lambda x: x
-               t1(10)
-               # The mock is valid only within this context
+        with task_mock(t1) as m:
+            m.side_effect = lambda x: x
+            t1(10)
+            # The mock is valid only within this context
         ```
     """
 

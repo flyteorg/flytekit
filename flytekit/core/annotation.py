@@ -15,10 +15,9 @@ class FlyteAnnotation:
     For a task definition:
 
     ```python
-
-        @task
-        def x(a: typing.Annotated[int, FlyteAnnotation({"foo": {"bar": 1}})]):
-            return
+    @task
+    def x(a: typing.Annotated[int, FlyteAnnotation({"foo": {"bar": 1}})]):
+        return
     ```
 
     """
