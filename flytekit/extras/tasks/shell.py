@@ -394,12 +394,12 @@ class RawShellTask(ShellTask):
         template. The template itself will export the desired environment variables, and subsequently execute the
         desired "raw" script with the specified arguments.
 
-        .. note::
-            This means that within your workflow, you can dynamically control the env variables, arguments, and even the
+        > [!NOTE]
+        > This means that within your workflow, you can dynamically control the env variables, arguments, and even the
             actual script you want to run.
 
-        .. note::
-            The downside is that a dynamic workflow will be required. The "raw" script passed in at execution time must
+        > [!NOTE]
+        > The downside is that a dynamic workflow will be required. The "raw" script passed in at execution time must
             be at the specified location.
 
         These args are forwarded directly to the parent `ShellTask` constructor as behavior does not diverge

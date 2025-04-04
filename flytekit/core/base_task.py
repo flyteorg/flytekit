@@ -1,20 +1,24 @@
 """
-==============================
-:mod:`flytekit.core.base_task`
-==============================
+# flytekit.core.base_task
 
-.. currentmodule:: flytekit.core.base_task
+This module provides the core task-related functionality in Flytekit.
 
-.. autosummary::
-   :nosignatures:
-   :template: custom.rst
-   :toctree: generated/
+## Core Components
 
-   kwtypes
-   PythonTask
-   Task
-   TaskResolverMixin
-   IgnoreOutputs
+### kwtypes
+Utility for creating keyword type annotations for tasks.
+
+### PythonTask
+Base class for Python-based task implementations.
+
+### Task
+The base class for all Flyte tasks.
+
+### TaskResolverMixin
+Mixin class that helps resolve a task implementation.
+
+### IgnoreOutputs
+Exception that can be raised to ignore task outputs.
 
 """
 
@@ -97,9 +101,9 @@ def kwtypes(**kwargs) -> OrderedDict[str, Type]:
     """
     This is a small helper function to convert the keyword arguments to an OrderedDict of types.
 
-    .. code-block:: python
-
-        kwtypes(a=int, b=str)
+    ```python
+    kwtypes(a=int, b=str)
+    ```
     """
     d = collections.OrderedDict()
     for k, v in kwargs.items():
