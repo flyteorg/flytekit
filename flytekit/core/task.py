@@ -484,10 +484,25 @@ def reference_task(
     If at registration time the interface provided causes an issue with compilation, an error will be returned.
 
     Example:
-
+    <!--
     .. literalinclude:: ../../../tests/flytekit/unit/core/test_references.py
        :pyobject: ref_t1
-
+    -->
+    ```python
+    @reference_task(
+    project="flytesnacks",
+    domain="development",
+    name="recipes.aaa.simple.join_strings",
+    version="553018f39e519bdb2597b652639c30ce16b99c79",
+    )
+    def ref_t1(a: typing.List[str]) -> str:
+        '''
+        The empty function acts as a convenient skeleton to make it intuitive to call/reference this task from workflows.
+        The interface of the task must match that of the remote task. Otherwise, remote compilation of the workflow will
+        fail.
+        '''
+        return "hello"
+    ```
     """
 
     def wrapper(fn) -> ReferenceTask:
