@@ -38,7 +38,7 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
     """
     This is a low-level client that users can use to make direct gRPC service calls to the control plane. See the
     :std:doc:`service spec <idl:protos/docs/service/index>`. This is more user-friendly interface than the
-    :py:class:`raw client <flytekit.clients.raw.RawSynchronousFlyteClient>` so users should try to use this class
+    {{< py_class_ref flytekit.clients.raw.RawSynchronousFlyteClient >}} so users should try to use this class
     first. Create a client by 
 
     ```python
