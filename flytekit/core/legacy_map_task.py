@@ -308,20 +308,36 @@ def map_task(
 ):
     """
     Use a map task for parallelizable tasks that run across a list of an input type. A map task can be composed of
-    any individual :py:class:`flytekit.PythonFunctionTask`.
+    any individual {{< py_class_ref flytekit.PythonFunctionTask >}}.
 
-    Invoke a map task with arguments using the :py:class:`list` version of the expected input.
+    Invoke a map task with arguments using {{<py_class_ref list>}} version of the expected input.
 
     Usage:
 
+     <!--
     .. literalinclude:: ../../../tests/flytekit/unit/core/test_map_task.py
        :start-after: # test_map_task_start
        :end-before: # test_map_task_end
        :language: python
        :dedent: 4
+    -->
 
+    ```python
+    @task
+    def my_mappable_task(a: int) -> typing.Optional[str]:
+        return str(a)
+
+    @workflow
+    def my_wf(x: typing.List[int]) -> typing.List[typing.Optional[str]]:
+        return map_task(
+            my_mappable_task,
+            metadata=TaskMetadata(retries=1),
+            concurrency=10,
+            min_success_ratio=0.75,
+        )(a=x).with_overrides(requests=Resources(cpu="10M"))
+    ```
     At run time, the underlying map task will be run for every value in the input collection. Attributes
-    such as :py:class:`flytekit.TaskMetadata` and ``with_overrides`` are applied to individual instances
+    such as {{< py_class_ref flytekit.TaskMetadata >}} and ``with_overrides`` are applied to individual instances
     of the mapped task.
 
     **Map Task Plugins**
