@@ -314,7 +314,7 @@ def map_task(
 
     Usage:
 
-     <!--
+    <!--
     .. literalinclude:: ../../../tests/flytekit/unit/core/test_map_task.py
        :start-after: # test_map_task_start
        :end-before: # test_map_task_end
