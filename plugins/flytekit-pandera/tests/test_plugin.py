@@ -108,7 +108,7 @@ def test_pandera_dataframe_warn_on_error(config, capsys):
         col2: float
 
     @task
-    def fn_input(df: typing.Annotated[DataFrame[Schema], config]):
+    def fn_input(df: typing.Annotated[DataFrame[Schema], config]) -> typing.Annotated[DataFrame[Schema], config]:
         return df
 
     @task
