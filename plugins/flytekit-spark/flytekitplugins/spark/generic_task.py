@@ -28,7 +28,6 @@ class GenericSparkConf(object):
 
 
 class GenericSparkTask(PythonFunctionTask[GenericSparkConf]):
-
     def __init__(
         self,
         task_config: GenericSparkConf,
