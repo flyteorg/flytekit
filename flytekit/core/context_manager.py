@@ -561,8 +561,6 @@ class ExecutionState(object):
 
         EAGER_LOCAL_EXECUTION = 6
 
-        LOCAL_DYNAMIC_TASK_EXECUTION = 7
-
     mode: Optional[ExecutionState.Mode]
     working_dir: Union[os.PathLike, str]
     engine_dir: Optional[Union[os.PathLike, str]]
@@ -624,7 +622,6 @@ class ExecutionState(object):
             self.mode == ExecutionState.Mode.LOCAL_TASK_EXECUTION
             or self.mode == ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION
             or self.mode == ExecutionState.Mode.EAGER_LOCAL_EXECUTION
-            or self.mode == ExecutionState.Mode.LOCAL_DYNAMIC_TASK_EXECUTION
         )
 
 
