@@ -18,6 +18,7 @@ This package contains things that are useful when extending Flytekit.
 from flytekit.configuration import internal as _internal
 
 from .connector import DatabricksConnector
+from .general_task import GenericSparkConf
 from .pyspark_transformers import PySparkPipelineModelTransformer
 from .schema import (
     SparkDataFrameSchemaReader,
@@ -34,5 +35,3 @@ from .task import (
     Spark,
     new_spark_session,
 )  # noqa
-
-from .general_task import GenericSparkConf
