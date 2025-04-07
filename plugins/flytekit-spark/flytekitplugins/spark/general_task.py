@@ -1,4 +1,4 @@
-import os
+import subprocess
 from dataclasses import dataclass
 from typing import Any, Callable, Dict, Optional, Union
 
@@ -63,7 +63,7 @@ class GenericSparkTask(PythonFunctionTask[GenericSparkConf]):
 
     def execute(self):
         spark_submit_cmd = f"spark-submit  --class {self.task_config.main_class}  --master 'local[*]' {self.task_config.applications_path}"
-        os.system(spark_submit_cmd)
+        subprocess.run(spark_submit_cmd, shell=True, check=True)
 
 
 # Inject the Spark plugin into flytekits dynamic plugin loading system
