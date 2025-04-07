@@ -15,9 +15,7 @@ from .models import SparkJob, SparkType
 @dataclass
 class GenericSparkConf(object):
     main_class: str
-    executor_path: Optional[str] = None
-    applications_path: Optional[str] = None
-    spark_type: SparkType = SparkType.JAVA
+    applications_path: str
     spark_conf: Optional[Dict[str, str]] = None
     hadoop_conf: Optional[Dict[str, str]] = None
 
@@ -30,7 +28,6 @@ class GenericSparkConf(object):
 
 
 class GenericSparkTask(PythonFunctionTask[GenericSparkConf]):
-    _SPARK_TASK_TYPE = "spark"
 
     def __init__(
         self,
@@ -39,9 +36,6 @@ class GenericSparkTask(PythonFunctionTask[GenericSparkConf]):
         container_image: Optional[Union[str, ImageSpec]] = None,
         **kwargs,
     ):
-        self._default_executor_path: str = task_config.executor_path
-        self._default_applications_path: str = task_config.applications_path
-        self._container_image = container_image
         super(GenericSparkTask, self).__init__(
             task_config=task_config,
             task_type="spark",
