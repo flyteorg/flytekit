@@ -3,7 +3,6 @@ name: Publish Python Packages and Official Images
 on:
   release:
     types: [published]
-  pull_request:
 
 jobs:
   deploy:
@@ -33,7 +32,7 @@ jobs:
           TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
         run: |
           python -m build
-          # twine upload dist/*
+          twine upload dist/*
       - name: Autobump plugin version
         run: |
           # from refs/tags/v1.2.3 get 1.2.3
