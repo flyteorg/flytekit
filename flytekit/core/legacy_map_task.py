@@ -30,8 +30,8 @@ from flytekit.tools.module_loader import load_object_from_module
 
 class MapPythonTask(PythonTask):
     """
-    A MapPythonTask defines a :py:class:`flytekit.PythonTask` which specifies how to run
-    an inner :py:class:`flytekit.PythonFunctionTask` across a range of inputs in parallel.
+    A MapPythonTask defines a {{< py_class_ref flytekit.PythonTask >}} which specifies how to run
+    an inner {{< py_class_ref flytekit.PythonFunctionTask >}} across a range of inputs in parallel.
     """
 
     def __init__(
@@ -308,7 +308,7 @@ def map_task(
 ):
     """
     Use a map task for parallelizable tasks that run across a list of an input type. A map task can be composed of
-    any individual {{< py_class_ref flytekit.PythonFunctionTask >}}.
+    any individual {{<py_class_ref "flytekit.PythonFunctionTask">}}.
 
     Invoke a map task with arguments using {{<py_class_ref list>}} version of the expected input.
 
@@ -337,7 +337,7 @@ def map_task(
         )(a=x).with_overrides(requests=Resources(cpu="10M"))
     ```
     At run time, the underlying map task will be run for every value in the input collection. Attributes
-    such as {{< py_class_ref flytekit.TaskMetadata >}} and ``with_overrides`` are applied to individual instances
+    such as {{<py_class_ref "flytekit.TaskMetadata">}} and ``with_overrides`` are applied to individual instances
     of the mapped task.
 
     **Map Task Plugins**

@@ -25,7 +25,7 @@ TC = TypeVar("TC")
 
 class PythonCustomizedContainerTask(ExecutableTemplateShimTask, PythonTask[TC]):  # type: ignore
     """
-    Please take a look at the comments for :py:class`flytekit.extend.ExecutableTemplateShimTask` as well. This class
+    Please take a look at the comments for {{< py_class_ref flytekit.extend.ExecutableTemplateShimTask >}} as well. This class
     should be subclassed and a custom Executor provided as a default to this parent class constructor
     when building a new external-container flytekit-only plugin.
 
