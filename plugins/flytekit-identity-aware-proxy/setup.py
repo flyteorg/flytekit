@@ -14,7 +14,7 @@ plugin_requires = [
     "grpcio>=1.62.0",
 ]
 
-__version__ = "0.0.0+develop"
+__version__ = "v1.12.0"
 
 setup(
     title="Google IAP",

@@ -9,7 +9,7 @@ plugin_requires = [
     "kubernetes>=12.0.1",
 ]
 
-__version__ = "0.0.0+develop"
+__version__ = "v1.12.0"
 
 setup(
     title="Kubernetes Pod",

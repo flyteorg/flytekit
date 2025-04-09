@@ -6,7 +6,7 @@ microlib_name = f"flytekitplugins-{PLUGIN_NAME}"
 
 plugin_requires = ["flyteidl>=1.10.0", "flytekit>=1.6.1"]
 
-__version__ = "0.0.0+develop"
+__version__ = "v1.12.0"
 
 setup(
     title="Kubeflow TensorFlow",

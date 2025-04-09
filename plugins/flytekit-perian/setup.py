@@ -6,7 +6,7 @@ microlib_name = f"flytekitplugins-{PLUGIN_NAME}"
 
 plugin_requires = ["flytekit>=1.12.0,<2.0.0", "perian>=0.2.7"]
 
-__version__ = "0.0.0+develop"
+__version__ = "v1.12.0"
 
 setup(
     title="Perian Job Platform",

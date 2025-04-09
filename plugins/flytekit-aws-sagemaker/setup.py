@@ -7,7 +7,7 @@ microlib_name = f"flytekitplugins-{PLUGIN_NAME}"
 
 plugin_requires = ["flytekit>1.14.6", "aioboto3>=12.3.0", "xxhash"]
 
-__version__ = "0.0.0+develop"
+__version__ = "v1.12.0"
 
 setup(
     title="AWS SageMaker",

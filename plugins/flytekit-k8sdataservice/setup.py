@@ -6,7 +6,7 @@ microlib_name = f"flytekitplugins-{PLUGIN_NAME}"
 
 plugin_requires = ["flytekit>=1.11.0,<2.0.0", "kubernetes>=23.6.0,<24.0.0", "flyteidl>=1.11.0,<2.0.0"]
 
-__version__ = "0.0.0+develop"
+__version__ = "v1.12.0"
 
 setup(
     title="Kubernetes Stateful",
