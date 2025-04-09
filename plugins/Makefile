@@ -23,6 +23,3 @@ update_all_versions:
 	# it exits with exit code 1 and github actions aborts the build.
 	./run_all_plugins.sh grep "$(PLACEHOLDER)" "$(VERSION_FILE)"
 	./run_all_plugins.sh sed -i "s|$(PLACEHOLDER)|__version__ = \"${VERSION}\"|" $(VERSION_FILE)
-
-
-
