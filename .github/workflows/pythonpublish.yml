@@ -24,7 +24,7 @@ jobs:
         id: bump
         run: |
           # from refs/tags/v1.2.3 get 1.2.3
-          VERSION=v1.2.3
+          VERSION=v1.16.0b3
           echo "version=$VERSION" >> $GITHUB_OUTPUT
         shell: bash
       - name: Build and publish
@@ -37,7 +37,7 @@ jobs:
       - name: Autobump plugin version
         run: |
           # from refs/tags/v1.2.3 get 1.2.3
-          VERSION=v1.2.3
+          VERSION=v1.16.0b3
           VERSION=$VERSION make -C plugins update_all_versions
         shell: bash
       - name: Build all Plugins and publish
@@ -51,7 +51,7 @@ jobs:
         id: pypiwait
         run: |
           # from refs/tags/v1.2.3 get 1.2.3 and make sure it's not an empty string
-          VERSION=v1.2.3
+          VERSION=v1.16.0b3
           if [ -z "$VERSION" ]
           then
             echo "No tagged version found, exiting"
