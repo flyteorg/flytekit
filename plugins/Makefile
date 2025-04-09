@@ -19,7 +19,6 @@ VERSION_FILE := setup.py
 
 .PHONY: update_all_versions
 update_all_versions:
-	echo "$(PLACEHOLDER)"
 	# ensure the placeholder is there. If grep doesn't find the placeholder
 	# it exits with exit code 1 and github actions aborts the build.
 	./run_all_plugins.sh grep "$(PLACEHOLDER)" "$(VERSION_FILE)"
