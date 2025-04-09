@@ -1,5 +1,5 @@
 """
-Similar to :py:class:`flytekit.types.file.FlyteFile` there are some 'preformatted' directory types.
+Similar to {{< py_class_ref flytekit.types.file.FlyteFile >}} there are some 'preformatted' directory types.
 
 | Class | Description |
 |-------| ---- |

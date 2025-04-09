@@ -48,7 +48,7 @@ class FlyteDirectory(SerializableType, DataClassJsonMixin, os.PathLike, typing.G
         the entire dataset to be downloaded. Listing on S3 and other backend object stores is not consistent
         and we should not need data to be downloaded to list.
 
-    Please first read through the comments on the :py:class:`flytekit.types.file.FlyteFile` class as the
+    Please first read through the comments on the {{< py_class_ref flytekit.types.file.FlyteFile >}} class as the
     implementation here is similar.
 
     One thing to note is that the ``os.PathLike`` type that comes with Python was used as a stand-in for ``FlyteFile``.

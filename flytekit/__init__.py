@@ -174,7 +174,7 @@ def current_context() -> ExecutionParameters:
     flytekit.current_context().logging.info(...)
     ```
 
-    Available params are documented in :py:class:`flytekit.core.context_manager.ExecutionParams`.
+    Available params are documented in {{< py_class_ref flytekit.core.context_manager.ExecutionParams >}}.
     There are some special params, that should be available
     """
     return FlyteContextManager.current_context().execution_state.user_space_params
