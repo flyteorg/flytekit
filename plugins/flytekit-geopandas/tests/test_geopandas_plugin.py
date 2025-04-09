@@ -6,6 +6,7 @@ import pytest
 
 from flytekit import task
 from flytekit.types.structured.structured_dataset import StructuredDataset
+from pyproj import CRS
 import numpy as np
 
 
