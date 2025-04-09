@@ -6,7 +6,7 @@ microlib_name = f"flytekitplugins-{PLUGIN_NAME}"
 
 plugin_requires = ["flytekit>=1.15.0b2,<2.0.0", "pandera>=0.7.1", "pandas", "great_tables"]
 
-__version__ = "v1.12.0"
+__version__ = "0.0.0+develop"
 
 setup(
     title="Pandera",

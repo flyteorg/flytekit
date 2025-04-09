@@ -9,7 +9,7 @@ plugin_requires = [
     "fsspec",
 ]
 
-__version__ = "v1.12.0"
+__version__ = "0.0.0+develop"
 
 setup(
     title="Modin",

@@ -11,7 +11,7 @@ plugin_requires = [
     "flyteidl>1.10.7",
 ]
 
-__version__ = "v1.12.0"
+__version__ = "0.0.0+develop"
 
 setup(
     title="Apache Airflow",

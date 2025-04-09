@@ -12,7 +12,7 @@ plugin_requires = [
     "s3fs<2023.6.0",
 ]
 
-__version__ = "v1.12.0"
+__version__ = "0.0.0+develop"
 
 setup(
     title="Great Expectations",
