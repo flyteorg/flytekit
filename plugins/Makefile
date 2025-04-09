@@ -22,4 +22,4 @@ update_all_versions:
 	# ensure the placeholder is there. If grep doesn't find the placeholder
 	# it exits with exit code 1 and github actions aborts the build.
 	./run_all_plugins.sh grep "$(PLACEHOLDER)" "$(VERSION_FILE)"
-	./run_all_plugins.sh sed -i "s/$(PLACEHOLDER)/__version__ = \"${VERSION}\"/g" $(VERSION_FILE)
+	./run_all_plugins.sh sed -i "s/$(PLACEHOLDER)\/__version__ = \"${VERSION}\"/g" $(VERSION_FILE)
