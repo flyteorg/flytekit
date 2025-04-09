@@ -3,7 +3,7 @@ Flytekit File Type
 ==========================================================
 .. currentmodule:: flytekit.types.file
 
-This list also contains a bunch of pre-formatted :py:class:`flytekit.types.file.FlyteFile` types.
+This list also contains a bunch of pre-formatted {{< py_class_ref flytekit.types.file.FlyteFile >}} types.
 
 .. autosummary::
    :toctree: generated/

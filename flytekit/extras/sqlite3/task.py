@@ -83,7 +83,7 @@ class SQLite3Task(PythonCustomizedContainerTask[SQLite3Config], SQLTask[SQLite3C
 
 
     See the :ref:`integrations guide <cookbook:integrations_sql_sqlite3>` for additional usage examples and
-    the base class :py:class:`flytekit.extend.PythonCustomizedContainerTask` as well.
+    the base class {{< py_class_ref flytekit.extend.PythonCustomizedContainerTask >}} as well.
     """
 
     _SQLITE_TASK_TYPE = "sqlite"

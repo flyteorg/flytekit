@@ -40,10 +40,10 @@ class TaskPlugins(object):
     # Plugin_object_type is a derivative of ``PythonFunctionTask``
     ```
     Examples of available task plugins include different query-based plugins such as
-    :py:class:`flytekitplugins.athena.task.AthenaTask` and :py:class:`flytekitplugins.hive.task.HiveTask`, kubeflow
-    operators like :py:class:`plugins.kfpytorch.flytekitplugins.kfpytorch.task.PyTorchFunctionTask` and
-    :py:class:`plugins.kftensorflow.flytekitplugins.kftensorflow.task.TensorflowFunctionTask`, and generic plugins like
-    :py:class:`flytekitplugins.pod.task.PodFunctionTask` which doesn't integrate with third party tools or services.
+    {{< py_class_ref flytekitplugins.athena.task.AthenaTask >}} and {{< py_class_ref flytekitplugins.hive.task.HiveTask >}}, kubeflow
+    operators like {{< py_class_ref plugins.kfpytorch.flytekitplugins.kfpytorch.task.PyTorchFunctionTask >}} and
+    {{< py_class_ref plugins.kftensorflow.flytekitplugins.kftensorflow.task.TensorflowFunctionTask >}}, and generic plugins like
+    {{< py_class_ref flytekitplugins.pod.task.PodFunctionTask >}} which doesn't integrate with third party tools or services.
 
     The `task_config` is different for every task plugin type. This is filled out by users when they define a task to
     specify plugin-specific behavior and features.  For example, with a query type task plugin, the config might store
@@ -297,12 +297,12 @@ def task(
     :param requests: Specify compute resource requests for your task. For Pod-plugin tasks, these values will apply only
       to the primary container.
     :param limits: Compute limits. Specify compute resource limits for your task. For Pod-plugin tasks, these values
-      will apply only to the primary container. For more information, please see :py:class:`flytekit.Resources`.
+      will apply only to the primary container. For more information, please see {{< py_class_ref flytekit.Resources >}}.
     :param secret_requests: Keys that can identify the secrets supplied at runtime. Ideally the secret keys should also be
                      semi-descriptive. The key values will be available from runtime, if the backend is configured
                      to provide secrets and if secrets are available in the configured secrets store.
                      Possible options for secret stores are - Vault, Confidant, Kube secrets, AWS KMS etc
-                     Refer to :py:class:`Secret` to understand how to specify the request for a secret. It
+                     Refer to {{< py_class_ref Secret >}} to understand how to specify the request for a secret. It
                      may change based on the backend provider.
 
                     > [!NOTE]
@@ -584,7 +584,7 @@ def eager(
 
     This type of task will execute all Flyte entities within it eagerly, meaning that all python constructs can be
     used inside of an ``@eager``-decorated function. This is because eager workflows use a
-    :py:class:`~flytekit.remote.remote.FlyteRemote` object to kick off executions when a flyte entity needs to produce a
+    {{< py_class_ref flytekit.remote.remote.FlyteRemote >}} object to kick off executions when a flyte entity needs to produce a
     value. Basically think about it as: every Flyte entity that is called(), the stack frame is an execution with its
     own Flyte URL. Results (or the error) are fetched when the execution is finished.
 
@@ -613,7 +613,7 @@ def eager(
         result = asyncio.run(eager_workflow(x=1))
         print(f"Result: {result}")  # "Result: 4"
     ```
-    Unlike :py:func:`dynamic workflows <flytekit.dynamic>`, eager workflows are not compiled into a workflow spec, but
+    Unlike {{< py_func_ref dynamic workflows flytekit.dynamic >}}, eager workflows are not compiled into a workflow spec, but
     uses python's [`async`](https://docs.python.org/3/library/asyncio.html) capabilities to execute flyte entities.
 
     > [!NOTE]
@@ -622,8 +622,8 @@ def eager(
 
     > [!IMPORTANT]
     > A ``client_secret_group`` and ``client_secret_key`` is needed for authenticating via
-       :py:class:`~flytekit.remote.remote.FlyteRemote` using the ``client_credentials`` authentication, which is
-       configured via :py:class:`~flytekit.configuration.PlatformConfig`.
+       {{< py_class_ref flytekit.remote.remote.FlyteRemote >}} using the ``client_credentials`` authentication, which is
+       configured via {{< py_class_ref flytekit.configuration.PlatformConfig >}}.
 
        ```python
         from flytekit.remote import FlyteRemote

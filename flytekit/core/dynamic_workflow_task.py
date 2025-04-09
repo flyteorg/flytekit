@@ -1,7 +1,7 @@
 """
 Dynamic Workflows
 -----------------------------
-Dynamic workflows are one of the powerful aspects of Flyte. Please take a look at the :py:func:`flytekit.dynamic` documentation first to get started.
+Dynamic workflows are one of the powerful aspects of Flyte. Please take a look at the {{< py_func_ref flytekit.dynamic >}} documentation first to get started.
 
 
 Caveats when using a dynamic workflow
@@ -20,7 +20,7 @@ from flytekit.core.python_function_task import PythonFunctionTask
 
 dynamic = functools.partial(task.task, execution_mode=PythonFunctionTask.ExecutionBehavior.DYNAMIC)  # type: ignore[var-annotated]
 dynamic.__doc__ = """
-Please first see the comments for :py:func:`flytekit.task` and :py:func:`flytekit.workflow`. This ``dynamic``
+Please first see the comments for {{< py_func_ref flytekit.task >}} and {{< py_func_ref flytekit.workflow >}}. This ``dynamic``
 concept is an amalgamation of both and enables the user to pursue some :std:ref:`pretty incredible <cookbook:advanced_merge_sort>`
 constructs.
 
