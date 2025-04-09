@@ -246,7 +246,7 @@ class Blob(_common.FlyteIdlEntity):
     def __init__(self, metadata, uri):
         """
         This literal model is used to represent binary data offloaded to some storage location which is
-        identifiable with a unique string. See :py:class:`flytekit.FlyteFile` as an example.
+        identifiable with a unique string. See {{< py_class_ref flytekit.FlyteFile >}} as an example.
 
         :param BlobMetadata metadata:
         :param Text uri: The location of this blob

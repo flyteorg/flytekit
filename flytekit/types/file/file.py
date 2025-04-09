@@ -56,7 +56,7 @@ class FlyteFile(SerializableType, os.PathLike, typing.Generic[T], DataClassJSONM
     Files (and directories) differ from the primitive types like floats and string in that Flytekit typically uploads
     the contents of the files to the blob store connected with your Flyte installation. That is, the Python native
     literal that represents a file is typically just the path to the file on the local filesystem. However in Flyte,
-    an instance of a file is represented by a :py:class:`Blob <flytekit.models.literals.Blob>` literal,
+    an instance of a file is represented by a {{< py_class_ref Blob <flytekit.models.literals.Blob> >}} literal,
     with the ``uri`` field set to the location in the Flyte blob store (AWS/GCS etc.). Take a look at the
     :std:ref:`data handling doc <flyte:divedeep-data-management>` for a deeper discussion.
 
@@ -74,7 +74,7 @@ class FlyteFile(SerializableType, os.PathLike, typing.Generic[T], DataClassJSONM
 
     You can also make it so that the upload does not happen. There are different types of
     task/workflow signatures. Keep in mind that in the backend, in Admin and in the blob store, there is only one type
-    that represents files, the :py:class:`Blob <flytekit.models.core.types.BlobType>` type.
+    that represents files, the {{< py_class_ref Blob <flytekit.models.core.types.BlobType> >}} type.
 
     Whether the uploading happens or not, the behavior of the translation between Python native values and Flyte
     literal values depends on a few attributes:
@@ -84,9 +84,9 @@ class FlyteFile(SerializableType, os.PathLike, typing.Generic[T], DataClassJSONM
       * :class:`python:os.PathLike`
       Note that ``os.PathLike`` is only a type in Python, you can't instantiate it.
     * The type of the Python native value we're returning. These can be
-      * :py:class:`flytekit.FlyteFile`
-      * :py:class:`pathlib.Path`
-      * :py:class:`str`
+      * {{< py_class_ref flytekit.FlyteFile >}}
+      * {{< py_class_ref pathlib.Path >}}
+      * {{< py_class_ref str >}}
     * Whether the value being converted is a "remote" path or not. For instance, if a task returns a value of
       "http://www.google.com" as a ``FlyteFile``, obviously it doesn't make sense for us to try to upload that to the
       Flyte blob store. So no remote paths are uploaded. Flytekit considers a path remote if it starts with ``s3://``,

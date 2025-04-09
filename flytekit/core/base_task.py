@@ -459,7 +459,7 @@ T = TypeVar("T")
 class PythonTask(TrackedInstance, Task, Generic[T]):
     """
     Base Class for all Tasks with a Python native ``Interface``. This should be directly used for task types, that do
-    not have a python function to be executed. Otherwise refer to :py:class:`flytekit.PythonFunctionTask`.
+    not have a python function to be executed. Otherwise refer to {{< py_class_ref flytekit.PythonFunctionTask >}}.
     """
 
     def __init__(

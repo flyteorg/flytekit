@@ -50,7 +50,7 @@ class NotebookTask(PythonInstanceTask[T]):
 
     Property 2:
     For a notebook that produces outputs, that should be consumed by a subsequent notebook, use the method
-    :py:func:`record_outputs` in your notebook after the outputs are ready and pass all outputs.
+    {{< py_func_ref record_outputs >}} in your notebook after the outputs are ready and pass all outputs.
 
     Usage:
 
@@ -67,7 +67,7 @@ class NotebookTask(PythonInstanceTask[T]):
         #cell end
 
     Step 2: Wrap in a task
-    Now point to the notebook and create an instance of :py:class:`NotebookTask` as follows
+    Now point to the notebook and create an instance of {{< py_class_ref NotebookTask >}} as follows
 
     Usage:
 
