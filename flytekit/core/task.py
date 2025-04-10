@@ -353,13 +353,18 @@ def task(
         request to 1, cpu limit to 2, and mem request to 1Gi.
     """
     # Maintain backwards compatibility with the old cache parameters, while cleaning up the task function definition.
-    cache_serialize = kwargs.get("cache_serialize")
-    cache_version = kwargs.get("cache_version")
-    cache_ignore_input_vars = kwargs.get("cache_ignore_input_vars")
+    cache_serialize = kwargs.pop("cache_serialize", None)
+    cache_version = kwargs.pop("cache_version", None)
+    cache_ignore_input_vars = kwargs.pop("cache_ignore_input_vars", None)
+
+    # Any remaining kwargs will be unused and are likely mistakes (eg template instead of pod_template).
+    if kwargs:
+        raise ValueError(f"Unrecognized argument(s) for task: {kwargs.keys()}")
 
     def wrapper(fn: Callable[P, FuncOut]) -> PythonFunctionTask[T]:
         nonlocal cache, cache_serialize, cache_version, cache_ignore_input_vars
 
+        # Note: any future changes should look into how these cache params are set in with_overrides for nodes
         # If the cache is of type bool but cache_version is not set, then assume that we want to use the
         # default cache policies in Cache
         if isinstance(cache, bool) and cache is True and cache_version is None:

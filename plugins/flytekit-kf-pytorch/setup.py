@@ -9,6 +9,8 @@ plugin_requires = ["cloudpickle", "flyteidl>=1.5.1", "flytekit>=1.6.1", "kuberne
 __version__ = "0.0.0+develop"
 
 setup(
+    title="Kubeflow PyTorch",
+    title_expanded="Flytekit Kubeflow PyTorch Plugin",
     name=microlib_name,
     version=__version__,
     author="flyteorg",
