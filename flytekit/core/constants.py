@@ -25,6 +25,9 @@ FLYTE_USE_OLD_DC_FORMAT = "FLYTE_USE_OLD_DC_FORMAT"
 # Set this environment variable to true to force the task to return non-zero exit code on failure.
 FLYTE_FAIL_ON_ERROR = "FLYTE_FAIL_ON_ERROR"
 
+# Set this environment variable to true to force pyflyte-fast-execute to run task-execute-cmd in a separate process
+FLYTE_FAST_EXECUTE_CMD_IN_NEW_PROCESS = "FLYTE_FAST_EXECUTE_CMD_IN_NEW_PROCESS"
+
 # Executions launched by the current eager task will be tagged with this key:current_eager_exec_name
 EAGER_TAG_KEY = "eager-exec"
 
