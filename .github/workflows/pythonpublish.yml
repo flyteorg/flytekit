@@ -219,7 +219,7 @@ jobs:
           tags: ${{ steps.flyteagent-slim-names.outputs.tags }}
           build-args: |
             VERSION=${{ needs.deploy.outputs.version }}
-          file: ./Dockerfile.agent
+          file: ./Dockerfile.connector
           cache-from: type=gha
           cache-to: type=gha,mode=max
       - name: Confirm Agent can start
