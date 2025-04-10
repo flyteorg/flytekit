@@ -12,6 +12,7 @@ from flytekit import Description, Documentation, SourceCode
 from flytekit.extras.accelerators import T4
 from flytekit.models import literals, task, types
 from flytekit.models.core import identifier
+from flytekit.core.python_function_task import PythonFunctionTask
 from tests.flytekit.common import parameterizers
 
 
@@ -74,7 +75,7 @@ def test_task_metadata():
         "This is deprecated!",
         True,
         "A",
-        (),
+        ()
     )
 
     assert obj.discoverable is True
@@ -88,6 +89,7 @@ def test_task_metadata():
     assert obj.discovery_version == "0.1.1b0"
     assert obj.pod_template_name == "A"
     assert obj == task.TaskMetadata.from_flyte_idl(obj.to_flyte_idl())
+    assert obj.mode == PythonFunctionTask.ExecutionBehavior.DEFAULT
 
 
 @pytest.mark.parametrize(
