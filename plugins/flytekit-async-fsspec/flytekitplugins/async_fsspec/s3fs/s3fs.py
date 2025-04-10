@@ -113,6 +113,7 @@ class AsyncS3FileSystem(S3FileSystem):
         version_id=None,
         chunksize=DEFAULT_DOWNLOAD_CHUNK_SIZE,
         concurrent_download=DEFAULT_CONCURRENT_DOWNLOAD,
+        **kwargs, # noqa Used for extensibility or future arguments
     ):
         """
         Get a file from rpath to lpath.
