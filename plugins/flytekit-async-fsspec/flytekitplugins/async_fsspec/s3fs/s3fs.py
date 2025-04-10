@@ -123,6 +123,7 @@ class AsyncS3FileSystem(S3FileSystem):
             callback (function, optional): The callback function.
             chunksize (int, optional): Download chunksize. Defaults to 50 * 2**20 (50MB).
             version_id (str, optional): The version id of the file. Defaults to None.
+            **kwargs (Any, optional): Additional arguments for extensibility or future use.
         """
         if os.path.isdir(lpath):
             return
