@@ -1,6 +1,7 @@
 import asyncio
 import mimetypes
 import os
+from typing import Any, Callable, Optional
 
 from fsspec.callbacks import _DEFAULT_CALLBACK
 from s3fs import S3FileSystem
@@ -22,21 +23,22 @@ class AsyncS3FileSystem(S3FileSystem):
 
     async def _put_file(
         self,
-        lpath,
-        rpath,
-        callback=_DEFAULT_CALLBACK,
-        chunksize=DEFAULT_UPLOAD_CHUNK_SIZE,
-        concurrent_upload=DEFAULT_CONCURRENT_UPLOAD,
-        **kwargs,
+        lpath: str,
+        rpath: str,
+        callback: Callable = _DEFAULT_CALLBACK,
+        chunksize: int = DEFAULT_UPLOAD_CHUNK_SIZE,
+        concurrent_upload: int = DEFAULT_CONCURRENT_UPLOAD,
+        **kwargs: Any,
     ):
         """
         Put a file from lpath to rpath.
         Args:
             lpath (str): The local path of the file to be uploaded.
             rpath (str): The remote path which the file should be uploaded to.
-            callback (function, optional): The callback function.
-            chunksize (int, optional): Upload chunksize. Defaults to 50 * 2**20 (50MB).
-            concurrent_upload (int, optional): The number of concurrent upload when using multipart upload. Defaults to 4.
+            callback (Callable): The callback function.
+            chunksize (int): Upload chunksize. Defaults to 50 * 2**20 (50MB).
+            concurrent_upload (int): The number of concurrent upload when using multipart upload. Defaults to 4.
+            **kwargs (Any): Additional arguments passed to S3 calls.
         """
         bucket, key, _ = self.split_path(rpath)
         if os.path.isdir(lpath):
@@ -107,24 +109,24 @@ class AsyncS3FileSystem(S3FileSystem):
 
     async def _get_file(
         self,
-        rpath,
-        lpath,
-        callback=_DEFAULT_CALLBACK,
-        version_id=None,
-        chunksize=DEFAULT_DOWNLOAD_CHUNK_SIZE,
-        concurrent_download=DEFAULT_CONCURRENT_DOWNLOAD,
-        **kwargs, # noqa Used for extensibility or future arguments
+        rpath: str,
+        lpath: str,
+        callback: Callable = _DEFAULT_CALLBACK,
+        version_id: Optional[str] = None,
+        chunksize: int = DEFAULT_DOWNLOAD_CHUNK_SIZE,
+        concurrent_download: int = DEFAULT_CONCURRENT_DOWNLOAD,
+        **kwargs: Any,  # noqa Used for extensibility or future arguments
     ):
         """
         Get a file from rpath to lpath.
         Args:
             rpath (str): The remote path of the file to be downloaded.
             lpath (str): The local path which the file should be downloaded to.
-            callback (function, optional): The callback function.
-            chunksize (int, optional): Download chunksize. Defaults to 50 * 2**20 (50MB).
-            version_id (str, optional): The version id of the file. Defaults to None.
-            concurrent_download (int, optional): The number of concurrent threads when using multipart download. Defaults to 4.
-            **kwargs (Any, optional): Additional arguments for extensibility or future use.
+            callback (Callable): The callback function.
+            version_id (Optional[str]): The version id of the file. Defaults to None.
+            chunksize (int): Download chunksize. Defaults to 50 * 2**20 (50MB).
+            concurrent_download (int): The number of concurrent threads when using multipart download. Defaults to 4.
+            **kwargs (Any): Additional arguments for extensibility or future use.
         """
         if os.path.isdir(lpath):
             return
