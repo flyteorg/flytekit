@@ -78,6 +78,44 @@ def test_default_values():
     assert wf(a=False) is False
 
 
+def test_container_image_wf():
+    modified_image = Image(name="modified", fqn="test1", tag="tag1")
+    @task
+    def t1(a: int) -> int:
+        a = a + 5
+        return a
+    @workflow(container_image=modified_image)
+    def container_image_wf(a: int) -> int:
+        return t1(a=a)
+
+    x = container_image_wf(a=3)
+    assert x == 8
+    wf_spec = get_serializable(OrderedDict(), serialization_settings, container_image_wf)
+    assert wf_spec.template.container_image == modified_image
+    assert wf_spec.template.nodes[0].task_node.container_image == modified_image
+
+def test_container_image_wf_override_task():
+    modified_image = Image(name="modified", fqn="test1", tag="tag1")
+    @task
+    def t1(a: int) -> int:
+        a = a + 5
+        return a
+
+    @task(container_image=default_img)
+    def t2(a: int) -> int:
+        a = a + 5
+        return a
+    @workflow(container_image=modified_image)
+    def container_image_wf(a: int) -> int:
+        return t1(a=a) + t2(a=a)
+    x = container_image_wf(a=3)
+    assert x == 16
+    wf_spec = get_serializable(OrderedDict(), serialization_settings, container_image_wf)
+    assert wf_spec.template.container_image == modified_image
+    assert wf_spec.template.nodes[0].task_node.container_image == modified_image
+    assert wf_spec.template.nodes[1].task_node.container_image == default_img
+
+
 def test_list_output_wf():
     @task
     def t1(a: int) -> int:

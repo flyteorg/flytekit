@@ -50,6 +50,7 @@ from flytekit.exceptions.user import (
     FlyteValidationException,
     FlyteValueException,
 )
+from flytekit.image_spec.image_spec import ImageSpec
 from flytekit.loggers import logger
 from flytekit.models import interface as _interface_models
 from flytekit.models import literals as _literal_models
@@ -192,6 +193,7 @@ class WorkflowBase(object):
         on_failure: Optional[Union[WorkflowBase, Task]] = None,
         docs: Optional[Documentation] = None,
         default_options: Optional[Options] = None,
+        container_image: Optional[ImageSpec] = None,
         **kwargs,
     ):
         self._name = name
@@ -207,6 +209,7 @@ class WorkflowBase(object):
         self._failure_node = None
         self._docs = docs
         self._default_options = default_options
+        self._container_image = container_image
 
         if self._python_interface.docstring:
             if self.docs is None:
@@ -274,6 +277,10 @@ class WorkflowBase(object):
     @property
     def default_options(self) -> Optional[Options]:
         return self._default_options
+
+    @property
+    def container_image(self) -> Optional[ImageSpec]:
+        return self._container_image
 
     def __repr__(self):
         return (
@@ -715,6 +722,7 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
         docs: Optional[Documentation] = None,
         pickle_untyped: bool = False,
         default_options: Optional[Options] = None,
+        container_image: Optional[ImageSpec] = None,
     ):
         name, _, _, _ = extract_task_module(workflow_function)
         self._workflow_function = workflow_function
@@ -734,6 +742,7 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
             on_failure=on_failure,
             docs=docs,
             default_options=default_options,
+            container_image=container_image,
         )
 
         # Set this here so that the lhs call doesn't fail at least. This is only useful in the context of the
@@ -902,6 +911,7 @@ def workflow(
     docs: Optional[Documentation] = ...,
     pickle_untyped: bool = ...,
     default_options: Optional[Options] = ...,
+    container_image: Optional[Union[str, ImageSpec]] = ...,
 ) -> Callable[[Callable[..., FuncOut]], PythonFunctionWorkflow]: ...
 
 
@@ -914,6 +924,7 @@ def workflow(
     docs: Optional[Documentation] = ...,
     pickle_untyped: bool = ...,
     default_options: Optional[Options] = ...,
+    container_image: Optional[Union[str, ImageSpec]] = ...,
 ) -> Union[Callable[P, FuncOut], PythonFunctionWorkflow]: ...
 
 
@@ -925,6 +936,7 @@ def workflow(
     docs: Optional[Documentation] = None,
     pickle_untyped: bool = False,
     default_options: Optional[Options] = None,
+    container_image: Optional[Union[str, ImageSpec]] = None,
 ) -> Union[Callable[P, FuncOut], Callable[[Callable[P, FuncOut]], PythonFunctionWorkflow], PythonFunctionWorkflow]:
     """
     This decorator declares a function to be a Flyte workflow. Workflows are declarative entities that construct a DAG
@@ -960,6 +972,7 @@ def workflow(
          the workflow. This is not recommended for general use.
     :param default_options: Default options for the workflow when creating a default launch plan. Currently only
          the labels and annotations are allowed to be set as defaults.
+    :param container_image: A container image spec to use for the workflow.
     """
 
     def wrapper(fn: Callable[P, FuncOut]) -> PythonFunctionWorkflow:
@@ -976,6 +989,7 @@ def workflow(
             docs=docs,
             pickle_untyped=pickle_untyped,
             default_options=default_options,
+            container_image=container_image,
         )
         update_wrapper(workflow_instance, fn)
         return workflow_instance
