@@ -1,16 +1,11 @@
 """
-==========
-Flyte Deck
-==========
-
-.. currentmodule:: flytekit.deck
+# Flyte Deck
 
 Contains deck renderers provided by flytekit.
 
-.. autosummary::
-   :nosignatures:
-   :template: custom.rst
-   :toctree: generated/
+
+# This module provides the following classes:
+
 
    Deck
    TopFrameRenderer
