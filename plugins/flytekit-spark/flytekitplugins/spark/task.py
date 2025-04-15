@@ -238,7 +238,7 @@ class PysparkFunctionTask(AsyncConnectorExecutorMixin, PythonFunctionTask[Spark]
             and ctx.execution_state
             and ctx.execution_state.mode == ExecutionState.Mode.TASK_EXECUTION
         ):
-            base_dir = tempfile.TemporaryDirectory().name
+            base_dir = tempfile.mkdtemp()
             file_name = "flyte_wf"
             file_format = "zip"
             shutil.make_archive(f"{base_dir}/{file_name}", file_format, os.getcwd())
