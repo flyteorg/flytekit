@@ -35,19 +35,19 @@ COPY . /flytekit
 # Use a future version of SETUPTOOLS_SCM_PRETEND_VERSION_FOR_FLYTEIDL such that uv resolution works.
 RUN SETUPTOOLS_SCM_PRETEND_VERSION_FOR_FLYTEKIT=$PSEUDO_VERSION \
     SETUPTOOLS_SCM_PRETEND_VERSION_FOR_FLYTEIDL=3.0.0dev0 \
-    uv pip install --system --no-cache-dir -U \
-    "git+https://github.com/flyteorg/flyte.git@master#subdirectory=flyteidl" \
-    -e /flytekit \
-    -e /flytekit/plugins/flytekit-deck-standard \
-    -e /flytekit/plugins/flytekit-flyteinteractive \
-    markdown \
-    pandas \
-    pillow \
-    plotly \
-    pyarrow \
-    pygments \
-    scikit-learn \
-    ydata-profiling \
+        uv pip install --system --no-cache-dir -U \
+            "git+https://github.com/flyteorg/flyte.git@master#subdirectory=flyteidl" \
+            -e /flytekit \
+            -e /flytekit/plugins/flytekit-deck-standard \
+            -e /flytekit/plugins/flytekit-flyteinteractive \
+            markdown \
+            pandas \
+            pillow \
+            plotly \
+            pyarrow \
+            pygments \
+            scikit-learn \
+            ydata-profiling \
     && apt-get clean autoclean \
     && apt-get autoremove --yes \
     && rm -rf /var/lib/{apt,dpkg,cache,log}/ \
