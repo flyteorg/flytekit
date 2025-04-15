@@ -15,7 +15,8 @@ from flytekit.clis.sdk_in_container.utils import domain_option_dec, project_opti
 from flytekit.configuration import ImageConfig
 from flytekit.configuration.default_images import DefaultImages
 from flytekit.constants import CopyFileDetection
-from flytekit.interaction.click_types import key_value_callback
+from flytekit.core.resources import ResourceSpec
+from flytekit.interaction.click_types import key_value_callback, resource_spec_callback
 from flytekit.loggers import logger
 from flytekit.tools import repo
 
@@ -135,6 +136,15 @@ the root of your project, it finds the first folder that does not have a ``__ini
     help="Environment variables to set in the container, of the format `ENV_NAME=ENV_VALUE`",
 )
 @click.option(
+    "--default-resources",
+    required=False,
+    type=str,
+    callback=resource_spec_callback,
+    help="Override default task resource requests and limits for tasks that have no statically defined resource request and limit. "
+    """Example usage: --default-resources 'cpu=1;mem=2Gi;gpu=1' for requests only or """
+    """--default-resources 'cpu=(0.5,1);mem=(2Gi,4Gi);gpu=1' to specify both requests and limits""",
+)
+@click.option(
     "--skip-errors",
     "--skip-error",
     default=False,
@@ -161,6 +171,7 @@ def register(
     dry_run: bool,
     activate_launchplans: bool,
     env: typing.Optional[typing.Dict[str, str]],
+    default_resources: typing.Optional[ResourceSpec],
     skip_errors: bool,
 ):
     """
@@ -225,6 +236,7 @@ def register(
         package_or_module=package_or_module,
         remote=remote,
         env=env,
+        default_resources=default_resources,
         dry_run=dry_run,
         activate_launchplans=activate_launchplans,
         skip_errors=skip_errors,

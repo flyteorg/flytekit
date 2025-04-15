@@ -148,6 +148,7 @@ from dataclasses_json import DataClassJsonMixin
 from flytekit.configuration import internal as _internal
 from flytekit.configuration.default_images import DefaultImages
 from flytekit.configuration.file import ConfigEntry, ConfigFile, get_config_file, read_file_if_exists, set_if_exists
+from flytekit.core.resources import ResourceSpec
 from flytekit.image_spec import ImageSpec
 from flytekit.image_spec.image_spec import ImageBuildEngine
 from flytekit.loggers import logger
@@ -824,6 +825,8 @@ class SerializationSettings(DataClassJsonMixin):
         version (str): The version (if any) with which to register entities under.
         image_config (ImageConfig): The image config used to define task container images.
         env (Optional[Dict[str, str]]): Environment variables injected into task container definitions.
+        default_resources (Optional[ResourceSpec]): The resources to request for the task - this is useful
+            if users need to override the default resource spec of an entity at registration time.
         flytekit_virtualenv_root (Optional[str]):  During out of container serialize the absolute path of the flytekit
             virtualenv at serialization time won't match the in-container value at execution time. This optional value
             is used to provide the in-container virtualenv path
@@ -842,6 +845,7 @@ class SerializationSettings(DataClassJsonMixin):
     domain: typing.Optional[str] = None
     version: typing.Optional[str] = None
     env: Optional[Dict[str, str]] = None
+    default_resources: Optional[ResourceSpec] = None
     git_repo: Optional[str] = None
     python_interpreter: str = DEFAULT_RUNTIME_PYTHON_INTERPRETER
     flytekit_virtualenv_root: Optional[str] = None
@@ -916,6 +920,7 @@ class SerializationSettings(DataClassJsonMixin):
             version=self.version,
             image_config=self.image_config,
             env=self.env.copy() if self.env else None,
+            default_resources=self.default_resources,
             git_repo=self.git_repo,
             flytekit_virtualenv_root=self.flytekit_virtualenv_root,
             python_interpreter=self.python_interpreter,
@@ -967,6 +972,7 @@ class SerializationSettings(DataClassJsonMixin):
         version: str
         image_config: ImageConfig
         env: Optional[Dict[str, str]] = None
+        default_resources: Optional[ResourceSpec] = None
         git_repo: Optional[str] = None
         flytekit_virtualenv_root: Optional[str] = None
         python_interpreter: Optional[str] = None
@@ -984,6 +990,7 @@ class SerializationSettings(DataClassJsonMixin):
                 version=self.version,
                 image_config=self.image_config,
                 env=self.env,
+                default_resources=self.default_resources,
                 git_repo=self.git_repo,
                 flytekit_virtualenv_root=self.flytekit_virtualenv_root,
                 python_interpreter=self.python_interpreter,

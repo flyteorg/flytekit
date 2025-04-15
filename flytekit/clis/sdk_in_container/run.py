@@ -43,6 +43,7 @@ from flytekit.core import context_manager
 from flytekit.core.artifact import ArtifactQuery
 from flytekit.core.base_task import PythonTask
 from flytekit.core.data_persistence import FileAccessProvider
+from flytekit.core.resources import ResourceSpec
 from flytekit.core.type_engine import TypeEngine
 from flytekit.core.workflow import PythonFunctionWorkflow, WorkflowBase
 from flytekit.exceptions.system import FlyteSystemException
@@ -51,6 +52,7 @@ from flytekit.interaction.click_types import (
     FlyteLiteralConverter,
     key_value_callback,
     labels_callback,
+    resource_spec_callback,
 )
 from flytekit.interaction.string_literals import literal_string_repr
 from flytekit.loggers import logger
@@ -195,6 +197,18 @@ class RunLevelParams(PyFlyteParams):
             show_default=True,
             callback=key_value_callback,
             help="Environment variables to set in the container, of the format `ENV_NAME=ENV_VALUE`",
+        )
+    )
+    default_resources: typing.Optional[ResourceSpec] = make_click_option_field(
+        click.Option(
+            param_decls=["--default-resources"],
+            required=False,
+            show_default=True,
+            type=str,
+            callback=resource_spec_callback,
+            help="During fast registration, will override default task resource requests and limits for tasks that have no statically defined resource request and limit. "
+            """Example usage: --default-resources 'cpu=1;mem=2Gi;gpu=1' for requests only or """
+            """--default-resources 'cpu=(0.5,1);mem=(2Gi,4Gi);gpu=1' to specify both requests and limits""",
         )
     )
     tags: typing.List[str] = make_click_option_field(
@@ -745,6 +759,7 @@ def run_command(ctx: click.Context, entity: typing.Union[PythonFunctionWorkflow,
                     source_path=run_level_params.computed_params.project_root,
                     module_name=run_level_params.computed_params.module,
                     fast_package_options=fast_package_options,
+                    default_resources=run_level_params.default_resources,
                 )
 
                 run_remote(
