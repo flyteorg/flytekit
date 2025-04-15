@@ -67,6 +67,7 @@ class ImageSpec:
             If the option is set by the user, then that option is of course used.
         copy: List of files/directories to copy to /root. e.g. ["src/file1.txt", "src/file2.txt"]
         python_exec: Python executable to use for install packages
+        dev_packages: List of packages to be installed during runtime.
     """
 
     name: str = "flytekit"
@@ -95,6 +96,7 @@ class ImageSpec:
     source_copy_mode: Optional[CopyFileDetection] = None
     copy: Optional[List[str]] = None
     python_exec: Optional[str] = None
+    dev_packages: Optional[List[str]] = None
 
     def __post_init__(self):
         self.name = self.name.lower()
@@ -127,6 +129,7 @@ class ImageSpec:
             "pip_extra_index_url",
             "entrypoint",
             "commands",
+            "dev_packages",
         ]
         for parameter in parameters_str_list:
             attr = getattr(self, parameter)
@@ -160,7 +163,7 @@ class ImageSpec:
 
         :return: a unique identifier of the ImageSpec
         """
-        parameters_to_exclude = ["pip_secret_mounts", "builder"]
+        parameters_to_exclude = ["pip_secret_mounts", "builder", "dev_packages"]
         # Only get the non-None values in the ImageSpec to ensure the hash is consistent across different Flytekit versions.
         image_spec_dict = asdict(
             self, dict_factory=lambda x: {k: v for (k, v) in x if v is not None and k not in parameters_to_exclude}
@@ -357,6 +360,12 @@ class ImageSpec:
         copied_image_spec._is_force_push = True
 
         return copied_image_spec
+
+    def with_dev_packages(self, dev_packages: List[str]) -> "ImageSpec":
+        """
+        Builder that returns a new image spec with dev packages. Dev packages will be installed during runtime.
+        """
+        return self._update_attribute("dev_packages", dev_packages)
 
     @classmethod
     def from_env(cls, *, pinned_packages: Optional[List[str]] = None, **kwargs) -> "ImageSpec":
