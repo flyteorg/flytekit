@@ -67,8 +67,12 @@ class ImageSpec:
             If the option is set by the user, then that option is of course used.
         copy: List of files/directories to copy to /root. e.g. ["src/file1.txt", "src/file2.txt"]
         python_exec: Python executable to use for install packages
-        runtime_packages: List of packages to be installed during runtime.
-
+        runtime_packages: List of packages to be installed during runtime. `runtime_packages` requires `pip` to be installed
+            in your base image.
+            - If you are using an ImageSpec as your base image, please include `pip` into your packages:
+              `ImageSpec(..., packages=["pip"])`.
+            - If you want to install runtime packages into a fixed base_image and not use an image builder, you can
+              use `builder="noop"`: `ImageSpec(base_image="ghcr.io/name/my-custom-image", builder="noop").with_runtime_packages(["numpy"])`
     """
 
     name: str = "flytekit"
