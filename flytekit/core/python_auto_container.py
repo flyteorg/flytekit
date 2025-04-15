@@ -12,7 +12,7 @@ from flyteidl.core import tasks_pb2
 from flytekit.configuration import ImageConfig, SerializationSettings
 from flytekit.constants import CopyFileDetection
 from flytekit.core.base_task import PythonTask, TaskMetadata, TaskResolverMixin
-from flytekit.core.constants import DEV_PACKAGES_ENV_NAME
+from flytekit.core.constants import RUNTIME_PACKAGES_ENV_NAME
 from flytekit.core.context_manager import FlyteContextManager
 from flytekit.core.pod_template import PodTemplate
 from flytekit.core.resources import Resources, ResourceSpec, construct_extended_resources
@@ -234,9 +234,9 @@ class PythonAutoContainerTask(PythonTask[T], ABC, metaclass=FlyteTrackedABC):
                 env.update(elem)
 
         # Add dev dependencies into environment
-        if isinstance(self.container_image, ImageSpec) and self.container_image.dev_packages:
-            dev_packages = " ".join(self.container_image.dev_packages)
-            env[DEV_PACKAGES_ENV_NAME] = dev_packages
+        if isinstance(self.container_image, ImageSpec) and self.container_image.runtime_packages:
+            runtime_packages = " ".join(self.container_image.runtime_packages)
+            env[RUNTIME_PACKAGES_ENV_NAME] = runtime_packages
 
         return _get_container_definition(
             image=self.get_image(settings),

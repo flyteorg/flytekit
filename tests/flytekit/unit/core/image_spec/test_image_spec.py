@@ -305,5 +305,5 @@ def test_image_spec_same_id_and_tag_with_builder():
 
 def test_dev_packages():
     image_spec = ImageSpec(name="localhost:30000/flytekit:0.1.5")
-    new_image_spec = image_spec.with_dev_packages(["my-new-package"])
-    assert new_image_spec.dev_packages == ["my-new-package"]
+    new_image_spec = image_spec.with_runtime_packages(["my-new-package"])
+    assert new_image_spec.runtime_packages == ["my-new-package"]

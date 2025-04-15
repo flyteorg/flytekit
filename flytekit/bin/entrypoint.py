@@ -30,7 +30,7 @@ from flytekit.core import constants as _constants
 from flytekit.core import utils
 from flytekit.core.base_task import IgnoreOutputs, PythonTask
 from flytekit.core.checkpointer import SyncCheckpoint
-from flytekit.core.constants import DEV_PACKAGES_ENV_NAME, FLYTE_FAIL_ON_ERROR
+from flytekit.core.constants import FLYTE_FAIL_ON_ERROR, RUNTIME_PACKAGES_ENV_NAME
 from flytekit.core.context_manager import (
     ExecutionParameters,
     ExecutionState,
@@ -444,11 +444,11 @@ def setup_execution(
 
     compressed_serialization_settings = os.environ.get(SERIALIZED_CONTEXT_ENV_VAR, "")
 
-    if dev_packages := os.getenv(DEV_PACKAGES_ENV_NAME):
+    if runtime_packages := os.getenv(RUNTIME_PACKAGES_ENV_NAME):
         import importlib
         import site
 
-        dev_packages_list = dev_packages.split(" ")
+        dev_packages_list = runtime_packages.split(" ")
         _run_subprocess([sys.executable, "-m", "pip", "install", "--user", *dev_packages_list])
         importlib.reload(site)
 
