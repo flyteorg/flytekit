@@ -186,6 +186,17 @@ class RunLevelParams(PyFlyteParams):
             help="Whether to overwrite the cache if it already exists",
         )
     )
+    interruptible: typing.Optional[bool] = make_click_option_field(
+        click.Option(
+            param_decls=["--interruptible"],
+            type=bool,
+            required=False,
+            default=None,
+            help="Specify if the execution should be forced to run with an interruptible flag of true or false."
+            " Use '--interruptible true' or '--interruptible false' to explicitly enable/disable."
+            " If this option is not provided, the default interruptible behavior of the remote Flyte entity is used.",
+        )
+    )
     envvars: typing.Dict[str, str] = make_click_option_field(
         click.Option(
             param_decls=["--envvars", "--env"],
@@ -557,6 +568,7 @@ def run_remote(
             options=options_from_run_params(run_level_params),
             type_hints=type_hints,
             overwrite_cache=run_level_params.overwrite_cache,
+            interruptible=run_level_params.interruptible,
             envs=run_level_params.envvars,
             tags=run_level_params.tags,
             cluster_pool=run_level_params.cluster_pool,
