@@ -1,14 +1,5 @@
 """
-
-.. autoclass:: flytekit.core.context_manager::ExecutionState.Mode
-   :noindex:
-.. autoclass:: flytekit.core.context_manager::ExecutionState.Mode.TASK_EXECUTION
-   :noindex:
-.. autoclass:: flytekit.core.context_manager::ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION
-   :noindex:
-.. autoclass:: flytekit.core.context_manager::ExecutionState.Mode.LOCAL_TASK_EXECUTION
-   :noindex:
-
+These classes provide funcionality related context managemnet.
 """
 
 from __future__ import annotations
@@ -68,7 +59,7 @@ class ExecutionParameters(object):
     """
     This is a run-time user-centric context object that is accessible to every @task method. It can be accessed using
 
-    
+
     ```python
     flytekit.current_context()
     ```

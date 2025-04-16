@@ -1,7 +1,5 @@
 """
-.. autoclass:: flytekit.core.schedule.CronSchedule
-   :noindex:
-
+These classes provide funcionality related to schedules.
 """
 
 import datetime
