@@ -233,7 +233,7 @@ class PythonAutoContainerTask(PythonTask[T], ABC, metaclass=FlyteTrackedABC):
             if elem:
                 env.update(elem)
 
-        # Add dev dependencies into environment
+        # Add runtime dependencies into environment
         if isinstance(self.container_image, ImageSpec) and self.container_image.runtime_packages:
             runtime_packages = " ".join(self.container_image.runtime_packages)
             env[RUNTIME_PACKAGES_ENV_NAME] = runtime_packages
