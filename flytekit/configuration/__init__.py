@@ -51,7 +51,7 @@ storage:
       region: us-east-1
       disable_ssl: true
       addressing_style: "path"
-
+```
 
 ### INI Format Configuration File
 A configuration file for `flytekit`. By default, `flytekit` will look for a file in two places:
@@ -60,6 +60,7 @@ A configuration file for `flytekit`. By default, `flytekit` will look for a file
 2. A file in `~/.flyte/config` in the home directory as detected by Python.
 
 Example `flytekit.config` file:
+
 ```ini
 [sdk]
 workflow_packages=my_cool_workflows, other_workflows
