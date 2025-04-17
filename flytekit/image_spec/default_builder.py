@@ -139,6 +139,11 @@ SHELL ["/bin/bash", "-c"]
 USER flytekit
 RUN mkdir -p $$HOME && \
     echo "export PATH=$$PATH" >> $$HOME/.profile
+
+# NOTE: Important to set this env var all the way at the bottom
+# Otherwise the slightest change to an imagespec's ID would unnecessarily invalidate
+# too many layers in the build cache.
+ENV $_F_IMG_ID_ENV
 """)
 
 
@@ -329,7 +334,7 @@ def create_docker_context(image_spec: ImageSpec, tmp_dir: Path):
         raise ValueError(msg)
 
     uv_python_install_command = prepare_python_install(image_spec, tmp_dir)
-    env_dict = {"PYTHONPATH": "/root", _F_IMG_ID: image_spec.id}
+    env_dict = {"PYTHONPATH": "/root"}
 
     if image_spec.env:
         env_dict.update(image_spec.env)
@@ -405,6 +410,8 @@ def create_docker_context(image_spec: ImageSpec, tmp_dir: Path):
     else:
         extra_copy_cmds = ""
 
+    _f_img_id_env = f"{_F_IMG_ID}={image_spec.id}"
+
     docker_content = DOCKER_FILE_TEMPLATE.substitute(
         UV_PYTHON_INSTALL_COMMAND=uv_python_install_command,
         APT_INSTALL_COMMAND=apt_install_command,
@@ -413,6 +420,7 @@ def create_docker_context(image_spec: ImageSpec, tmp_dir: Path):
         PYTHON_EXEC=python_install_template.python_exec,
         BASE_IMAGE=base_image,
         ENV=env,
+        _F_IMG_ID_ENV=_f_img_id_env,
         COPY_COMMAND_RUNTIME=copy_command_runtime,
         ENTRYPOINT=entrypoint,
         RUN_COMMANDS=run_commands,
