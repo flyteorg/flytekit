@@ -3,11 +3,17 @@ from dataclasses import dataclass
 from typing import Dict, Optional
 
 from flyteidl.core.execution_pb2 import TaskExecution, TaskLog
+from google.api_core.client_info import ClientInfo
 from google.cloud import bigquery
 
 from flytekit import FlyteContextManager, StructuredDataset, logger
 from flytekit.core.type_engine import TypeEngine
-from flytekit.extend.backend.base_connector import AsyncConnectorBase, ConnectorRegistry, Resource, ResourceMeta
+from flytekit.extend.backend.base_connector import (
+    AsyncConnectorBase,
+    ConnectorRegistry,
+    Resource,
+    ResourceMeta,
+)
 from flytekit.extend.backend.utils import convert_to_flyte_phase
 from flytekit.models.literals import LiteralMap
 from flytekit.models.task import TaskTemplate
@@ -59,9 +65,15 @@ class BigQueryConnector(AsyncConnectorBase):
             )
 
         custom = task_template.custom
+
+        domain = custom["Domain"]
+        sdk_version = task_template.metadata.runtime.version
+        cinfo = ClientInfo(user_agent=f"Flytekit/{sdk_version} (GPN:Union;{domain})")
+
         project = custom["ProjectID"]
         location = custom["Location"]
-        client = bigquery.Client(project=project, location=location)
+
+        client = bigquery.Client(project=project, location=location, client_info=cinfo)
         query_job = client.query(task_template.sql.statement, job_config=job_config)
 
         return BigQueryMetadata(job_id=str(query_job.job_id), location=location, project=project)
