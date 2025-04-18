@@ -14,11 +14,11 @@ class FlyteAnnotation:
 
     For a task definition:
 
-    .. code-block:: python
-
-        @task
-        def x(a: typing.Annotated[int, FlyteAnnotation({"foo": {"bar": 1}})]):
-            return
+    ```python
+    @task
+    def x(a: typing.Annotated[int, FlyteAnnotation({"foo": {"bar": 1}})]):
+        return
+    ```
 
     """
 

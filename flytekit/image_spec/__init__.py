@@ -1,18 +1,5 @@
 """
-==========
-ImageSpec
-==========
-
-.. currentmodule:: flytekit.image_spec
-
-This module contains the ImageSpec class parameters and methods.
-
-.. autosummary::
-   :nosignatures:
-   :template: custom.rst
-   :toctree: generated/
-
-   ImageSpec
+This module provides functionality related to IMageSPec
 """
 
 from .default_builder import DefaultImageBuilder

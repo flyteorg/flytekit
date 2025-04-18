@@ -1,6 +1,6 @@
 """
 This Plugin adds the capability of running distributed tensorflow training to Flyte using backend plugins, natively on
-Kubernetes. It leverages `TF Job <https://github.com/kubeflow/tf-operator>`_ Plugin from kubeflow.
+Kubernetes. It leverages [`TF Job`](https://github.com/kubeflow/tf-operator) Plugin from kubeflow.
 """
 
 from dataclasses import dataclass, field
@@ -98,7 +98,7 @@ class Evaluator:
 @dataclass
 class TfJob:
     """
-    Configuration for an executable `TensorFlow Job <https://github.com/kubeflow/tf-operator>`_. Use this
+    Configuration for an executable [`TensorFlow Job`](https://github.com/kubeflow/tf-operator). Use this
     to run distributed TensorFlow training on Kubernetes.
 
     Args:
