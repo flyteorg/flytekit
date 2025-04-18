@@ -7,7 +7,7 @@ import pytest
 from kubernetes.client import V1PodSpec, V1Container, V1EnvVar
 
 import flytekit.configuration
-from flytekit import Resources, map_task, PodTemplate
+from flytekit import Resources, map, PodTemplate
 from flytekit.configuration import Image, ImageConfig
 from flytekit.core.cache import Cache
 from flytekit.core.dynamic_workflow_task import dynamic
@@ -217,7 +217,7 @@ def test_resource_request_override():
 
     @workflow
     def my_wf(a: typing.List[str]) -> typing.List[str]:
-        mappy = map_task(t1)
+        mappy = map(t1)
         map_node = mappy(a=a).with_overrides(requests=Resources(cpu="1", mem="100", ephemeral_storage="500Mi"))
         return map_node
 
@@ -246,7 +246,7 @@ def test_resource_limits_override():
 
     @workflow
     def my_wf(a: typing.List[str]) -> typing.List[str]:
-        mappy = map_task(t1)
+        mappy = map(t1)
         map_node = mappy(a=a).with_overrides(limits=Resources(cpu="2", mem="200", ephemeral_storage="1Gi"))
         return map_node
 
@@ -274,7 +274,7 @@ def test_resources_override():
 
     @workflow
     def my_wf(a: typing.List[str]) -> typing.List[str]:
-        mappy = map_task(t1)
+        mappy = map(t1)
         map_node = mappy(a=a).with_overrides(
             requests=Resources(cpu="1", mem="100", ephemeral_storage="500Mi"),
             limits=Resources(cpu="2", mem="200", ephemeral_storage="1Gi"),

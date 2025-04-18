@@ -9,7 +9,7 @@ from typing import List
 import pytest
 from flyteidl.core import workflow_pb2 as _core_workflow
 
-from flytekit import dynamic, map_task, task, workflow, eager, PythonFunctionTask
+from flytekit import dynamic, map, task, workflow, eager, PythonFunctionTask
 from flytekit.configuration import FastSerializationSettings, Image, ImageConfig, SerializationSettings
 from flytekit.core import context_manager
 from flytekit.core.array_node_map_task import ArrayNodeMapTask, ArrayNodeMapTaskResolver
@@ -66,7 +66,7 @@ def test_map(serialization_settings):
 
     @workflow
     def wf() -> List[str]:
-        return map_task(say_hello)(name=["abc", "def"])
+        return map(say_hello)(name=["abc", "def"])
 
     res = wf()
     assert res is not None
@@ -83,8 +83,8 @@ def test_execution(serialization_settings):
 
     @workflow
     def wf() -> List[str]:
-        xs = map_task(say_hello)(name=create_input_list())
-        return map_task(say_hello)(name=xs)
+        xs = map(say_hello)(name=create_input_list())
+        return map(say_hello)(name=xs)
 
     assert wf() == ["hello hello earth!!", "hello hello mars!!"]
 
@@ -100,7 +100,7 @@ def test_remote_execution(serialization_settings):
                 ctx.execution_state.with_params(mode=context_manager.ExecutionState.Mode.TASK_EXECUTION)
             )
     ) as ctx:
-        t = map_task(say_hello)
+        t = map(say_hello)
         lm = TypeEngine.dict_to_literal_map(ctx, {"name": ["earth", "mars"]}, type_hints={"name": typing.List[str]})
         res = t.dispatch_execute(ctx, lm)
         assert len(res.literals) == 1
@@ -112,7 +112,7 @@ def test_map_task_with_pickle():
     def say_hello(name: typing.Any) -> str:
         return f"hello {name}!"
 
-    map_task(say_hello)(name=["abc", "def"])
+    map(say_hello)(name=["abc", "def"])
 
 
 def test_serialization(serialization_settings):
@@ -120,7 +120,7 @@ def test_serialization(serialization_settings):
     def t1(a: int) -> int:
         return a + 1
 
-    arraynode_maptask = map_task(t1, metadata=TaskMetadata(retries=2))
+    arraynode_maptask = map(t1, metadata=TaskMetadata(retries=2))
     task_spec = get_serializable(OrderedDict(), serialization_settings, arraynode_maptask)
 
     assert task_spec.template.metadata.retries.retries == 2
@@ -159,7 +159,7 @@ def test_fast_serialization(serialization_settings):
     def t1(a: int) -> int:
         return a + 1
 
-    arraynode_maptask = map_task(t1, metadata=TaskMetadata(retries=2))
+    arraynode_maptask = map(t1, metadata=TaskMetadata(retries=2))
     task_spec = get_serializable(OrderedDict(), serialization_settings, arraynode_maptask)
 
     assert task_spec.template.container.args == [
@@ -229,8 +229,8 @@ def test_metadata_in_task_name(kwargs1, kwargs2, same):
     def say_hello(name: str) -> str:
         return f"hello {name}!"
 
-    t1 = map_task(say_hello, **kwargs1)
-    t2 = map_task(say_hello, **kwargs2)
+    t1 = map(say_hello, **kwargs1)
+    t2 = map(say_hello, **kwargs2)
 
     assert (t1.name == t2.name) is same
 
@@ -240,7 +240,7 @@ def test_inputs_outputs_length():
     def many_inputs(a: int, b: str, c: float) -> str:
         return f"{a} - {b} - {c}"
 
-    m = map_task(many_inputs)
+    m = map(many_inputs)
     assert m.python_interface.inputs == {"a": List[int], "b": List[str], "c": List[float]}
     assert (
         m.name
@@ -250,7 +250,7 @@ def test_inputs_outputs_length():
     assert str(r_m.python_interface) == str(m.python_interface)
 
     p1 = functools.partial(many_inputs, c=1.0)
-    m = map_task(p1)
+    m = map(p1)
     assert m.python_interface.inputs == {"a": List[int], "b": List[str], "c": float}
     assert (
         m.name
@@ -260,7 +260,7 @@ def test_inputs_outputs_length():
     assert str(r_m.python_interface) == str(m.python_interface)
 
     p2 = functools.partial(p1, b="hello")
-    m = map_task(p2)
+    m = map(p2)
     assert m.python_interface.inputs == {"a": List[int], "b": str, "c": float}
     assert (
         m.name
@@ -270,7 +270,7 @@ def test_inputs_outputs_length():
     assert str(r_m.python_interface) == str(m.python_interface)
 
     p3 = functools.partial(p2, a=1)
-    m = map_task(p3)
+    m = map(p3)
     assert m.python_interface.inputs == {"a": int, "b": str, "c": float}
     assert (
         m.name
@@ -287,7 +287,7 @@ def test_inputs_outputs_length():
         return a, f"{a}"
 
     with pytest.raises(ValueError):
-        _ = map_task(many_outputs)
+        _ = map(many_outputs)
 
 
 def test_partials_local_execute():
@@ -311,9 +311,10 @@ def test_partials_local_execute():
     param_b = [0.1, 0.2, 0.3]
     fixed_param_c = "c"
 
-    m1 = map_task(functools.partial(task1, c=fixed_param_c))(a=param_a, b=param_b)
-    m2 = map_task(functools.partial(task2, c=fixed_param_c))(a=param_a, b=param_b)
-    m3 = map_task(functools.partial(task3, c=fixed_param_c))(a=param_a, b=param_b)
+    m1 = map(functools.partial(task1, c=param_c))(a=param_a, b=param_b)
+    m2 = map(functools.partial(task2, c=param_c))(a=param_a, b=param_b)
+    m3 = map(functools.partial(task3, c=param_c))(a=param_a, b=param_b)
+
 
     m4 = ArrayNodeMapTask(task1, bound_inputs_values={"c": fixed_param_c})(a=param_a, b=param_b)
     m5 = ArrayNodeMapTask(task2, bound_inputs_values={"c": fixed_param_c})(a=param_a, b=param_b)
@@ -343,7 +344,7 @@ def test_bounded_inputs_vars_order(serialization_settings):
     def task1(a: int, b: float, c: str) -> str:
         return f"{a} - {b} - {c}"
 
-    mt = map_task(functools.partial(task1, c=1.0, b="hello", a=1))
+    mt = map(functools.partial(task1, c=1.0, b="hello", a=1))
     mtr = ArrayNodeMapTaskResolver()
     args = mtr.loader_args(serialization_settings, mt)
 
@@ -505,7 +506,7 @@ def test_raw_execute_with_min_success_ratio(min_success_ratio, should_raise_erro
 
     @workflow
     def my_wf1() -> typing.List[typing.Optional[int]]:
-        return map_task(some_task1, min_success_ratio=min_success_ratio)(inputs=[1, 2, 3, 4])
+        return map(some_task1, min_success_ratio=min_success_ratio)(inputs=[1, 2, 3, 4])
 
     if should_raise_error:
         with pytest.raises(ValueError):
@@ -521,7 +522,7 @@ def test_map_task_override(serialization_settings):
 
     @workflow
     def wf(x: typing.List[int]):
-        map_task(my_mappable_task)(a=x).with_overrides(container_image="random:image")
+        map(my_mappable_task)(a=x).with_overrides(container_image="random:image")
 
     assert wf.nodes[0]._container_image == "random:image"
 
@@ -531,7 +532,7 @@ def test_serialization_metadata(serialization_settings):
     def t1(a: int) -> int:
         return a + 1
 
-    arraynode_maptask = map_task(t1, metadata=TaskMetadata(retries=2))
+    arraynode_maptask = map(t1, metadata=TaskMetadata(retries=2))
     # since we manually override task metadata, the underlying task metadata will not be copied.
     assert not arraynode_maptask.metadata.interruptible
 
@@ -551,7 +552,7 @@ def test_serialization_metadata2(serialization_settings):
     def t1(a: int) -> typing.Optional[int]:
         return a + 1
 
-    arraynode_maptask = map_task(
+    arraynode_maptask = map(
         t1,
         min_success_ratio=0.9,
         concurrency=10,
@@ -563,7 +564,7 @@ def test_serialization_metadata2(serialization_settings):
     def wf(x: typing.List[int]):
         return arraynode_maptask(a=x)
 
-    full_state_array_node_map_task = map_task(PythonFunctionTaskExtension(task_config={}, task_function=t1))
+    full_state_array_node_map_task = map(PythonFunctionTaskExtension(task_config={}, task_function=t1))
 
     @workflow
     def wf1(x: typing.List[int]):
@@ -595,7 +596,7 @@ def test_serialization_extended_resources(serialization_settings):
     def t1(a: int) -> int:
         return a + 1
 
-    arraynode_maptask = map_task(t1)
+    arraynode_maptask = map(t1)
 
     @workflow
     def wf(x: typing.List[int]):
@@ -615,7 +616,7 @@ def test_serialization_extended_resources_shared_memory(serialization_settings):
     def t1(a: int) -> int:
         return a + 1
 
-    arraynode_maptask = map_task(t1)
+    arraynode_maptask = map(t1)
 
     @workflow
     def wf(x: typing.List[int]):
@@ -633,7 +634,7 @@ def test_supported_node_type():
     def test_task():
         ...
 
-    map_task(test_task)
+    map(test_task)
 
 
 def test_unsupported_node_types():
@@ -642,21 +643,21 @@ def test_unsupported_node_types():
         ...
 
     with pytest.raises(ValueError):
-        map_task(test_dynamic)
+        map(test_dynamic)
 
     @eager
     def test_eager():
         ...
 
     with pytest.raises(ValueError):
-        map_task(test_eager)
+        map(test_eager)
 
     @workflow
     def test_wf():
         ...
 
     with pytest.raises(ValueError):
-        map_task(test_wf)
+        map(test_wf)
 
 
 def test_mis_match():
@@ -674,7 +675,7 @@ def test_mis_match():
             for path_info, other_info in d.crawl():
                 print(path_info)
 
-    mt = map_task(generate_directory, min_success_ratio=0.1)
+    mt = map(generate_directory, min_success_ratio=0.1)
 
     @workflow
     def wf():
@@ -716,7 +717,7 @@ def test_load_offloaded_literal(tmp_path, monkeypatch):
         for index, map_input_str in enumerate(list_strs):
             monkeypatch.setenv("BATCH_JOB_ARRAY_INDEX_VAR_NAME", "name")
             monkeypatch.setenv("name", str(index))
-            t = map_task(say_hello)
+            t = map(say_hello)
             res = t.dispatch_execute(ctx, lm)
             assert len(res.literals) == 1
             assert res.literals[f"o{0}"].scalar.primitive.string_value == f"hello {map_input_str}!"

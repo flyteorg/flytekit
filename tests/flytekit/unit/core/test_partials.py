@@ -8,7 +8,7 @@ import pytest
 import flytekit.configuration
 from flytekit.configuration import Image, ImageConfig
 from flytekit.core.array_node_map_task import ArrayNodeMapTaskResolver
-from flytekit.core.array_node_map_task import map_task as array_node_map_task
+from flytekit.core.array_node_map_task import map as array_node_map_task
 from flytekit.core.dynamic_workflow_task import dynamic
 from flytekit.core.legacy_map_task import MapTaskResolver
 from flytekit.core.legacy_map_task import map_task as legacy_map_task

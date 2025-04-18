@@ -186,18 +186,18 @@ def test_lp_each_parameter():
     assert raw_output_data_config_lp1 is raw_output_data_config_lp2
 
     # Max parallelism
-    max_parallelism = 100
-    max_parallelism_lp1 = launch_plan.LaunchPlan.get_or_create(
+    concurrency = 100
+    concurrency_lp1 = launch_plan.LaunchPlan.get_or_create(
         workflow=wf,
-        name="get_or_create_max_parallelism",
-        max_parallelism=max_parallelism,
+        name="get_or_create_concurrency",
+        concurrency=concurrency,
     )
-    max_parallelism_lp2 = launch_plan.LaunchPlan.get_or_create(
+    concurrency_lp2 = launch_plan.LaunchPlan.get_or_create(
         workflow=wf,
-        name="get_or_create_max_parallelism",
-        max_parallelism=max_parallelism,
+        name="get_or_create_concurrency",
+        concurrency=concurrency,
     )
-    assert max_parallelism_lp1 is max_parallelism_lp2
+    assert concurrency_lp1 is concurrency_lp2
 
     # Labels parameters
     labels_model1 = Labels({"label": "foo"})
@@ -229,18 +229,18 @@ def test_lp_each_parameter():
     assert raw_output_data_config_lp1 is raw_output_data_config_lp2
 
     # Max parallelism
-    max_parallelism = 100
-    max_parallelism_lp1 = launch_plan.LaunchPlan.get_or_create(
+    concurrency = 100
+    concurrency_lp1 = launch_plan.LaunchPlan.get_or_create(
         workflow=wf,
-        name="get_or_create_max_parallelism",
-        max_parallelism=max_parallelism,
+        name="get_or_create_concurrency",
+        concurrency=concurrency,
     )
-    max_parallelism_lp2 = launch_plan.LaunchPlan.get_or_create(
+    concurrency_lp2 = launch_plan.LaunchPlan.get_or_create(
         workflow=wf,
-        name="get_or_create_max_parallelism",
-        max_parallelism=max_parallelism,
+        name="get_or_create_concurrency",
+        concurrency=concurrency,
     )
-    assert max_parallelism_lp1 is max_parallelism_lp2
+    assert concurrency_lp1 is concurrency_lp2
 
     # Labels parameters
     labels_model1 = Labels({"label": "foo"})
@@ -272,18 +272,18 @@ def test_lp_each_parameter():
     assert raw_output_data_config_lp1 is raw_output_data_config_lp2
 
     # Max parallelism
-    max_parallelism = 100
-    max_parallelism_lp1 = launch_plan.LaunchPlan.get_or_create(
+    concurrency = 100
+    concurrency_lp1 = launch_plan.LaunchPlan.get_or_create(
         workflow=wf,
-        name="get_or_create_max_parallelism",
-        max_parallelism=max_parallelism,
+        name="get_or_create_concurrency",
+        concurrency=concurrency,
     )
-    max_parallelism_lp2 = launch_plan.LaunchPlan.get_or_create(
+    concurrency_lp2 = launch_plan.LaunchPlan.get_or_create(
         workflow=wf,
-        name="get_or_create_max_parallelism",
-        max_parallelism=max_parallelism,
+        name="get_or_create_concurrency",
+        concurrency=concurrency,
     )
-    assert max_parallelism_lp1 is max_parallelism_lp2
+    assert concurrency_lp1 is concurrency_lp2
 
     # Overwrite cache
     overwrite_cache = True

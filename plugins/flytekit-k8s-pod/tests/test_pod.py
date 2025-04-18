@@ -8,7 +8,7 @@ from flytekitplugins.pod.task import Pod, PodFunctionTask
 from kubernetes.client import ApiClient
 from kubernetes.client.models import V1Container, V1EnvVar, V1PodSpec, V1ResourceRequirements, V1VolumeMount
 
-from flytekit import Resources, TaskMetadata, dynamic, map_task, task
+from flytekit import Resources, TaskMetadata, dynamic, map, task
 from flytekit.configuration import FastSerializationSettings, Image, ImageConfig, SerializationSettings
 from flytekit.core import context_manager
 from flytekit.core.type_engine import TypeEngine
@@ -328,7 +328,7 @@ def test_map_pod_task_serialization():
     def simple_pod_task(i: int):
         pass
 
-    mapped_task = map_task(simple_pod_task, metadata=TaskMetadata(retries=1))
+    mapped_task = map(simple_pod_task, metadata=TaskMetadata(retries=1))
     default_img = Image(name="default", fqn="test", tag="tag")
     serialization_settings = SerializationSettings(
         project="project",

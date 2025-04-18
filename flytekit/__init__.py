@@ -23,7 +23,7 @@ These are the essentials needed to get started writing tasks and workflows.
    current_context
    ExecutionParameters
    FlyteContext
-   map_task
+   map
    ~core.workflow.ImperativeWorkflow
    ~core.node_creation.create_node
    ~core.promise.NodeOutput
@@ -208,6 +208,7 @@ Documentation
 
 import os
 import sys
+import warnings
 from typing import Generator
 
 from rich import traceback
@@ -219,10 +220,9 @@ if sys.version_info < (3, 10):
 else:
     from importlib.metadata import entry_points
 
-
 from flytekit._version import __version__
 from flytekit.configuration import Config
-from flytekit.core.array_node_map_task import map_task
+from flytekit.core.array_node_map_task import map
 from flytekit.core.artifact import Artifact
 from flytekit.core.base_sql_task import SQLTask
 from flytekit.core.base_task import SecurityContext, TaskMetadata, kwtypes
