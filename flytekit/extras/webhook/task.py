@@ -84,7 +84,6 @@ class WebhookTask(SyncConnectorExecutorMixin, PythonTask):
         :param dynamic_inputs: The dynamic inputs to the task. The keys are the names of the inputs and the values
             are the types of the inputs. These inputs are available under the prefix `inputs.` to be used in the URL,
             headers and body and other formatted fields.
-        :param secret_requests: The secrets that are requested by the task. (TODO not yet supported)
         :param show_data: If True, the body of the request will be logged in the UI as the output of the task.
         :param show_url: If True, the URL of the request will be logged in the UI as the output of the task.
         :param description: Description of the task
