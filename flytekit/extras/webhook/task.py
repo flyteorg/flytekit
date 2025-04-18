@@ -69,25 +69,25 @@ class WebhookTask(SyncConnectorExecutorMixin, PythonTask):
             {secrets.secret1} and {secrets.secret2} in the URL and the body. Define the secret_requests argument in the
             constructor to use these secrets. The secrets should not be actual values, but the types of the secrets.
 
-        :param name: Name of this task, should be unique in the project
-        :param url: The endpoint or URL to invoke for this webhook. This can be a static string or a python format string,
+        :param name: str Name of this task, should be unique in the project
+        :param url: str The endpoint or URL to invoke for this webhook. This can be a static string or a python format string,
             where the format arguments are the dynamic_inputs to the task, secrets etc. Refer to the description for more
             details of available formatting parameters.
-        :param method: The HTTP method to use for the request. Default is POST.
-        :param headers: The headers to send with the request. This can be a static dictionary or a python format string,
+        :param method: str The HTTP method to use for the request. Default is POST.
+        :param headers: Optional[Dict[str, str]] The headers to send with the request. This can be a static dictionary or a python format string,
             where the format arguments are the dynamic_inputs to the task, secrets etc. Refer to the description for more
             details of available formatting parameters.
-        :param data: The body to send with the request. This can be a static dictionary or a python format string,
+        :param data: Optional[Dict[str, Any]] The body to send with the request. This can be a static dictionary or a python format string,
             where the format arguments are the dynamic_inputs to the task, secrets etc. Refer to the description for more
             details of available formatting parameters. the data should be a json serializable dictionary and will be
             sent as the json body of the POST request and as the query parameters of the GET request.
-        :param dynamic_inputs: The dynamic inputs to the task. The keys are the names of the inputs and the values
+        :param dynamic_inputs: Optional[Dict[str, Type]] The dynamic inputs to the task. The keys are the names of the inputs and the values
             are the types of the inputs. These inputs are available under the prefix `inputs.` to be used in the URL,
             headers and body and other formatted fields.
-        :param show_data: If True, the body of the request will be logged in the UI as the output of the task.
-        :param show_url: If True, the URL of the request will be logged in the UI as the output of the task.
-        :param description: Description of the task
-        :param timeout: The timeout for the request (connection and read). Default is 10 seconds. If int value is provided,
+        :param show_data: bool If True, the body of the request will be logged in the UI as the output of the task.
+        :param show_url: bool If True, the URL of the request will be logged in the UI as the output of the task.
+        :param description: Optional[str] Description of the task
+        :param timeout:  Union[int, timedelta] The timeout for the request (connection and read). Default is 10 seconds. If int value is provided,
             it is considered as seconds.
     """
 
