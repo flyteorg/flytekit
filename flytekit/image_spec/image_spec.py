@@ -155,6 +155,12 @@ class ImageSpec:
                 error_msg = "pip_secret_mounts must be a list of tuples of two strings or None"
                 raise ValueError(error_msg)
 
+        if self.builder_options is not None:
+            builder_options_is_dict = isinstance(self.builder_options, dict)
+            if not builder_options_is_dict:
+                error_msg = "builder_options must be a dictionary or None"
+                raise ValueError(error_msg)
+
     @cached_property
     def id(self) -> str:
         """
