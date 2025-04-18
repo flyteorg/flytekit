@@ -311,6 +311,14 @@ def test_dev_packages():
     new_image_spec = image_spec.with_runtime_packages(["my-new-package"])
     assert new_image_spec.runtime_packages == ["my-new-package"]
 
+def test_invalid_builder_options():
+    msg = "builder_options must be a dictionary or None"
+    with pytest.raises(ValueError, match=msg):
+        ImageSpec(name="localhost:30000/flytekit:0.1.5", builder_options="invalid_builder_option")
+    with pytest.raises(ValueError, match=msg):
+        ImageSpec(name="localhost:30000/flytekit:0.1.5",
+                  builder_options=["invalid_builder_option"])
+
 def test_with_builder_options():
     image_spec = ImageSpec(
       name="localhost:30000/flytekit:0.1.5",
