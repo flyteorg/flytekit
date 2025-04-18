@@ -11,7 +11,7 @@ from abc import abstractmethod
 from dataclasses import asdict, dataclass
 from functools import cached_property, lru_cache
 from importlib import metadata
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import click
 import requests
@@ -30,56 +30,57 @@ class ImageSpec:
     """
     This class is used to specify the docker image that will be used to run the task.
 
-    Args:
-        name: name of the image.
-        python_version: python version of the image. Use default python in the base image if None.
-        builder: Type of plugin to build the image. Use envd by default.
-        source_root: source root of the image.
-        env: environment variables of the image.
-        registry: registry of the image.
-        packages: list of python packages to install.
-        conda_packages: list of conda packages to install.
-        conda_channels: list of conda channels.
-        requirements: path to the requirements.txt file.
-        apt_packages: list of apt packages to install.
-        cuda: version of cuda to install.
-        cudnn: version of cudnn to install.
-        base_image: base image of the image.
-        platform: Specify the target platforms for the build output (for example, windows/amd64 or linux/amd64,darwin/arm64
-        pip_index: Specify the custom pip index url
-        pip_extra_index_url: Specify one or more pip index urls as a list
-        pip_secret_mounts: Specify a list of tuples to mount secret for pip install. Each tuple should contain the path to
+    Attributes:
+        name (str): Name of the image.
+        python_version (str): Python version of the image. Use default python in the base image if None.
+        builder (Optional[str]): Type of plugin to build the image. Use envd by default.
+        source_root (Optional[str]): Source root of the image.
+        env (Optional[Dict[str, str]]): Environment variables of the image.
+        registry (Optional[str]): Registry of the image.
+        packages (Optional[List[str]]): List of python packages to install.
+        conda_packages (Optional[List[str]]): List of conda packages to install.
+        conda_channels (Optional[List[str]]): List of conda channels.
+        requirements (Optional[str]): Path to the requirements.txt file.
+        apt_packages (Optional[List[str]]): List of apt packages to install.
+        cuda (Optional[str]): Version of cuda to install.
+        cudnn (Optional[str]): Version of cudnn to install.
+        base_image (Optional[Union[str, 'ImageSpec']]): Base image of the image.
+        platform (str): Specify the target platforms for the build output (for example, windows/amd64 or linux/amd64,darwin/arm64).
+        pip_index (Optional[str]): Specify the custom pip index url.
+        pip_extra_index_url (Optional[List[str]]): Specify one or more pip index urls as a list.
+        pip_secret_mounts (Optional[List[Tuple[str, str]]]): Specify a list of tuples to mount secret for pip install. Each tuple should contain the path to
             the secret file and the mount path. For example, [(".gitconfig", "/etc/gitconfig")]. This is experimental and
             the interface may change in the future. Configuring this should not change the built image.
-        pip_extra_args: Specify one or more extra pip install arguments as a space-delimited string
-        registry_config: Specify the path to a JSON registry config file
-        entrypoint: List of strings to overwrite the entrypoint of the base image with, set to [] to remove the entrypoint.
-        commands: Command to run during the building process
-        tag_format: Custom string format for image tag. The ImageSpec hash passed in as `spec_hash`. For example,
-            to add a "dev" suffix to the image tag, set `tag_format="{spec_hash}-dev"`
-        source_copy_mode: This option allows the user to specify which source files to copy from the local host, into the image.
+        pip_extra_args (Optional[str]): Specify one or more extra pip install arguments as a space-delimited string.
+        registry_config (Optional[str]): Specify the path to a JSON registry config file.
+        entrypoint (Optional[List[str]]): List of strings to overwrite the entrypoint of the base image with, set to [] to remove the entrypoint.
+        commands (Optional[List[str]]): Command to run during the building process.
+        tag_format (Optional[str]): Custom string format for image tag. The ImageSpec hash passed in as `spec_hash`. For example,
+            to add a "dev" suffix to the image tag, set `tag_format="{spec_hash}-dev"`.
+        source_copy_mode (Optional[CopyFileDetection]): This option allows the user to specify which source files to copy from the local host, into the image.
             Not setting this option means to use the default flytekit behavior. The default behavior is:
                 - if fast register is used, source files are not copied into the image (because they're already copied
                   into the fast register tar layer).
                 - if fast register is not used, then the LOADED_MODULES (aka 'auto') option is used to copy loaded
                   Python files into the image.
-
             If the option is set by the user, then that option is of course used.
-        copy: List of files/directories to copy to /root. e.g. ["src/file1.txt", "src/file2.txt"]
-        python_exec: Python executable to use for install packages
-        runtime_packages: List of packages to be installed during runtime. `runtime_packages` requires `pip` to be installed
+        copy (Optional[List[str]]): List of files/directories to copy to /root. e.g. ["src/file1.txt", "src/file2.txt"].
+        python_exec (Optional[str]): Python executable to use for install packages.
+        runtime_packages (Optional[List[str]]): List of packages to be installed during runtime. `runtime_packages` requires `pip` to be installed
             in your base image.
                 - If you are using an ImageSpec as your base image, please include `pip` into your packages:
                   `ImageSpec(..., packages=["pip"])`.
                 - If you want to install runtime packages into a fixed base_image and not use an image builder, you can
-                  use `builder="noop"`: `ImageSpec(base_image="ghcr.io/name/my-custom-image", builder="noop").with_runtime_packages(["numpy"])`
+                  use `builder="noop"`: `ImageSpec(base_image="ghcr.io/name/my-custom-image", builder="noop").with_runtime_packages(["numpy"])`.
+        builder_options (Optional[Dict[str, Any]]): Additional options for the builder. This is a dictionary that will be passed to the builder.
+            The options are builder-specific and may not be supported by all builders.
     """
 
     name: str = "flytekit"
     python_version: str = None  # Use default python in the base image if None.
     builder: Optional[str] = None
     source_root: Optional[str] = None  # a.txt:auto
-    env: Optional[typing.Dict[str, str]] = None
+    env: Optional[Dict[str, str]] = None
     registry: Optional[str] = None
     packages: Optional[List[str]] = None
     conda_packages: Optional[List[str]] = None
@@ -102,6 +103,7 @@ class ImageSpec:
     copy: Optional[List[str]] = None
     python_exec: Optional[str] = None
     runtime_packages: Optional[List[str]] = None
+    builder_options: Optional[Dict[str, Any]] = None
 
     def __post_init__(self):
         self.name = self.name.lower()
@@ -318,16 +320,30 @@ class ImageSpec:
             click.secho(f"Failed to check if the image exists with error:\n {e}", fg="red")
             return None
 
-    def _update_attribute(self, attr_name: str, values: Union[str, List[str]]) -> "ImageSpec":
+    def _update_attribute(self, attr_name: str, values: Union[str, List[str], Dict[str, Any]]) -> "ImageSpec":
         """
-        Generic method to update a specified list attribute, either appending or extending.
+        Generic method to update a specified attribute, handling strings, lists, and dictionaries.
         """
-        current_value = copy.deepcopy(getattr(self, attr_name)) or []
+        current_value = copy.deepcopy(getattr(self, attr_name))
+
+        if current_value is None:
+            if isinstance(values, dict):
+                current_value = {}
+            else:
+                current_value = []
 
         if isinstance(values, str):
+            if not isinstance(current_value, list):
+                raise TypeError(f"Cannot append string to non-list attribute {attr_name}")
             current_value.append(values)
         elif isinstance(values, list):
+            if not isinstance(current_value, list):
+                raise TypeError(f"Cannot extend non-list attribute {attr_name}")
             current_value.extend(values)
+        elif isinstance(values, dict):
+            if not isinstance(current_value, dict):
+                raise TypeError(f"Cannot update non-dict attribute {attr_name}")
+            current_value.update(values)
 
         return dataclasses.replace(self, **{attr_name: current_value})
 
@@ -371,6 +387,12 @@ class ImageSpec:
         Builder that returns a new image spec with runtime packages. Dev packages will be installed during runtime.
         """
         return self._update_attribute("runtime_packages", runtime_packages)
+
+    def with_builder_options(self, builder_options: Dict[str, Any]) -> "ImageSpec":
+        """
+        Builder that returns a new image spec with additional builder options.
+        """
+        return self._update_attribute("builder_options", builder_options)
 
     @classmethod
     def from_env(cls, *, pinned_packages: Optional[List[str]] = None, **kwargs) -> "ImageSpec":
