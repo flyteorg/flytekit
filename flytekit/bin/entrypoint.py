@@ -30,7 +30,7 @@ from flytekit.core import constants as _constants
 from flytekit.core import utils
 from flytekit.core.base_task import IgnoreOutputs, PythonTask
 from flytekit.core.checkpointer import SyncCheckpoint
-from flytekit.core.constants import FLYTE_FAIL_ON_ERROR
+from flytekit.core.constants import FLYTE_FAIL_ON_ERROR, RUNTIME_PACKAGES_ENV_NAME
 from flytekit.core.context_manager import (
     ExecutionParameters,
     ExecutionState,
@@ -61,6 +61,18 @@ def get_version_message():
     import flytekit
 
     return f"Welcome to Flyte! Version: {flytekit.__version__}"
+
+
+def _run_subprocess(cmd: List[str], env: Optional[dict] = None) -> int:
+    """Run cmd with proper SIGTERM handling."""
+    p = subprocess.Popen(cmd, env=env)
+
+    def handle_sigterm(signum, frame):
+        logger.info(f"passing signum {signum} [frame={frame}] to subprocess")
+        p.send_signal(signum)
+
+    signal.signal(signal.SIGTERM, handle_sigterm)
+    return p.wait()
 
 
 def _compute_array_job_index():
@@ -432,6 +444,14 @@ def setup_execution(
 
     compressed_serialization_settings = os.environ.get(SERIALIZED_CONTEXT_ENV_VAR, "")
 
+    if runtime_packages := os.getenv(RUNTIME_PACKAGES_ENV_NAME):
+        import importlib
+        import site
+
+        dev_packages_list = runtime_packages.split(" ")
+        _run_subprocess([sys.executable, "-m", "pip", "install", *dev_packages_list])
+        importlib.reload(site)
+
     ctx = FlyteContextManager.current_context()
     # Create directories
     user_workspace_dir = ctx.file_access.get_random_local_directory()
@@ -751,14 +771,7 @@ def fast_execute_task_cmd(additional_distribution: str, dest_dir: str, task_exec
             env["PYTHONPATH"] += os.pathsep + dest_dir_resolved
         else:
             env["PYTHONPATH"] = dest_dir_resolved
-    p = subprocess.Popen(cmd, env=env)
-
-    def handle_sigterm(signum, frame):
-        logger.info(f"passing signum {signum} [frame={frame}] to subprocess")
-        p.send_signal(signum)
-
-    signal.signal(signal.SIGTERM, handle_sigterm)
-    returncode = p.wait()
+    returncode = _run_subprocess(cmd, env)
     exit(returncode)
 
 
