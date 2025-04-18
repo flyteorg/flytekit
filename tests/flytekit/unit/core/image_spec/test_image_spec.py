@@ -329,6 +329,9 @@ def test_with_builder_options():
     new_image_spec = image_spec.with_builder_options(
         {"new_builder_option_1": "new_builder_option_value_1"})
 
+    assert image_spec.builder_options == {
+        "existing_builder_option_1": "existing_builder_option_value_1",
+    }
     assert new_image_spec.builder_options == {
         "existing_builder_option_1": "existing_builder_option_value_1",
         "new_builder_option_1": "new_builder_option_value_1"
