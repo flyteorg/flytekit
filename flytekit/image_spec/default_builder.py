@@ -7,7 +7,7 @@ import tempfile
 import warnings
 from pathlib import Path
 from string import Template
-from subprocess import run
+from subprocess import check_output, run
 from typing import ClassVar, List, NamedTuple, Tuple
 
 import click
@@ -93,7 +93,7 @@ id=micromamba \
 
 DOCKER_FILE_TEMPLATE = Template("""\
 #syntax=docker/dockerfile:1.5
-FROM ghcr.io/astral-sh/uv:0.5.1 as uv
+FROM ghcr.io/astral-sh/uv:$UV_VERSION as uv
 FROM mambaorg/micromamba:2.0.3-debian12-slim as micromamba
 
 FROM $BASE_IMAGE
@@ -267,6 +267,27 @@ def prepare_python_install(image_spec: ImageSpec, tmp_dir: Path) -> str:
     )
 
 
+DEFAULT_UV_VERSION = "0.5.1"
+
+
+def check_uv_image_version() -> str:
+    uv_version = os.getenv("FLYTE_UV_VERSION", "")
+    if len(uv_version) == 0:
+        return DEFAULT_UV_VERSION
+    elif uv_version == "auto":
+        if shutil.which("uv") is None:
+            return DEFAULT_UV_VERSION
+        try:
+            uv_version_command = ["uv", "--version"]
+            result = check_output(uv_version_command, text=True)
+            uv_version = result.split()[1].strip()
+            return uv_version
+        except Exception:
+            return DEFAULT_UV_VERSION
+    else:
+        return uv_version
+
+
 class _PythonInstallTemplate(NamedTuple):
     python_exec: str
     template: str
@@ -329,6 +350,7 @@ def create_docker_context(image_spec: ImageSpec, tmp_dir: Path):
         raise ValueError(msg)
 
     uv_python_install_command = prepare_python_install(image_spec, tmp_dir)
+    uv_image_version = check_uv_image_version()
     env_dict = {"PYTHONPATH": "/root", _F_IMG_ID: image_spec.id}
 
     if image_spec.env:
@@ -407,6 +429,7 @@ def create_docker_context(image_spec: ImageSpec, tmp_dir: Path):
 
     docker_content = DOCKER_FILE_TEMPLATE.substitute(
         UV_PYTHON_INSTALL_COMMAND=uv_python_install_command,
+        UV_VERSION=uv_image_version,
         APT_INSTALL_COMMAND=apt_install_command,
         INSTALL_PYTHON_TEMPLATE=python_install_template.template,
         EXTRA_PATH=python_install_template.extra_path,
