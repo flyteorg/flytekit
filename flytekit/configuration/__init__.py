@@ -21,7 +21,8 @@ Users can specify these at compile time, but when your task is run, Flyte Propel
 A configuration file that contains settings for both `flytectl` and `flytekit`. This is the recommended configuration file format. Invoke the `flytectl config init` command to create a boilerplate `~/.flyte/config.yaml` file, and `flytectl --help` to learn about all of the configuration yaml options.
 
 Example `config.yaml` file:
-```yaml
+
+```YAML
 # Sample config file
 
 admin:
