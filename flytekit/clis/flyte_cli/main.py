@@ -321,7 +321,7 @@ _optional_principal_option = click.option(
     default=None,
     help="[Optional] Your team name, or your name",
 )
-_insecure_option = click.option(*_INSECURE_FLAGS, "is_flag=True", help="Do not use SSL")
+_insecure_option = click.option(*_INSECURE_FLAGS, is_flag=True, help="Do not use SSL")
 _urn_option = click.option("-u", "--urn", required=True, help="The unique identifier for an entity.")
 _optional_urn_option = click.option("-u", "--urn", required=False, help="The unique identifier for an entity.")
 
