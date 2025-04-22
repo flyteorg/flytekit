@@ -47,7 +47,7 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-  build-and-push-flyteagent-images-manual:
+  build-and-push-flyteconnector-images-manual:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -64,12 +64,12 @@ jobs:
           registry: ghcr.io
           username: "${{ secrets.FLYTE_BOT_USERNAME }}"
           password: "${{ secrets.FLYTE_BOT_PAT }}"
-      - name: Prepare Flyte Agent Image Names
-        id: flyteagent-names
+      - name: Prepare Flyte Connector Image Names
+        id: flyteconnector-names
         uses: docker/metadata-action@v3
         with:
           images: |
-            ghcr.io/${{ github.repository_owner }}/flyteagent
+            ghcr.io/${{ github.repository_owner }}/flyteconnector
           tags: |
             ${{ github.sha }}
       - name: Push External Plugin Service Image to GitHub Registry
@@ -78,7 +78,7 @@ jobs:
           context: "."
           platforms: linux/arm64, linux/amd64
           push: true
-          tags: ${{ steps.flyteagent-names.outputs.tags }}
+          tags: ${{ steps.flyteconnector-names.outputs.tags }}
           build-args: |
             VERSION=${{ github.sha }}
           file: ./Dockerfile.connector
