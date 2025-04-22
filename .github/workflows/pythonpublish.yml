@@ -189,7 +189,7 @@ jobs:
           registry: ghcr.io
           username: "${{ secrets.FLYTE_BOT_USERNAME }}"
           password: "${{ secrets.FLYTE_BOT_PAT }}"
-      - name: Prepare Flyte Connector Slim Image Names
+      - name: Prepare Flyte connector Slim Image Names
         id: flyteconnector-slim-names
         uses: docker/metadata-action@v3
         with:
