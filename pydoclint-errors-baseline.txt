@@ -48,7 +48,6 @@ flytekit/core/checkpointer.py
     DOC109: Method `Checkpoint.save`: The option `--arg-type-hints-in-docstring` is `True` but there are no type hints in the docstring arg list
     DOC110: Method `Checkpoint.save`: The option `--arg-type-hints-in-docstring` is `True` but not all args in the docstring arg list have type hints
     DOC105: Method `Checkpoint.save`: Argument names match, but type hints in these args do not match: cp
-    DOC501: Method `Checkpoint.save` has "raise" statements, but the docstring does not have a "Raises" section
     DOC503: Method `Checkpoint.save` exceptions in the "Raises" section in the docstring do not match those in the function body. Raised exceptions in the docstring: []. Raised exceptions in the body: ['NotImplementedError'].
     DOC301: Class `SyncCheckpoint`: __init__() should not have a docstring; please combine it with the docstring of the class
 --------------------
@@ -65,7 +64,6 @@ flytekit/core/context_manager.py
     DOC603: Class `ExecutionState`: Class docstring attributes are different from actual class attributes. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Attributes in the class definition but not in the docstring: [branch_eval_mode: Optional[BranchEvalMode], user_space_params: Optional[ExecutionParameters]]. Arguments in the docstring but not in the actual class attributes: [branch_eval_mode Optional[BranchEvalMode]: , user_space_params Optional[ExecutionParameters]: ]. (Please read https://jsh9.github.io/pydoclint/checking_class_attributes.html on how to correctly document class attributes.)
     DOC101: Method `ExecutionState.__init__`: Docstring contains fewer arguments than in function signature.
     DOC103: Method `ExecutionState.__init__`: Docstring arguments are different from function arguments. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Arguments in the function signature but not in the docstring: [branch_eval_mode: Optional[BranchEvalMode], engine_dir: Optional[Union[os.PathLike, str]], mode: Optional[ExecutionState.Mode], user_space_params: Optional[ExecutionParameters], working_dir: Union[os.PathLike, str]].
-    DOC501: Method `ExecutionState.__init__` has "raise" statements, but the docstring does not have a "Raises" section
     DOC503: Method `ExecutionState.__init__` exceptions in the "Raises" section in the docstring do not match those in the function body. Raised exceptions in the docstring: []. Raised exceptions in the body: ['ValueError'].
     DOC603: Class `OutputMetadataTracker`: Class docstring attributes are different from actual class attributes. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Attributes in the class definition but not in the docstring: [output_metadata: typing.Dict[typing.Any, OutputMetadata]]. Arguments in the docstring but not in the actual class attributes: [output_metadata Optional[TaskOutputMetadata]: ]. (Please read https://jsh9.github.io/pydoclint/checking_class_attributes.html on how to correctly document class attributes.)
 --------------------
@@ -133,6 +131,10 @@ flytekit/core/utils.py
     DOC301: Class `ClassDecorator`: __init__() should not have a docstring; please combine it with the docstring of the class
 --------------------
 flytekit/core/workflow.py
+    DOC101: Function `workflow`: Docstring contains fewer arguments than in function signature.
+    DOC103: Function `workflow`: Docstring arguments are different from function arguments. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Arguments in the function signature but not in the docstring: [_workflow_function: Optional[Callable[P, FuncOut]], default_options: Optional[Options], docs: Optional[Documentation], failure_policy: Optional[WorkflowFailurePolicy], interruptible: bool, on_failure: Optional[Union[WorkflowBase, Task]], pickle_untyped: bool].
+    DOC201: Function `workflow` does not have a return section in docstring
+    DOC203: Function `workflow` return type(s) in docstring not consistent with the return annotation. Return annotation has 1 type(s); docstring return section has 0 type(s).
     DOC101: Function `reference_workflow`: Docstring contains fewer arguments than in function signature.
     DOC103: Function `reference_workflow`: Docstring arguments are different from function arguments. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Arguments in the function signature but not in the docstring: [domain: str, name: str, project: str, version: str].
     DOC201: Function `reference_workflow` does not have a return section in docstring
@@ -143,6 +145,10 @@ flytekit/exceptions/system.py
 --------------------
 flytekit/exceptions/user.py
     DOC301: Class `FlyteUserRuntimeException`: __init__() should not have a docstring; please combine it with the docstring of the class
+--------------------
+flytekit/extend/backend/base_agent.py
+    DOC601: Class `Resource`: Class docstring contains fewer class attributes than actual class attributes.  (Please read https://jsh9.github.io/pydoclint/checking_class_attributes.html on how to correctly document class attributes.)
+    DOC603: Class `Resource`: Class docstring attributes are different from actual class attributes. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Attributes in the class definition but not in the docstring: [custom_info: Optional[typing.Dict[str, Any]], log_links: Optional[List[TaskLog]], message: Optional[str], outputs: Optional[Union[LiteralMap, typing.Dict[str, Any]]], phase: TaskExecution.Phase]. (Please read https://jsh9.github.io/pydoclint/checking_class_attributes.html on how to correctly document class attributes.)
 --------------------
 flytekit/extras/sqlite3/task.py
     DOC601: Class `SQLite3Config`: Class docstring contains fewer class attributes than actual class attributes.  (Please read https://jsh9.github.io/pydoclint/checking_class_attributes.html on how to correctly document class attributes.)
@@ -169,7 +175,6 @@ flytekit/image_spec/image_spec.py
     DOC110: Method `ImageSpecBuilder.build_image`: The option `--arg-type-hints-in-docstring` is `True` but not all args in the docstring arg list have type hints
     DOC105: Method `ImageSpecBuilder.build_image`: Argument names match, but type hints in these args do not match: image_spec
     DOC203: Method `ImageSpecBuilder.build_image` return type(s) in docstring not consistent with the return annotation. Return annotation types: ['Optional[str]']; docstring return section types: ['fully_qualified_image_name']
-    DOC501: Method `ImageSpecBuilder.build_image` has "raise" statements, but the docstring does not have a "Raises" section
     DOC503: Method `ImageSpecBuilder.build_image` exceptions in the "Raises" section in the docstring do not match those in the function body. Raised exceptions in the docstring: []. Raised exceptions in the body: ['NotImplementedError'].
     DOC109: Method `ImageSpecBuilder.should_build`: The option `--arg-type-hints-in-docstring` is `True` but there are no type hints in the docstring arg list
     DOC110: Method `ImageSpecBuilder.should_build`: The option `--arg-type-hints-in-docstring` is `True` but not all args in the docstring arg list have type hints
@@ -198,7 +203,6 @@ flytekit/interactive/vscode_lib/decorator.py
     DOC107: Function `download_file`: The option `--arg-type-hints-in-signature` is `True` but not all args in the signature have type hints
     DOC105: Function `download_file`: Argument names match, but type hints in these args do not match: url, target_dir
     DOC203: Function `download_file` return type(s) in docstring not consistent with the return annotation. Return annotation has 0 type(s); docstring return section has 1 type(s).
-    DOC501: Function `download_file` has "raise" statements, but the docstring does not have a "Raises" section
     DOC503: Function `download_file` exceptions in the "Raises" section in the docstring do not match those in the function body. Raised exceptions in the docstring: []. Raised exceptions in the body: ['ValueError'].
     DOC106: Function `prepare_interactive_python`: The option `--arg-type-hints-in-signature` is `True` but there are no argument type hints in the signature
     DOC107: Function `prepare_interactive_python`: The option `--arg-type-hints-in-signature` is `True` but not all args in the signature have type hints
@@ -422,11 +426,22 @@ flytekit/types/structured/structured_dataset.py
     DOC301: Class `StructuredDatasetDecoder`: __init__() should not have a docstring; please combine it with the docstring of the class
 --------------------
 plugins/flytekit-async-fsspec/flytekitplugins/async_fsspec/s3fs/s3fs.py
+    DOC101: Method `AsyncS3FileSystem._put_file`: Docstring contains fewer arguments than in function signature.
+    DOC106: Method `AsyncS3FileSystem._put_file`: The option `--arg-type-hints-in-signature` is `True` but there are no argument type hints in the signature
+    DOC107: Method `AsyncS3FileSystem._put_file`: The option `--arg-type-hints-in-signature` is `True` but not all args in the signature have type hints
+    DOC103: Method `AsyncS3FileSystem._put_file`: Docstring arguments are different from function arguments. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Arguments in the function signature but not in the docstring: [**kwargs: ].
     DOC201: Method `AsyncS3FileSystem._put_file` does not have a return section in docstring
+    DOC101: Method `AsyncS3FileSystem._get_file`: Docstring contains fewer arguments than in function signature.
+    DOC106: Method `AsyncS3FileSystem._get_file`: The option `--arg-type-hints-in-signature` is `True` but there are no argument type hints in the signature
+    DOC107: Method `AsyncS3FileSystem._get_file`: The option `--arg-type-hints-in-signature` is `True` but not all args in the signature have type hints
+    DOC103: Method `AsyncS3FileSystem._get_file`: Docstring arguments are different from function arguments. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Arguments in the function signature but not in the docstring: [concurrent_download: ].
     DOC201: Method `AsyncS3FileSystem._get_file` does not have a return section in docstring
 --------------------
 plugins/flytekit-aws-athena/flytekitplugins/athena/task.py
     DOC301: Class `AthenaTask`: __init__() should not have a docstring; please combine it with the docstring of the class
+--------------------
+plugins/flytekit-aws-sagemaker/flytekitplugins/awssagemaker_inference/boto3_mixin.py
+    DOC301: Class `Boto3AgentMixin`: __init__() should not have a docstring; please combine it with the docstring of the class
 --------------------
 plugins/flytekit-aws-sagemaker/flytekitplugins/awssagemaker_inference/task.py
     DOC301: Class `SageMakerModelTask`: __init__() should not have a docstring; please combine it with the docstring of the class
@@ -454,7 +469,6 @@ plugins/flytekit-duckdb/flytekitplugins/duckdb/task.py
     DOC103: Method `DuckDBQuery._execute_query`: Docstring arguments are different from function arguments. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Arguments in the function signature but not in the docstring: [con: duckdb.DuckDBPyConnection].
     DOC402: Method `DuckDBQuery._execute_query` has "yield" statements, but the docstring does not have a "Yields" section
     DOC404: Method `DuckDBQuery._execute_query` yield type(s) in docstring not consistent with the return annotation. Return annotation exists, but docstring "yields" section does not exist or has 0 type(s).
-    DOC501: Method `DuckDBQuery._execute_query` has "raise" statements, but the docstring does not have a "Raises" section
     DOC503: Method `DuckDBQuery._execute_query` exceptions in the "Raises" section in the docstring do not match those in the function body. Raised exceptions in the docstring: []. Raised exceptions in the body: ['ValueError'].
 --------------------
 plugins/flytekit-flyteinteractive/flytekitplugins/flyteinteractive/jupyter_lib/decorator.py
@@ -527,7 +541,6 @@ plugins/flytekit-kf-pytorch/flytekitplugins/kfpytorch/task.py
     DOC101: Function `spawn_helper`: Docstring contains fewer arguments than in function signature.
     DOC107: Function `spawn_helper`: The option `--arg-type-hints-in-signature` is `True` but not all args in the signature have type hints
     DOC103: Function `spawn_helper`: Docstring arguments are different from function arguments. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Arguments in the function signature but not in the docstring: [kwargs: ].
-    DOC501: Function `spawn_helper` has "raise" statements, but the docstring does not have a "Raises" section
     DOC503: Function `spawn_helper` exceptions in the "Raises" section in the docstring do not match those in the function body. Raised exceptions in the docstring: []. Raised exceptions in the body: ['Exception'].
     DOC101: Method `PytorchElasticFunctionTask._execute`: Docstring contains fewer arguments than in function signature.
     DOC106: Method `PytorchElasticFunctionTask._execute`: The option `--arg-type-hints-in-signature` is `True` but there are no argument type hints in the signature
