@@ -66,9 +66,11 @@ class BigQueryConnector(AsyncConnectorBase):
 
         custom = task_template.custom
 
-        domain = custom["Domain"]
+        domain = custom.get("Domain")
         sdk_version = task_template.metadata.runtime.version
-        cinfo = ClientInfo(user_agent=f"Flytekit/{sdk_version} (GPN:Union;{domain})")
+
+        user_agent = f"Flytekit/{sdk_version} (GPN:Union;{domain or ''})"
+        cinfo = ClientInfo(user_agent=user_agent)
 
         project = custom["ProjectID"]
         location = custom["Location"]
