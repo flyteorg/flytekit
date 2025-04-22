@@ -44,7 +44,10 @@ from flytekit.core.utils import str2bool
 from flytekit.deck.deck import _output_deck
 from flytekit.exceptions.base import FlyteException
 from flytekit.exceptions.system import FlyteNonRecoverableSystemException
-from flytekit.exceptions.user import FlyteRecoverableException, FlyteUserRuntimeException
+from flytekit.exceptions.user import (
+    FlyteRecoverableException,
+    FlyteUserRuntimeException,
+)
 from flytekit.interfaces.stats.taggable import get_stats as _get_stats
 from flytekit.loggers import logger, user_space_logger
 from flytekit.models import dynamic_job as _dynamic_job
@@ -52,7 +55,9 @@ from flytekit.models import literals as _literal_models
 from flytekit.models.core import errors as _error_models
 from flytekit.models.core import execution as _execution_models
 from flytekit.models.core import identifier as _identifier
-from flytekit.tools.fast_registration import download_distribution as _download_distribution
+from flytekit.tools.fast_registration import (
+    download_distribution as _download_distribution,
+)
 from flytekit.tools.module_loader import load_object_from_module
 from flytekit.utils.pbhash import compute_hash_string
 
@@ -96,10 +101,9 @@ def _build_error_file_name() -> str:
     For distributed tasks, all workers upload error files which must not overwrite each other, leading to a race condition.
     A uuid is included to prevent this.
 
-    Returns
-    -------
-    str
-        Name of the error file.
+    :rtype: str
+    :return: Name of the error file.
+
     """
     dist_error_strategy = get_one_of("FLYTE_INTERNAL_DIST_ERROR_STRATEGY", "_F_DES")
     if not dist_error_strategy:
@@ -114,10 +118,7 @@ def _get_worker_name() -> str:
 
     For distributed tasks, the backend plugin can set a worker name to be used for error reporting.
 
-    Returns
-    -------
-    str
-        Name of the worker
+    :return: Name of the worker
     """
     dist_error_strategy = get_one_of("FLYTE_INTERNAL_DIST_ERROR_STRATEGY", "_F_DES")
     if not dist_error_strategy:
@@ -151,11 +152,17 @@ def _dispatch_execute(
 ):
     """
     Dispatches execute to PythonTask
+
         Step1: Download inputs and load into a literal map
+
         Step2: Invoke task - dispatch_execute
+
         Step3:
+
             a: [Optional] Record outputs to output_prefix
+
             b: OR if IgnoreOutputs is raised, then ignore uploading outputs
+
             c: OR if an unhandled exception is retrieved - record it as an errors.pb
 
     :param ctx: FlyteContext
@@ -246,7 +253,10 @@ def _dispatch_execute(
                     offloaded_literals[offloaded_filename] = v
             outputs = _literal_models.LiteralMap(literals=literal_map_copy)
 
-            output_file_dict = {_constants.OUTPUT_FILE_NAME: outputs, **offloaded_literals}
+            output_file_dict = {
+                _constants.OUTPUT_FILE_NAME: outputs,
+                **offloaded_literals,
+            }
         elif isinstance(outputs, _dynamic_job.DynamicJobSpec):
             output_file_dict = {_constants.FUTURES_FILE_NAME: outputs}
         else:
@@ -336,7 +346,10 @@ def _dispatch_execute(
     logger.info(f"Engine folder written successfully to the output prefix {output_prefix}")
 
     if task_def is not None and not getattr(task_def, "disable_deck", True):
-        _output_deck(task_name=task_def.name.split(".")[-1], new_user_params=ctx.user_space_params)
+        _output_deck(
+            task_name=task_def.name.split(".")[-1],
+            new_user_params=ctx.user_space_params,
+        )
 
     logger.debug("Finished _dispatch_execute")
 
@@ -377,15 +390,8 @@ def get_container_error_timestamp(e: Optional[Exception] = None) -> Timestamp:
 
     If a flyte exception is passed, use its timestamp, otherwise, use the current time.
 
-    Parameters
-    ----------
-    e : Exception, optional
-        Exception that has occurred.
-
-    Returns
-    -------
-    Timestamp
-        Timestamp to be reported in ContainerError
+    :param e: Exception that has occurred. Optional.
+    :return: Timestamp to be reported in ContainerError
     """
     timestamp = None
     if isinstance(e, FlyteException):
@@ -639,7 +645,12 @@ def _execute_map_task(
         raise ValueError(f"Resolver args cannot be <1, got {resolver_args}")
 
     with setup_execution(
-        raw_output_data_prefix, output_prefix, checkpoint_path, prev_checkpoint, dynamic_addl_distro, dynamic_dest_dir
+        raw_output_data_prefix,
+        output_prefix,
+        checkpoint_path,
+        prev_checkpoint,
+        dynamic_addl_distro,
+        dynamic_dest_dir,
     ) as ctx:
         working_dir = os.getcwd()
         if all(os.path.realpath(path) != working_dir for path in sys.path):
@@ -667,7 +678,9 @@ def _execute_map_task(
 
 
 def normalize_inputs(
-    raw_output_data_prefix: Optional[str], checkpoint_path: Optional[str], prev_checkpoint: Optional[str]
+    raw_output_data_prefix: Optional[str],
+    checkpoint_path: Optional[str],
+    prev_checkpoint: Optional[str],
 ):
     # Backwards compatibility - if Propeller hasn't filled this in, then it'll come through here as the original
     # template string, so let's explicitly set it to None so that the downstream functions will know to fall back
@@ -759,7 +772,14 @@ def fast_execute_task_cmd(additional_distribution: str, dest_dir: str, task_exec
     cmd = []
     for arg in task_execute_cmd:
         if arg == "--resolver":
-            cmd.extend(["--dynamic-addl-distro", additional_distribution, "--dynamic-dest-dir", dest_dir])
+            cmd.extend(
+                [
+                    "--dynamic-addl-distro",
+                    additional_distribution,
+                    "--dynamic-dest-dir",
+                    dest_dir,
+                ]
+            )
         cmd.append(arg)
 
     # Use the commandline to run the task execute command rather than calling it directly in python code

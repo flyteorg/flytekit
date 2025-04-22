@@ -235,9 +235,9 @@ class ShellTask(PythonInstanceTask[T]):
             task_config: Configuration for the task, can be either a Pod (or coming soon, BatchJob) config
             shell: Shell to use to run the script
             inputs: A Dictionary of input names to types
-            output_locs: A list of :py:class:`OutputLocations`
+            output_locs: A list of {{< py_class_ref OutputLocations >}}
             **kwargs: Other arguments that can be passed to
-                :py:class:`~flytekit.core.python_function_task.PythonInstanceTask`
+                {{< py_class_ref flytekit.core.python_function_task.PythonInstanceTask >}}
         """
         if script and script_file:
             raise ValueError("Only either of script or script_file can be provided")
@@ -394,12 +394,12 @@ class RawShellTask(ShellTask):
         template. The template itself will export the desired environment variables, and subsequently execute the
         desired "raw" script with the specified arguments.
 
-        .. note::
-            This means that within your workflow, you can dynamically control the env variables, arguments, and even the
+        > [!NOTE]
+        > This means that within your workflow, you can dynamically control the env variables, arguments, and even the
             actual script you want to run.
 
-        .. note::
-            The downside is that a dynamic workflow will be required. The "raw" script passed in at execution time must
+        > [!NOTE]
+        > The downside is that a dynamic workflow will be required. The "raw" script passed in at execution time must
             be at the specified location.
 
         These args are forwarded directly to the parent `ShellTask` constructor as behavior does not diverge
