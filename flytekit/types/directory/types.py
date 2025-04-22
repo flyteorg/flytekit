@@ -468,7 +468,7 @@ class FlyteDirToMultipartBlobTransformer(AsyncTypeTransformer[FlyteDirectory]):
     def assert_type(self, t: typing.Type[FlyteDirectory], v: typing.Union[FlyteDirectory, os.PathLike, str]):
         if isinstance(v, FlyteDirectory) or isinstance(v, str) or isinstance(v, os.PathLike):
             """
-            >[!NOTE] 
+            >[!NOTE]
             > we do not do a isdir check because the given path could be remote reference
             """
             return

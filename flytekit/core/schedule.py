@@ -1,5 +1,5 @@
 """
-These classes provide funcionality related to schedules.
+These classes provide functionality related to schedules.
 """
 
 import datetime

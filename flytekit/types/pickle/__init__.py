@@ -1,4 +1,3 @@
-"""
-"""
+""" """
 
 from .pickle import FlytePickle

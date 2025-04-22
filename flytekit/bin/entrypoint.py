@@ -79,9 +79,7 @@ def _compute_array_job_index():
     if os.environ.get("BATCH_JOB_ARRAY_INDEX_OFFSET"):
         offset = int(os.environ.get("BATCH_JOB_ARRAY_INDEX_OFFSET"))
     if os.environ.get("BATCH_JOB_ARRAY_INDEX_VAR_NAME"):
-        return offset + int(
-            os.environ.get(os.environ.get("BATCH_JOB_ARRAY_INDEX_VAR_NAME"))
-        )
+        return offset + int(os.environ.get(os.environ.get("BATCH_JOB_ARRAY_INDEX_VAR_NAME")))
     return offset
 
 
@@ -93,14 +91,12 @@ def _build_error_file_name() -> str:
 
     :rtype: str
     :return: Name of the error file.
-    
+
     """
     dist_error_strategy = get_one_of("FLYTE_INTERNAL_DIST_ERROR_STRATEGY", "_F_DES")
     if not dist_error_strategy:
         return _constants.ERROR_FILE_NAME
-    error_file_name_base, error_file_name_extension = os.path.splitext(
-        _constants.ERROR_FILE_NAME
-    )
+    error_file_name_base, error_file_name_extension = os.path.splitext(_constants.ERROR_FILE_NAME)
     error_file_name_base += f"-{uuid.uuid4().hex}"
     return f"{error_file_name_base}{error_file_name_extension}"
 
@@ -144,17 +140,17 @@ def _dispatch_execute(
 ):
     """
     Dispatches execute to PythonTask
-        
+
         Step1: Download inputs and load into a literal map
-        
+
         Step2: Invoke task - dispatch_execute
-        
+
         Step3:
-            
+
             a: [Optional] Record outputs to output_prefix
-            
+
             b: OR if IgnoreOutputs is raised, then ignore uploading outputs
-            
+
             c: OR if an unhandled exception is retrieved - record it as an errors.pb
 
     :param ctx: FlyteContext
@@ -181,9 +177,7 @@ def _dispatch_execute(
         # Step1
         local_inputs_file = os.path.join(ctx.execution_state.working_dir, "inputs.pb")
         ctx.file_access.get_data(inputs_path, local_inputs_file)
-        input_proto = utils.load_proto_from_file(
-            _literals_pb2.LiteralMap, local_inputs_file
-        )
+        input_proto = utils.load_proto_from_file(_literals_pb2.LiteralMap, local_inputs_file)
         idl_input_literals = _literal_models.LiteralMap.from_flyte_idl(input_proto)
 
         # Step2
@@ -193,9 +187,7 @@ def _dispatch_execute(
         # Step3a
         if isinstance(outputs, VoidPromise):
             logger.warning("Task produces no outputs")
-            output_file_dict = {
-                _constants.OUTPUT_FILE_NAME: _literal_models.LiteralMap(literals={})
-            }
+            output_file_dict = {_constants.OUTPUT_FILE_NAME: _literal_models.LiteralMap(literals={})}
         elif isinstance(outputs, _literal_models.LiteralMap):
             # The keys in this map hold the filenames to the offloaded proto literals.
             offloaded_literals: Dict[str, _literal_models.Literal] = {}
@@ -205,12 +197,8 @@ def _dispatch_execute(
             min_offloaded_size = -1
             max_offloaded_size = -1
             if offloading_enabled:
-                min_offloaded_size = (
-                    int(os.environ.get("_F_L_MIN_SIZE_MB", "10")) * 1024 * 1024
-                )
-                max_offloaded_size = (
-                    int(os.environ.get("_F_L_MAX_SIZE_MB", "1000")) * 1024 * 1024
-                )
+                min_offloaded_size = int(os.environ.get("_F_L_MIN_SIZE_MB", "10")) * 1024 * 1024
+                max_offloaded_size = int(os.environ.get("_F_L_MAX_SIZE_MB", "1000")) * 1024 * 1024
 
             # Go over each output and create a separate offloaded in case its size is too large
             for k, v in outputs.literals.items():
@@ -226,9 +214,7 @@ def _dispatch_execute(
                     )
 
                 if min_offloaded_size != -1 and lit.ByteSize() >= min_offloaded_size:
-                    logger.debug(
-                        f"Literal {k} is too large to be inlined, offloading to metadata bucket"
-                    )
+                    logger.debug(f"Literal {k} is too large to be inlined, offloading to metadata bucket")
                     inferred_type = task_def.interface.outputs[k].type
 
                     # In the case of map tasks we need to use the type of the collection as inferred type as the task
@@ -278,9 +264,7 @@ def _dispatch_execute(
     except FlyteUserRuntimeException as e:
         # Step3b
         if isinstance(e.value, IgnoreOutputs):
-            logger.warning(
-                f"User-scoped IgnoreOutputs received! Outputs.pb will not be uploaded. reason {e}!!"
-            )
+            logger.warning(f"User-scoped IgnoreOutputs received! Outputs.pb will not be uploaded. reason {e}!!")
             return
 
         # Step3c
@@ -301,9 +285,7 @@ def _dispatch_execute(
             )
         )
         if task_def is not None:
-            logger.error(
-                f"Exception when executing task {task_def.name or task_def.id.name}, reason {str(e)}"
-            )
+            logger.error(f"Exception when executing task {task_def.name or task_def.id.name}, reason {str(e)}")
         else:
             logger.error(f"Exception when loading_task, reason {str(e)}")
         logger.error("!! Begin User Error Captured by Flyte !!")
@@ -346,16 +328,10 @@ def _dispatch_execute(
         logger.error("!! End Error Captured by Flyte !!")
 
     for k, v in output_file_dict.items():
-        utils.write_proto_to_file(
-            v.to_flyte_idl(), os.path.join(ctx.execution_state.engine_dir, k)
-        )
+        utils.write_proto_to_file(v.to_flyte_idl(), os.path.join(ctx.execution_state.engine_dir, k))
 
-    ctx.file_access.put_data(
-        ctx.execution_state.engine_dir, output_prefix, is_multipart=True
-    )
-    logger.info(
-        f"Engine folder written successfully to the output prefix {output_prefix}"
-    )
+    ctx.file_access.put_data(ctx.execution_state.engine_dir, output_prefix, is_multipart=True)
+    logger.info(f"Engine folder written successfully to the output prefix {output_prefix}")
 
     if task_def is not None and not getattr(task_def, "disable_deck", True):
         _output_deck(
@@ -385,11 +361,7 @@ def get_traceback_str(e: Exception) -> str:
         root_exception = e.__cause__ if e.__cause__ else e
     indentation = "    "
     exception_str = textwrap.indent(
-        text="".join(
-            traceback.format_exception(
-                type(root_exception), root_exception, root_exception.__traceback__
-            )
-        ),
+        text="".join(traceback.format_exception(type(root_exception), root_exception, root_exception.__traceback__)),
         prefix=indentation,
     )
     # Second, format a summary exception message
@@ -475,12 +447,8 @@ def setup_execution(
 
     checkpointer = None
     if checkpoint_path is not None:
-        checkpointer = SyncCheckpoint(
-            checkpoint_dest=checkpoint_path, checkpoint_src=prev_checkpoint
-        )
-        logger.debug(
-            f"Checkpointer created with source {prev_checkpoint} and dest {checkpoint_path}"
-        )
+        checkpointer = SyncCheckpoint(checkpoint_dest=checkpoint_path, checkpoint_src=prev_checkpoint)
+        logger.debug(f"Checkpointer created with source {prev_checkpoint} and dest {checkpoint_path}")
 
     execution_parameters = ExecutionParameters(
         execution_id=_identifier.WorkflowExecutionIdentifier(
@@ -508,9 +476,7 @@ def setup_execution(
         raw_output_prefix=raw_output_data_prefix,
         output_metadata_prefix=output_metadata_prefix,
         checkpoint=checkpointer,
-        task_id=_identifier.Identifier(
-            _identifier.ResourceType.TASK, tk_project, tk_domain, tk_name, tk_version
-        ),
+        task_id=_identifier.Identifier(_identifier.ResourceType.TASK, tk_project, tk_domain, tk_name, tk_version),
     )
 
     metadata = {
@@ -527,9 +493,7 @@ def setup_execution(
             execution_metadata=metadata,
         )
     except TypeError:  # would be thrown from DataPersistencePlugins.find_plugin
-        logger.error(
-            f"No data plugin found for raw output prefix {raw_output_data_prefix}"
-        )
+        logger.error(f"No data plugin found for raw output prefix {raw_output_data_prefix}")
         raise
 
     ctx = ctx.new_builder().with_file_access(file_access).build()
@@ -675,9 +639,7 @@ def _execute_map_task(
         mtr = load_object_from_module(resolver)()
 
         def load_task():
-            return mtr.load_task(
-                loader_args=resolver_args, max_concurrency=max_concurrency
-            )
+            return mtr.load_task(loader_args=resolver_args, max_concurrency=max_concurrency)
 
         # Special case for the map task resolver, we need to append the task index to the output prefix.
         # TODO: (https://github.com/flyteorg/flyte/issues/5011) Remove legacy map task
@@ -707,11 +669,7 @@ def normalize_inputs(
         raw_output_data_prefix = None
     if checkpoint_path == "{{.checkpointOutputPrefix}}":
         checkpoint_path = None
-    if (
-        prev_checkpoint == "{{.prevCheckpointPrefix}}"
-        or prev_checkpoint == ""
-        or prev_checkpoint == '""'
-    ):
+    if prev_checkpoint == "{{.prevCheckpointPrefix}}" or prev_checkpoint == "" or prev_checkpoint == '""':
         prev_checkpoint = None
 
     return raw_output_data_prefix, checkpoint_path, prev_checkpoint
@@ -780,9 +738,7 @@ def execute_task_cmd(
 @click.option("--additional-distribution", required=False)
 @click.option("--dest-dir", required=False)
 @click.argument("task-execute-cmd", nargs=-1, type=click.UNPROCESSED)
-def fast_execute_task_cmd(
-    additional_distribution: str, dest_dir: str, task_execute_cmd: List[str]
-):
+def fast_execute_task_cmd(additional_distribution: str, dest_dir: str, task_execute_cmd: List[str]):
     """
     Downloads a compressed code distribution specified by additional-distribution and then calls the underlying
     task execute command for the updated code.

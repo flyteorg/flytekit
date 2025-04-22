@@ -82,8 +82,8 @@ class SlurmFunctionConnector(AsyncConnectorBase):
         conn = await get_ssh_conn(
             ssh_config=resource_meta.ssh_config, slurm_cluster_to_ssh_conn=self.slurm_cluster_to_ssh_conn
         )
-        job_res = await conn.run(f"scontrol show job {resource_meta.job_id}", check=True)
-
+        job_res = await conn.run(f"scontrol --json show job {resource_meta.job_id}", check=True)
+        job_info = json.loads(job_res.stdout)["jobs"][0]
         # Determine the current flyte phase from Slurm job state
         job_state = job_info["job_state"][0].strip().lower()
         cur_phase = convert_to_flyte_phase(job_state)

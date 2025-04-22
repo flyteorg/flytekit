@@ -1216,7 +1216,7 @@ def workflow(
         # Should raise an exception because the workflow returns something when it shouldn't
         with pytest.raises(FlyteValueException):
             no_outputs_wf()
-    
+
     @pytest.mark.skipif(sys.version_info < (3, 10, 10), reason="inspect module does not work correctly with Python <3.10.10. https://github.com/python/cpython/issues/102647#issuecomment-1466868212")
     def test_missing_return_value():
         @task

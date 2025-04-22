@@ -1,5 +1,5 @@
 """
-This module provides funcionality related tp PyTorch
+This module provides functionality related tp PyTorch
 """
 
 from flytekit.loggers import logger

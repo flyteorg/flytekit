@@ -1,5 +1,5 @@
 """
-These classes provide funcionality related context managemnet.
+These classes provide functionality related context management.
 """
 
 from __future__ import annotations

@@ -193,8 +193,8 @@ def load_implicit_plugins():
     entrypoint specification to their setup.py. The following example shows how we can autoload a module called fsspec
     (whose init files contains the necessary plugin registration step)
 
-    
-    > [!NOTE] 
+
+    > [!NOTE]
     > The group is always ``flytekit.plugins``
 
 
@@ -207,7 +207,7 @@ def load_implicit_plugins():
     ```
     This works as long as the fsspec module has
 
-    > [!NOTE] 
+    > [!NOTE]
     > For data persistence plugins:
 
     ```python
