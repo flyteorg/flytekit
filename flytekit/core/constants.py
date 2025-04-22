@@ -44,3 +44,6 @@ SERIALIZATION_FORMAT = "serialization-format"
 # Shared memory mount name and path
 SHARED_MEMORY_MOUNT_NAME = "flyte-shared-memory"
 SHARED_MEMORY_MOUNT_PATH = "/dev/shm"
+
+# Packages to be installed at the beginning of runtime
+RUNTIME_PACKAGES_ENV_NAME = "_F_RUNTIME_PACKAGES"

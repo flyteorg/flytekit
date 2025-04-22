@@ -67,6 +67,12 @@ class ImageSpec:
             If the option is set by the user, then that option is of course used.
         copy: List of files/directories to copy to /root. e.g. ["src/file1.txt", "src/file2.txt"]
         python_exec: Python executable to use for install packages
+        runtime_packages: List of packages to be installed during runtime. `runtime_packages` requires `pip` to be installed
+            in your base image.
+                - If you are using an ImageSpec as your base image, please include `pip` into your packages:
+                  `ImageSpec(..., packages=["pip"])`.
+                - If you want to install runtime packages into a fixed base_image and not use an image builder, you can
+                  use `builder="noop"`: `ImageSpec(base_image="ghcr.io/name/my-custom-image", builder="noop").with_runtime_packages(["numpy"])`
     """
 
     name: str = "flytekit"
@@ -95,6 +101,7 @@ class ImageSpec:
     source_copy_mode: Optional[CopyFileDetection] = None
     copy: Optional[List[str]] = None
     python_exec: Optional[str] = None
+    runtime_packages: Optional[List[str]] = None
 
     def __post_init__(self):
         self.name = self.name.lower()
@@ -127,6 +134,7 @@ class ImageSpec:
             "pip_extra_index_url",
             "entrypoint",
             "commands",
+            "runtime_packages",
         ]
         for parameter in parameters_str_list:
             attr = getattr(self, parameter)
@@ -160,7 +168,7 @@ class ImageSpec:
 
         :return: a unique identifier of the ImageSpec
         """
-        parameters_to_exclude = ["pip_secret_mounts", "builder"]
+        parameters_to_exclude = ["pip_secret_mounts", "builder", "runtime_packages"]
         # Only get the non-None values in the ImageSpec to ensure the hash is consistent across different Flytekit versions.
         image_spec_dict = asdict(
             self, dict_factory=lambda x: {k: v for (k, v) in x if v is not None and k not in parameters_to_exclude}
@@ -357,6 +365,12 @@ class ImageSpec:
         copied_image_spec._is_force_push = True
 
         return copied_image_spec
+
+    def with_runtime_packages(self, runtime_packages: List[str]) -> "ImageSpec":
+        """
+        Builder that returns a new image spec with runtime packages. Dev packages will be installed during runtime.
+        """
+        return self._update_attribute("runtime_packages", runtime_packages)
 
     @classmethod
     def from_env(cls, *, pinned_packages: Optional[List[str]] = None, **kwargs) -> "ImageSpec":
