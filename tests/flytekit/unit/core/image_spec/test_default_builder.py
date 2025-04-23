@@ -1,12 +1,14 @@
 import re
 import os
+import shutil
 from unittest.mock import patch, Mock
+from subprocess import CalledProcessError
 
 import pytest
 
 import flytekit
 from flytekit.image_spec import ImageSpec
-from flytekit.image_spec.default_builder import DefaultImageBuilder, create_docker_context
+from flytekit.image_spec.default_builder import DefaultImageBuilder, create_docker_context, DEFAULT_UV_VERSION, check_uv_image_version
 from flytekit.constants import CopyFileDetection
 from pathlib import Path
 import tempfile
@@ -221,8 +223,24 @@ def test_should_push_env(monkeypatch, push_image_spec):
     else:
         assert "--push" in call_args[0]
 
-
-def test_create_docker_context_uv_lock(tmp_path):
+@pytest.mark.parametrize(
+    "env_version, mock_which, mock_check_output, expected_uv_version",
+    [
+        (None, None, None, DEFAULT_UV_VERSION),
+        ("auto", None, None, DEFAULT_UV_VERSION),
+        ("auto", "/usr/bin/uv", CalledProcessError(1, ["uv", "--version"]), DEFAULT_UV_VERSION),
+        ("1.0.0", None, None, "1.0.0"),
+    ],
+    ids=[
+        "empty_env",
+        "auto_no_uv",
+        "auto_uv_failure",
+        "custom_version",
+    ],
+)
+def test_create_docker_context_uv_lock(
+    tmp_path, env_version, mock_which, mock_check_output, expected_uv_version
+):
     docker_context_path = tmp_path / "builder_root"
     docker_context_path.mkdir()
 
@@ -241,9 +259,19 @@ def test_create_docker_context_uv_lock(tmp_path):
         pip_extra_args="--no-install-package library-to-skip",
     )
 
-    warning_msg = "uv.lock support is experimental"
-    with pytest.warns(UserWarning, match=warning_msg):
-        create_docker_context(image_spec, docker_context_path)
+    env_patch = {} if env_version is None else {"FLYTE_UV_VERSION": env_version}
+    with patch.dict(os.environ, env_patch, clear=True):
+        with patch("shutil.which", return_value=mock_which) if mock_which is not None else patch("shutil.which"):
+            if isinstance(mock_check_output, CalledProcessError):
+                check_output_patch = patch("subprocess.check_output", side_effect=mock_check_output)
+            else:
+                check_output_patch = patch("subprocess.check_output", return_value=mock_check_output) if mock_check_output else patch("subprocess.check_output")
+                assert expected_uv_version == check_uv_image_version()
+            
+            with check_output_patch:
+                warning_msg = "uv.lock support is experimental"
+                with pytest.warns(UserWarning, match=warning_msg):
+                    create_docker_context(image_spec, docker_context_path)
 
     dockerfile_path = docker_context_path / "Dockerfile"
     assert dockerfile_path.exists()
@@ -255,6 +283,7 @@ def test_create_docker_context_uv_lock(tmp_path):
         "--locked --no-dev --no-install-project"
     ) in dockerfile_content
 
+    assert f"ghcr.io/astral-sh/uv:{expected_uv_version}" in dockerfile_content
 
 @pytest.mark.parametrize("lock_file", ["uv.lock", "poetry.lock"])
 @pytest.mark.filterwarnings("ignore::UserWarning")
