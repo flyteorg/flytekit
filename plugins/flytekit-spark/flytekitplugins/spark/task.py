@@ -1,6 +1,7 @@
 import dataclasses
 import os
 import shutil
+import tempfile
 from dataclasses import dataclass
 from typing import Any, Callable, Dict, Optional, Union, cast
 
@@ -237,10 +238,11 @@ class PysparkFunctionTask(AsyncConnectorExecutorMixin, PythonFunctionTask[Spark]
             and ctx.execution_state
             and ctx.execution_state.mode == ExecutionState.Mode.TASK_EXECUTION
         ):
+            base_dir = tempfile.mkdtemp()
             file_name = "flyte_wf"
             file_format = "zip"
-            shutil.make_archive(file_name, file_format, os.getcwd())
-            self.sess.sparkContext.addPyFile(f"{file_name}.{file_format}")
+            shutil.make_archive(f"{base_dir}/{file_name}", file_format, os.getcwd())
+            self.sess.sparkContext.addPyFile(f"{base_dir}/{file_name}.{file_format}")
 
         return user_params.builder().add_attr("SPARK_SESSION", self.sess).build()
 

@@ -73,6 +73,7 @@ class BigQueryTask(AsyncConnectorExecutorMixin, SQLTask[BigQueryConfig]):
         config = {
             "Location": self.task_config.Location,
             "ProjectID": self.task_config.ProjectID,
+            "Domain": settings.domain,
         }
         if self.task_config.QueryJobConfig is not None:
             config.update(self.task_config.QueryJobConfig.to_api_repr()["query"])

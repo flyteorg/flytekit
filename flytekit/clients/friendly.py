@@ -38,11 +38,13 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
     """
     This is a low-level client that users can use to make direct gRPC service calls to the control plane. See the
     :std:doc:`service spec <idl:protos/docs/service/index>`. This is more user-friendly interface than the
-    :py:class:`raw client <flytekit.clients.raw.RawSynchronousFlyteClient>` so users should try to use this class
-    first. Create a client by ::
+    {{< py_class_ref flytekit.clients.raw.RawSynchronousFlyteClient >}} so users should try to use this class
+    first. Create a client by
 
-        SynchronousFlyteClient("your.domain:port", insecure=True)
-        # insecure should be True if your flyteadmin deployment doesn't have SSL enabled
+    ```python
+    SynchronousFlyteClient("your.domain:port", insecure=True)
+    # insecure should be True if your flyteadmin deployment doesn't have SSL enabled
+    ```
 
     """
 
@@ -65,11 +67,10 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
         This will create a task definition in the Admin database. Once successful, the task object can be
         retrieved via the client or viewed via the UI or command-line interfaces.
 
-        .. note ::
-
-            Overwrites are not supported so any request for a given project, domain, name, and version that exists in
-            the database must match the existing definition exactly. Furthermore, as long as the request
-            remains identical, calling this method multiple times will result in success.
+        > [!NOTE]
+        > Overwrites are not supported so any request for a given project, domain, name, and version that exists in
+          the database must match the existing definition exactly. Furthermore, as long as the request
+          remains identical, calling this method multiple times will result in success.
 
         :param flytekit.models.core.identifier.Identifier task_identifer: The identifier for this task.
         :param flytekit.models.task.TaskSpec task_spec: This is the actual definition of the task that
@@ -88,14 +89,12 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
         This returns a page of identifiers for the tasks for a given project and domain. Filters can also be
         specified.
 
-        .. note ::
-
-            This is a paginated API.  Use the token field in the request to specify a page offset token.
+        > [!NOTE]
+        > This is a paginated API.  Use the token field in the request to specify a page offset token.
             The user of the API is responsible for providing this token.
 
-        .. note ::
-
-            If entries are added to the database between requests for different pages, it is possible to receive
+        > [!NOTE]
+        > If entries are added to the database between requests for different pages, it is possible to receive
             entries on the second page that also appeared on the first.
 
         :param Text project: The namespace of the project to list.
@@ -129,14 +128,12 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
         This returns a page of task metadata for tasks in a given project and domain.  Optionally,
         specifying a name will limit the results to only tasks with that name in the given project and domain.
 
-        .. note ::
-
-            This is a paginated API.  Use the token field in the request to specify a page offset token.
+        > [!NOTE]
+        > This is a paginated API.  Use the token field in the request to specify a page offset token.
             The user of the API is responsible for providing this token.
 
-        .. note ::
-
-            If entries are added to the database between requests for different pages, it is possible to receive
+        > [!NOTE]
+        > If entries are added to the database between requests for different pages, it is possible to receive
             entries on the second page that also appeared on the first.
 
         :param flytekit.models.common.NamedEntityIdentifier identifier: NamedEntityIdentifier to list.
@@ -193,9 +190,8 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
         This will create a workflow definition in the Admin database. Once successful, the workflow object can be
         retrieved via the client or viewed via the UI or command-line interfaces.
 
-        .. note ::
-
-            Overwrites are not supported so any request for a given project, domain, name, and version that exists in
+        > [!NOTE]
+        > Overwrites are not supported so any request for a given project, domain, name, and version that exists in
             the database must match the existing definition exactly. Furthermore, as long as the request
             remains identical, calling this method multiple times will result in success.
 
@@ -218,14 +214,12 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
         This returns a page of identifiers for the workflows for a given project and domain. Filters can also be
         specified.
 
-        .. note ::
-
-            This is a paginated API.  Use the token field in the request to specify a page offset token.
+        > [!NOTE]
+        > This is a paginated API.  Use the token field in the request to specify a page offset token.
             The user of the API is responsible for providing this token.
 
-        .. note ::
-
-            If entries are added to the database between requests for different pages, it is possible to receive
+        > [!NOTE]
+        > If entries are added to the database between requests for different pages, it is possible to receive
             entries on the second page that also appeared on the first.
 
         :param: Text project: The namespace of the project to list.
@@ -259,14 +253,12 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
         This returns a page of workflow meta-information for workflows in a given project and domain.  Optionally,
         specifying a name will limit the results to only workflows with that name in the given project and domain.
 
-        .. note ::
-
-            This is a paginated API.  Use the token field in the request to specify a page offset token.
+        > [!NOTE]
+        > This is a paginated API.  Use the token field in the request to specify a page offset token.
             The user of the API is responsible for providing this token.
 
-        .. note ::
-
-            If entries are added to the database between requests for different pages, it is possible to receive
+        > [!NOTE]
+        > If entries are added to the database between requests for different pages, it is possible to receive
             entries on the second page that also appeared on the first.
 
         :param flytekit.models.common.NamedEntityIdentifier identifier: NamedEntityIdentifier to list.
@@ -323,9 +315,8 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
         This will create a launch plan definition in the Admin database.  Once successful, the launch plan object can be
         retrieved via the client or viewed via the UI or command-line interfaces.
 
-        .. note ::
-
-            Overwrites are not supported so any request for a given project, domain, name, and version that exists in
+        > [!NOTE]
+        > Overwrites are not supported so any request for a given project, domain, name, and version that exists in
             the database must match the existing definition exactly.  This also means that as long as the request
             remains identical, calling this method multiple times will result in success.
 
@@ -375,14 +366,12 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
         This returns a page of identifiers for the launch plans for a given project and domain. Filters can also be
         specified.
 
-        .. note ::
-
-            This is a paginated API.  Use the token field in the request to specify a page offset token.
+        > [!NOTE]
+        > This is a paginated API.  Use the token field in the request to specify a page offset token.
             The user of the API is responsible for providing this token.
 
-        .. note ::
-
-            If entries are added to the database between requests for different pages, it is possible to receive
+        > [!NOTE]
+        > If entries are added to the database between requests for different pages, it is possible to receive
             entries on the second page that also appeared on the first.
 
         :param: Text project: The namespace of the project to list.
@@ -416,14 +405,12 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
         This returns a page of launch plan meta-information for launch plans in a given project and domain.  Optionally,
         specifying a name will limit the results to only workflows with that name in the given project and domain.
 
-        .. note ::
-
-            This is a paginated API.  Use the token field in the request to specify a page offset token.
+        > [!NOTE]
+        > This is a paginated API.  Use the token field in the request to specify a page offset token.
             The user of the API is responsible for providing this token.
 
-        .. note ::
-
-            If entries are added to the database between requests for different pages, it is possible to receive
+        > [!NOTE]
+        > If entries are added to the database between requests for different pages, it is possible to receive
             entries on the second page that also appeared on the first.
 
         :param flytekit.models.common.NamedEntityIdentifier identifier: NamedEntityIdentifier to list.
@@ -463,14 +450,12 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
         This returns a page of currently active launch plan meta-information for launch plans in a given project and
         domain.
 
-        .. note ::
-
-            This is a paginated API.  Use the token field in the request to specify a page offset token.
+        > [!NOTE]
+        > This is a paginated API.  Use the token field in the request to specify a page offset token.
             The user of the API is responsible for providing this token.
 
-        .. note ::
-
-            If entries are added to the database between requests for different pages, it is possible to receive
+        > [!NOTE]
+        > If entries are added to the database between requests for different pages, it is possible to receive
             entries on the second page that also appeared on the first.
 
         :param Text project:
@@ -611,14 +596,12 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
         """
         This returns a page of executions in a given project and domain.
 
-        .. note ::
-
-            This is a paginated API.  Use the token field in the request to specify a page offset token.
+        > [!NOTE]
+        > This is a paginated API.  Use the token field in the request to specify a page offset token.
             The user of the API is responsible for providing this token.
 
-        .. note ::
-
-            If entries are added to the database between requests for different pages, it is possible to receive
+        > [!NOTE]
+        > If entries are added to the database between requests for different pages, it is possible to receive
             entries on the second page that also appeared on the first.
 
         :param Text project: Project in which to list executions.
@@ -873,14 +856,12 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
         """
         This returns a page of projects.
 
-        .. note ::
-
-            This is a paginated API.  Use the token field in the request to specify a page offset token.
+        > [!NOTE]
+        > This is a paginated API.  Use the token field in the request to specify a page offset token.
             The user of the API is responsible for providing this token.
 
-        .. note ::
-
-            If entries are added to the database between requests for different pages, it is possible to receive
+        > [!NOTE]
+        > If entries are added to the database between requests for different pages, it is possible to receive
             entries on the second page that also appeared on the first.
 
         :param int limit: [Optional] The maximum number of entries to return.  Must be greater than 0.  The maximum

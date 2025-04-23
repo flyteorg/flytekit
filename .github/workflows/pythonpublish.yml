@@ -22,8 +22,8 @@ jobs:
       - name: Put version in environment
         id: bump
         run: |
-          # from refs/tags/v1.2.3 get 1.2.3
-          VERSION=$(echo $GITHUB_REF | sed 's#.*/v##')
+          # from 'refs/tags/v1.2.3' get 1.2.3
+          VERSION=$(echo $GITHUB_REF | sed 's|refs/tags/||')
           echo "version=$VERSION" >> $GITHUB_OUTPUT
         shell: bash
       - name: Build and publish
@@ -35,8 +35,8 @@ jobs:
           twine upload dist/*
       - name: Autobump plugin version
         run: |
-          # from refs/tags/v1.2.3 get 1.2.3
-          VERSION=$(echo $GITHUB_REF | sed 's#.*/v##')
+          # from 'refs/tags/v1.2.3' get 1.2.3
+          VERSION=$(echo $GITHUB_REF | sed 's|refs/tags/||')
           VERSION=$VERSION make -C plugins update_all_versions
         shell: bash
       - name: Build all Plugins and publish
@@ -49,8 +49,8 @@ jobs:
       - name: Sleep until pypi is available
         id: pypiwait
         run: |
-          # from refs/tags/v1.2.3 get 1.2.3 and make sure it's not an empty string
-          VERSION=$(echo $GITHUB_REF | sed 's#.*/v##')
+          # from 'refs/tags/v1.2.3 get 1.2.3' and make sure it's not an empty string
+          VERSION=$(echo $GITHUB_REF | sed 's|refs/tags/||')
           if [ -z "$VERSION" ]
           then
             echo "No tagged version found, exiting"
@@ -214,12 +214,12 @@ jobs:
         with:
           context: "."
           platforms: linux/arm64, linux/amd64
-          target: agent-slim
+          target: connector-slim
           push: ${{ github.event_name == 'release' }}
           tags: ${{ steps.flyteagent-slim-names.outputs.tags }}
           build-args: |
             VERSION=${{ needs.deploy.outputs.version }}
-          file: ./Dockerfile.agent
+          file: ./Dockerfile.connector
           cache-from: type=gha
           cache-to: type=gha,mode=max
       - name: Confirm Agent can start
@@ -230,7 +230,7 @@ jobs:
         with:
           context: "."
           platforms: linux/arm64, linux/amd64
-          target: agent-all
+          target: connector-all
           push: ${{ github.event_name == 'release' }}
           tags: ${{ steps.flyteagent-names.outputs.tags }}
           build-args: |

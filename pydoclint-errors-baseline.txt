@@ -133,10 +133,6 @@ flytekit/core/utils.py
     DOC301: Class `ClassDecorator`: __init__() should not have a docstring; please combine it with the docstring of the class
 --------------------
 flytekit/core/workflow.py
-    DOC101: Function `workflow`: Docstring contains fewer arguments than in function signature.
-    DOC103: Function `workflow`: Docstring arguments are different from function arguments. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Arguments in the function signature but not in the docstring: [_workflow_function: Optional[Callable[P, FuncOut]], default_options: Optional[Options], docs: Optional[Documentation], failure_policy: Optional[WorkflowFailurePolicy], interruptible: bool, on_failure: Optional[Union[WorkflowBase, Task]], pickle_untyped: bool].
-    DOC201: Function `workflow` does not have a return section in docstring
-    DOC203: Function `workflow` return type(s) in docstring not consistent with the return annotation. Return annotation has 1 type(s); docstring return section has 0 type(s).
     DOC101: Function `reference_workflow`: Docstring contains fewer arguments than in function signature.
     DOC103: Function `reference_workflow`: Docstring arguments are different from function arguments. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Arguments in the function signature but not in the docstring: [domain: str, name: str, project: str, version: str].
     DOC201: Function `reference_workflow` does not have a return section in docstring
@@ -426,15 +422,7 @@ flytekit/types/structured/structured_dataset.py
     DOC301: Class `StructuredDatasetDecoder`: __init__() should not have a docstring; please combine it with the docstring of the class
 --------------------
 plugins/flytekit-async-fsspec/flytekitplugins/async_fsspec/s3fs/s3fs.py
-    DOC101: Method `AsyncS3FileSystem._put_file`: Docstring contains fewer arguments than in function signature.
-    DOC106: Method `AsyncS3FileSystem._put_file`: The option `--arg-type-hints-in-signature` is `True` but there are no argument type hints in the signature
-    DOC107: Method `AsyncS3FileSystem._put_file`: The option `--arg-type-hints-in-signature` is `True` but not all args in the signature have type hints
-    DOC103: Method `AsyncS3FileSystem._put_file`: Docstring arguments are different from function arguments. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Arguments in the function signature but not in the docstring: [**kwargs: ].
     DOC201: Method `AsyncS3FileSystem._put_file` does not have a return section in docstring
-    DOC101: Method `AsyncS3FileSystem._get_file`: Docstring contains fewer arguments than in function signature.
-    DOC106: Method `AsyncS3FileSystem._get_file`: The option `--arg-type-hints-in-signature` is `True` but there are no argument type hints in the signature
-    DOC107: Method `AsyncS3FileSystem._get_file`: The option `--arg-type-hints-in-signature` is `True` but not all args in the signature have type hints
-    DOC103: Method `AsyncS3FileSystem._get_file`: Docstring arguments are different from function arguments. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Arguments in the function signature but not in the docstring: [concurrent_download: ].
     DOC201: Method `AsyncS3FileSystem._get_file` does not have a return section in docstring
 --------------------
 plugins/flytekit-aws-athena/flytekitplugins/athena/task.py
