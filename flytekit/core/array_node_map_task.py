@@ -40,6 +40,7 @@ class ArrayNodeMapTask(PythonTask):
         concurrency: Optional[int] = None,
         min_successes: Optional[int] = None,
         min_success_ratio: Optional[float] = None,
+        return_none: Optional[bool] = True,
         bound_inputs: Optional[Set[str]] = None,
         bound_inputs_values: Optional[Dict[str, Any]] = None,
         **kwargs,
@@ -76,6 +77,9 @@ class ArrayNodeMapTask(PythonTask):
         if n_outputs > 1:
             raise ValueError("Only tasks with a single output are supported in map tasks.")
 
+        if (not min_success_ratio or min_success_ratio == 1) and return_none:
+            raise ValueError("Cannot return None for map task output without min_success_ration < 1.")
+
         # Note, bound_inputs are passed in during run time when executing the task
         # so both values shouldn't be set at the same time
         if bound_inputs and bound_inputs_values:
@@ -92,7 +96,9 @@ class ArrayNodeMapTask(PythonTask):
             self._bound_inputs.update(set(self._bound_inputs_values))
 
         # Transform the interface to List[Optional[T]] in case `min_success_ratio` is set
-        output_as_list_of_optionals = min_success_ratio is not None and min_success_ratio != 1 and n_outputs == 1
+        output_as_list_of_optionals = (
+            min_success_ratio is not None and min_success_ratio != 1 and n_outputs == 1 and return_none
+        )
         collection_interface = transform_interface_to_list_interface(
             actual_task.python_interface, self._bound_inputs, set(), output_as_list_of_optionals
         )
