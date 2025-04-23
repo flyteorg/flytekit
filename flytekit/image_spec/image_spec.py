@@ -74,6 +74,7 @@ class ImageSpec:
                   use `builder="noop"`: `ImageSpec(base_image="ghcr.io/name/my-custom-image", builder="noop").with_runtime_packages(["numpy"])`.
         builder_options (Optional[Dict[str, Any]]): Additional options for the builder. This is a dictionary that will be passed to the builder.
             The options are builder-specific and may not be supported by all builders.
+        builder_config (Optional[typing.Dict[str, typing.Any]]): Custom builder images configuration, such as uv and micromamba images.
     """
 
     name: str = "flytekit"
@@ -104,6 +105,7 @@ class ImageSpec:
     python_exec: Optional[str] = None
     runtime_packages: Optional[List[str]] = None
     builder_options: Optional[Dict[str, Any]] = None
+    builder_config: Optional[typing.Dict[str, typing.Any]] = None
 
     def __post_init__(self):
         self.name = self.name.lower()
