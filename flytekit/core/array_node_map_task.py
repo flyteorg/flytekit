@@ -77,8 +77,8 @@ class ArrayNodeMapTask(PythonTask):
         if n_outputs > 1:
             raise ValueError("Only tasks with a single output are supported in map tasks.")
 
-        if (not min_success_ratio or min_success_ratio == 1) and return_none:
-            raise ValueError("Cannot return None for map task output without min_success_ration < 1.")
+        if (not min_success_ratio or min_success_ratio == 1) and not return_none:
+            raise ValueError("Cannot control Optional return value for map task output without min_success_ration < 1.")
 
         # Note, bound_inputs are passed in during run time when executing the task
         # so both values shouldn't be set at the same time
