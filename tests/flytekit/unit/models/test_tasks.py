@@ -75,6 +75,7 @@ def test_task_metadata():
         True,
         "A",
         (),
+        metadata=task.K8sObjectMetadata(labels={"label": "foo"}, annotations={"anno": "bar"}),
     )
 
     assert obj.discoverable is True
@@ -87,6 +88,8 @@ def test_task_metadata():
     assert obj.deprecated_error_message == "This is deprecated!"
     assert obj.discovery_version == "0.1.1b0"
     assert obj.pod_template_name == "A"
+    assert obj.metadata.labels == {"label": "foo"}
+    assert obj.metadata.annotations == {"anno": "bar"}
     assert obj == task.TaskMetadata.from_flyte_idl(obj.to_flyte_idl())
 
 
