@@ -397,6 +397,14 @@ k8s_metadata_task = DummyAutoContainerTask(
 )
 
 
-def test_task_k8s_metadata():
+def test_task_k8s_metadata(default_serialization_settings):
     assert k8s_metadata_task.metadata.labels == {"lkey": "lval"}
     assert k8s_metadata_task.metadata.annotations == {"akey": "aval"}
+
+    #################
+    # Test Serialization
+    #################
+    ts = get_serializable_task(OrderedDict(), default_serialization_settings, k8s_metadata_task)
+
+    assert ts.template.metadata.metadata.labels == {"lkey": "lval"}
+    assert ts.template.metadata.metadata.annotations == {"akey": "aval"}
