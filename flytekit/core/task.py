@@ -128,6 +128,8 @@ def task(
     pickle_untyped: bool = ...,
     shared_memory: Optional[Union[L[True], str]] = None,
     resources: Optional[Resources] = ...,
+    labels: Optional[dict[str, str]] = ...,
+    annotations: Optional[dict[str, str]] = ...,
     **kwargs,
 ) -> Callable[[Callable[..., FuncOut]], PythonFunctionTask[T]]: ...
 
@@ -167,6 +169,8 @@ def task(
     pickle_untyped: bool = ...,
     shared_memory: Optional[Union[L[True], str]] = ...,
     resources: Optional[Resources] = ...,
+    labels: Optional[dict[str, str]] = ...,
+    annotations: Optional[dict[str, str]] = ...,
     **kwargs,
 ) -> Union[Callable[P, FuncOut], PythonFunctionTask[T]]: ...
 
@@ -211,6 +215,8 @@ def task(
     pickle_untyped: bool = False,
     shared_memory: Optional[Union[L[True], str]] = None,
     resources: Optional[Resources] = None,
+    labels: Optional[dict[str, str]] = None,
+    annotations: Optional[dict[str, str]] = None,
     **kwargs,
 ) -> Union[
     Callable[P, FuncOut],
@@ -348,6 +354,8 @@ def task(
         first value is the request and the second value is the limit. If the value is a single value, then both the
         requests and limit is set to that value. For example, the `Resource(cpu=("1", "2"), mem="1Gi")` will set the cpu
         request to 1, cpu limit to 2, and mem request to 1Gi.
+    :param labels: Labels to be applied to the task resource.
+    :param annotations: Annotations to be applied to the task resource.
     """
     # Maintain backwards compatibility with the old cache parameters, while cleaning up the task function definition.
     cache_serialize = kwargs.pop("cache_serialize", None)
@@ -445,6 +453,8 @@ def task(
             pickle_untyped=pickle_untyped,
             shared_memory=shared_memory,
             resources=resources,
+            labels=labels,
+            annotations=annotations,
         )
         update_wrapper(task_instance, decorated_fn)
         return task_instance
