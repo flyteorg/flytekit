@@ -641,6 +641,23 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
             _execution_pb2.ExecutionTerminateRequest(id=id.to_flyte_idl(), cause=cause)
         )
 
+    def delete_execution_phase(self, project, domain, phase):
+        """
+        Deletes a phase from an execution.
+        :param Text project: Project to delete phase from
+        :param Text domain: Domain to delete phase from
+        :param Text phase: Phase to delete
+        """
+        from flytekit.models.core.identifier import WorkflowExecutionIdentifier
+
+        workflow_execution_id = WorkflowExecutionIdentifier(project=project, domain=domain, name="")
+
+        request_dict = {"id": workflow_execution_id.to_flyte_idl(), "phase": phase}
+
+        super(SynchronousFlyteClient, self).delete_execution_phase(
+            _execution_pb2.ExecutionPhaseDeleteRequest(**request_dict)
+        )
+
     def relaunch_execution(self, id, name=None):
         """
         :param flytekit.models.core.identifier.WorkflowExecutionIdentifier id:
