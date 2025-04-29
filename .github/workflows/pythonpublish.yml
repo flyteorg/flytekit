@@ -214,7 +214,7 @@ jobs:
         with:
           context: "."
           platforms: linux/arm64, linux/amd64
-          target: agent-slim
+          target: connector-slim
           push: ${{ github.event_name == 'release' }}
           tags: ${{ steps.flyteagent-slim-names.outputs.tags }}
           build-args: |
@@ -230,7 +230,7 @@ jobs:
         with:
           context: "."
           platforms: linux/arm64, linux/amd64
-          target: agent-all
+          target: connector-all
           push: ${{ github.event_name == 'release' }}
           tags: ${{ steps.flyteagent-names.outputs.tags }}
           build-args: |

@@ -59,6 +59,7 @@ def test_bigquery_connector(mock_client, mock_query_job):
     task_config = {
         "Location": "us-central1",
         "ProjectID": "dummy_project",
+        "Domain": "dev",
     }
 
     int_type = types.LiteralType(types.SimpleType.INTEGER)

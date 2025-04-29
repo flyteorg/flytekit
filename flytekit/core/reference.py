@@ -19,19 +19,32 @@ def get_reference_entity(
     outputs: Dict[str, Type],
 ):
     """
-    See the documentation for :py:class:`flytekit.reference_task` and :py:class:`flytekit.reference_workflow` as well.
+    See the documentation for {{< py_class_ref flytekit.reference_task >}} and {{< py_class_ref flytekit.reference_workflow >}} as well.
 
     This function is the general form of the two aforementioned functions. It's better for programmatic usage, as
     the interface is passed in as arguments instead of analyzed from type annotations.
 
+    <!--
     .. literalinclude:: ../../../tests/flytekit/unit/core/test_references.py
        :start-after: # docs_ref_start
        :end-before: # docs_ref_end
        :language: python
        :dedent: 4
+    -->
+    ```python
+    ref_entity = get_reference_entity(
+        _identifier_model.ResourceType.WORKFLOW,
+        "project",
+        "dev",
+        "my.other.workflow",
+        "abc123",
+        inputs=kwtypes(a=str, b=int),
+        outputs={},
+    )
+    ```
 
     :param resource_type: This is the type of entity it is. Must be one of
-      :py:class:`flytekit.models.core.identifier.ResourceType`
+      {{< py_class_ref flytekit.models.core.identifier.ResourceType >}}
     :param project: The project the entity you're looking for has been registered in.
     :param domain: The domain the entity you're looking for has been registered in.
     :param name: The name of the registered entity

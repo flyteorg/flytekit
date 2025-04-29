@@ -93,8 +93,8 @@ id=micromamba \
 
 DOCKER_FILE_TEMPLATE = Template("""\
 #syntax=docker/dockerfile:1.5
-FROM ghcr.io/astral-sh/uv:0.5.1 as uv
-FROM mambaorg/micromamba:2.0.3-debian12-slim as micromamba
+FROM $UV_IMAGE as uv
+FROM $MICROMAMBA_IMAGE as micromamba
 
 FROM $BASE_IMAGE
 
@@ -145,6 +145,9 @@ RUN mkdir -p $$HOME && \
 # too many layers in the build cache.
 ENV $_F_IMG_ID_ENV
 """)
+
+DEFAULT_UV_IMAGE = "ghcr.io/astral-sh/uv:0.5.1"
+DEFAULT_MICROMAMBA_IMAGE = "mambaorg/micromamba:2.0.3-debian12-slim"
 
 
 def get_flytekit_for_pypi():
@@ -410,6 +413,12 @@ def create_docker_context(image_spec: ImageSpec, tmp_dir: Path):
     else:
         extra_copy_cmds = ""
 
+    uv_image = DEFAULT_UV_IMAGE
+    micromamba_image = DEFAULT_MICROMAMBA_IMAGE
+    if image_spec.builder_config is not None:
+        uv_image = image_spec.builder_config.get("uv_image", uv_image)
+        micromamba_image = image_spec.builder_config.get("micromamba_image", micromamba_image)
+    
     _f_img_id_env = f"{_F_IMG_ID}={image_spec.id}"
 
     docker_content = DOCKER_FILE_TEMPLATE.substitute(
@@ -425,6 +434,8 @@ def create_docker_context(image_spec: ImageSpec, tmp_dir: Path):
         ENTRYPOINT=entrypoint,
         RUN_COMMANDS=run_commands,
         EXTRA_COPY_CMDS=extra_copy_cmds,
+        UV_IMAGE=uv_image,
+        MICROMAMBA_IMAGE=micromamba_image,
     )
 
     dockerfile_path = tmp_dir / "Dockerfile"
@@ -460,6 +471,7 @@ class DefaultImageBuilder(ImageSpecBuilder):
         # "registry_config",
         "commands",
         "copy",
+        "builder_config",
     }
 
     def build_image(self, image_spec: ImageSpec) -> str:

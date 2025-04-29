@@ -1,19 +1,5 @@
 """
-..
-currentmodule:: flytekit.interactive
-
-This package contains flyteinteractive plugin for Flytekit.
-
-.. autosummary::
-   :template: custom.rst
-   :toctree: generated/
-
-   vscode
-   VscodeConfig
-   DEFAULT_CODE_SERVER_DIR_NAME
-   DEFAULT_CODE_SERVER_REMOTE_PATH
-   DEFAULT_CODE_SERVER_EXTENSIONS
-   get_task_inputs
+This module provides functionality related to Flytekit Interactive
 """
 
 from .utils import get_task_inputs
