@@ -34,7 +34,7 @@ def serialize_load_only(
     local_source_root: typing.Optional[str] = None,
 ):
     """
-    See :py:class:`flytekit.models.core.identifier.ResourceType` to match the trailing index in the file name with the
+    See {{< py_class_ref flytekit.models.core.identifier.ResourceType >}} to match the trailing index in the file name with the
     entity type.
     :param settings: SerializationSettings to be used
     :param pkgs: Dot-delimited Python packages/subpackages to look into for serialization.
@@ -56,7 +56,7 @@ def serialize_get_control_plane_entities(
     is_registration: bool = False,
 ) -> typing.List[FlyteControlPlaneEntity]:
     """
-    See :py:class:`flytekit.models.core.identifier.ResourceType` to match the trailing index in the file name with the
+    See {{< py_class_ref flytekit.models.core.identifier.ResourceType >}} to match the trailing index in the file name with the
     entity type.
     :param options:
     :param settings: SerializationSettings to be used

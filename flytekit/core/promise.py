@@ -84,7 +84,7 @@ async def _translate_inputs_to_literals(
 
     :param ctx: Context needed in case a non-primitive literal needs to be translated to a Flyte literal (like a file)
     :param incoming_values: This is a map of your task's input or wf's output kwargs basically
-    :param flyte_interface_types: One side of an :py:class:`flytekit.models.interface.TypedInterface` basically.
+    :param flyte_interface_types: One side of an {{< py_class_ref flytekit.models.interface.TypedInterface >}} basically.
     :param native_types: Map to native Python type.
     """
     if incoming_values is None:

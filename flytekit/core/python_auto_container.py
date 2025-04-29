@@ -12,6 +12,7 @@ from flyteidl.core import tasks_pb2
 from flytekit.configuration import ImageConfig, SerializationSettings
 from flytekit.constants import CopyFileDetection
 from flytekit.core.base_task import PythonTask, TaskMetadata, TaskResolverMixin
+from flytekit.core.constants import RUNTIME_PACKAGES_ENV_NAME
 from flytekit.core.context_manager import FlyteContextManager
 from flytekit.core.pod_template import PodTemplate
 from flytekit.core.resources import Resources, ResourceSpec, construct_extended_resources
@@ -74,10 +75,10 @@ class PythonAutoContainerTask(PythonTask[T], ABC, metaclass=FlyteTrackedABC):
            to provide secrets and if secrets are available in the configured secrets store.
            Possible options for secret stores are
 
-           - `Vault <https://www.vaultproject.io/>`__
-           - `Confidant <https://lyft.github.io/confidant/>`__
-           - `Kube secrets <https://kubernetes.io/docs/concepts/configuration/secret/>`__
-           - `AWS Parameter store <https://docs.aws.amazon.com/systems-manager/latest/userguide/systems-manager-parameter-store.html>`__
+           - [`Vault`](https://www.vaultproject.io/)
+           - [`Confidant`](https://lyft.github.io/confidant)
+           - [`Kube secrets`](https://kubernetes.io/docs/concepts/configuration/secret)
+           - [`AWS Parameter store`](https://docs.aws.amazon.com/systems-manager/latest/userguide/systems-manager-parameter-store.html)
         :param pod_template: Custom PodTemplate for this task.
         :param pod_template_name: The name of the existing PodTemplate resource which will be used in this task.
         :param accelerator: The accelerator to use for this task.
@@ -231,6 +232,7 @@ class PythonAutoContainerTask(PythonTask[T], ABC, metaclass=FlyteTrackedABC):
         for elem in (settings.env, self.environment):
             if elem:
                 env.update(elem)
+        
         # Override the task's resource spec if it was not set statically in the task definition
 
         def _resources_unspecified(resources: ResourceSpec) -> bool:
@@ -241,6 +243,11 @@ class PythonAutoContainerTask(PythonTask[T], ABC, metaclass=FlyteTrackedABC):
 
         if isinstance(settings.default_resources, ResourceSpec) and _resources_unspecified(self.resources):
             self._resources = settings.default_resources
+
+        # Add runtime dependencies into environment
+        if isinstance(self.container_image, ImageSpec) and self.container_image.runtime_packages:
+            runtime_packages = " ".join(self.container_image.runtime_packages)
+            env[RUNTIME_PACKAGES_ENV_NAME] = runtime_packages
 
         return _get_container_definition(
             image=self.get_image(settings),
