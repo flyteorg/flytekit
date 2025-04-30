@@ -188,6 +188,8 @@ class NodeMetadata(_common.FlyteIdlEntity):
         :param cache_version: The version of the cached data.
         :param cacheable: Indicates that cache operations on this node should be serialized.
         """
+        if cacheable is not None and type(cacheable) is not str:
+            breakpoint()
         self._name = name
         self._timeout = timeout if timeout is not None else datetime.timedelta()
         self._retries = retries if retries is not None else _RetryStrategy(0)
@@ -237,16 +239,22 @@ class NodeMetadata(_common.FlyteIdlEntity):
         """
         :rtype: flyteidl.core.workflow_pb2.NodeMetadata
         """
-        node_metadata = _core_workflow.NodeMetadata(
-            name=self.name,
-            retries=self.retries.to_flyte_idl(),
-            interruptible=self.interruptible,
-            cacheable=self.cacheable,
-            cache_version=self.cache_version,
-            cache_serializable=self.cache_serializable,
-        )
-        if self.timeout:
-            node_metadata.timeout.FromTimedelta(self.timeout)
+        try:
+            node_metadata = _core_workflow.NodeMetadata(
+                name=self.name,
+                retries=self.retries.to_flyte_idl(),
+                interruptible=self.interruptible,
+                cacheable=self.cacheable,
+                cache_version=self.cache_version,
+                cache_serializable=self.cache_serializable,
+            )
+            if self.timeout:
+                node_metadata.timeout.FromTimedelta(self.timeout)
+        except Exception as e:
+            print(e)
+            xx = {k: type(v) for k, v in self.__dict__.items()}
+            print(f"{type(self)} {xx}")
+            breakpoint()
         return node_metadata
 
     @classmethod
