@@ -131,7 +131,7 @@ def test_basic_salt_cache_policy(default_serialization_settings):
     @task(cache=Cache(salt="a-sprinkle-of-salt", policies=[SaltCachePolicy(), SaltCachePolicy()]))
     def t_cached_with_multiple_policies(a: int) -> int:
         return a + 2
-    
+
     serialized_t_cached = get_serializable_task(OrderedDict(), default_serialization_settings, t_cached_with_multiple_policies)
     assert serialized_t_cached.template.metadata.discoverable == True
 
