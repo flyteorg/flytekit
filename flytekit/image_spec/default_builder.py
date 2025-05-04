@@ -418,7 +418,7 @@ def create_docker_context(image_spec: ImageSpec, tmp_dir: Path):
     if image_spec.builder_config is not None:
         uv_image = image_spec.builder_config.get("uv_image", uv_image)
         micromamba_image = image_spec.builder_config.get("micromamba_image", micromamba_image)
-    
+
     _f_img_id_env = f"{_F_IMG_ID}={image_spec.id}"
 
     docker_content = DOCKER_FILE_TEMPLATE.substitute(
