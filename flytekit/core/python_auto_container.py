@@ -232,7 +232,7 @@ class PythonAutoContainerTask(PythonTask[T], ABC, metaclass=FlyteTrackedABC):
         for elem in (settings.env, self.environment):
             if elem:
                 env.update(elem)
-        
+
         # Override the task's resource spec if it was not set statically in the task definition
 
         def _resources_unspecified(resources: ResourceSpec) -> bool:
