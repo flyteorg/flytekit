@@ -300,7 +300,7 @@ def test_uv_lock_error_no_packages(monkeypatch, tmp_path, lock_file):
     image_spec = ImageSpec(
         name="FLYTEKIT",
         python_version="3.12",
-        requirements=os.fspath(lock_file),
+        requirements=os.fspath(lock_file_path),
         packages=["ruff"],
     )
     builder = DefaultImageBuilder()
