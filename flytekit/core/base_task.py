@@ -525,7 +525,7 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
         else:
             self._disable_deck = True
 
-        self._deck_fields = list(deck_fields) if (deck_fields is not None and self.disable_deck is False) else []
+        self._deck_fields = list(deck_fields) if (deck_fields is not None and self.enable_deck) else []
 
         deck_members = set([_field for _field in DeckField])
         # enumerate additional decks, check if any of them are invalid
