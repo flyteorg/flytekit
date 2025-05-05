@@ -489,7 +489,7 @@ class DefaultImageBuilder(ImageSpecBuilder):
 
             initial_image_tag = image_spec.tag
             create_docker_context(image_spec, tmp_path)
-            
+
             # Check that hash-based image tag didn't change while creating the context.
             # This doesn't cover all the cases, but this is a good check.
             del image_spec.tag
