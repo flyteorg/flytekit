@@ -1,20 +1,3 @@
-"""
-=========================================
-:mod:`flytekit.core.python_function_task`
-=========================================
-
-.. currentmodule:: flytekit.core.python_function_task
-
-.. autosummary::
-   :nosignatures:
-   :template: custom.rst
-   :toctree: generated/
-
-   PythonFunctionTask
-   PythonInstanceTask
-
-"""
-
 from __future__ import annotations
 
 import inspect
@@ -28,7 +11,7 @@ from contextlib import suppress
 from enum import Enum
 from typing import Any, Callable, Iterable, List, Optional, Tuple, TypeVar, Union, cast
 
-from flytekit.configuration import ImageConfig, SerializationSettings
+from flytekit.configuration import ImageConfig, ImageSpec, SerializationSettings
 from flytekit.core import launch_plan as _annotated_launch_plan
 from flytekit.core.base_task import Task, TaskMetadata, TaskResolverMixin
 from flytekit.core.constants import EAGER_ROOT_ENV_NAME
@@ -41,7 +24,10 @@ from flytekit.core.promise import (
     async_flyte_entity_call_handler,
     translate_inputs_to_literals,
 )
-from flytekit.core.python_auto_container import PythonAutoContainerTask, default_task_resolver
+from flytekit.core.python_auto_container import (
+    PythonAutoContainerTask,
+    default_task_resolver,
+)
 from flytekit.core.tracked_abc import FlyteTrackedABC
 from flytekit.core.tracker import extract_task_module, is_functools_wrapped_module_level, isnested, istestfunction
 from flytekit.core.utils import _dnsify
@@ -78,12 +64,12 @@ class PythonInstanceTask(PythonAutoContainerTask[T], ABC):  # type: ignore
     a platform defined execute method. (Execute needs to be overridden). This base class ensures that the module loader
     will invoke the right class automatically, by capturing the module name and variable in the module name.
 
-    .. code-block: python
+    ```python
+    x = MyInstanceTask(name="x", .....)
 
-        x = MyInstanceTask(name="x", .....)
-
-        # this can be invoked as
-        x(a=5) # depending on the interface of the defined task
+    # this can be invoked as
+    x(a=5) # depending on the interface of the defined task
+    ```
 
     """
 
@@ -109,12 +95,11 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):  # type: ignore
 
     It is advised this task is used using the @task decorator as follows
 
-    .. code-block: python
-
-        @task
-        def my_func(a: int) -> str:
-           ...
-
+    ```python
+    @task
+    def my_func(a: int) -> str:
+        ...
+    ```
     In the above code, the name of the function, the module, and the interface (inputs = int and outputs = str) will be
     auto detected.
     """
@@ -343,7 +328,7 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):  # type: ignore
             logger.debug(f"Executing Dynamic workflow, using raw inputs {kwargs}")
             self._create_and_cache_dynamic_workflow()
             if self.execution_mode == self.ExecutionBehavior.DYNAMIC:
-                es = ctx.new_execution_state().with_params(mode=ExecutionState.Mode.DYNAMIC_TASK_EXECUTION)
+                es = ctx.new_execution_state().with_params(mode=ExecutionState.Mode.LOCAL_DYNAMIC_TASK_EXECUTION)
             else:
                 es = cast(ExecutionState, ctx.execution_state)
             with FlyteContextManager.with_context(ctx.with_execution_state(es)):
@@ -456,6 +441,7 @@ class EagerAsyncPythonFunctionTask(AsyncPythonFunctionTask[T], metaclass=FlyteTr
         node_dependency_hints: Optional[
             Iterable[Union["PythonFunctionTask", "_annotated_launch_plan.LaunchPlan", WorkflowBase]]
         ] = None,
+        enable_deck: bool = True,
         **kwargs,
     ):
         # delete execution mode from kwargs
@@ -475,6 +461,7 @@ class EagerAsyncPythonFunctionTask(AsyncPythonFunctionTask[T], metaclass=FlyteTr
             PythonFunctionTask.ExecutionBehavior.EAGER,
             task_resolver,
             node_dependency_hints,
+            enable_deck=enable_deck,
             **kwargs,
         )
 
@@ -647,7 +634,9 @@ class EagerAsyncPythonFunctionTask(AsyncPythonFunctionTask[T], metaclass=FlyteTr
     def get_as_workflow(self):
         from flytekit.core.workflow import ImperativeWorkflow
 
-        cleanup = EagerFailureHandlerTask(name=f"{self.name}-cleanup", inputs=self.python_interface.inputs)
+        cleanup = EagerFailureHandlerTask(
+            name=f"{self.name}-cleanup", container_image=self.container_image, inputs=self.python_interface.inputs
+        )
         wb = ImperativeWorkflow(name=self.name)
 
         input_kwargs = {}
@@ -696,12 +685,19 @@ eager_failure_task_resolver = EagerFailureTaskResolver()
 class EagerFailureHandlerTask(PythonAutoContainerTask, metaclass=FlyteTrackedABC):
     _TASK_TYPE = "eager_failure_handler_task"
 
-    def __init__(self, name: str, inputs: typing.Optional[typing.Dict[str, typing.Type]] = None, **kwargs):
+    def __init__(
+        self,
+        name: str,
+        container_image: Optional[Union[str, ImageSpec]] = None,
+        inputs: typing.Optional[typing.Dict[str, typing.Type]] = None,
+        **kwargs,
+    ):
         """ """
         inputs = inputs or {}
         super().__init__(
             task_type=self._TASK_TYPE,
             name=name,
+            container_image=container_image,
             interface=Interface(inputs=inputs, outputs=None),
             task_config=None,
             task_resolver=eager_failure_task_resolver,

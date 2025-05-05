@@ -101,6 +101,7 @@ from flytekit.remote.entities import FlyteLaunchPlan, FlyteNode, FlyteTask, Flyt
 from flytekit.remote.executions import FlyteNodeExecution, FlyteTaskExecution, FlyteWorkflowExecution
 from flytekit.remote.interface import TypedInterface
 from flytekit.remote.lazy_entity import LazyEntity
+from flytekit.remote.metrics import FlyteExecutionSpan
 from flytekit.remote.remote_callable import RemoteEntity
 from flytekit.remote.remote_fs import get_flyte_fs
 from flytekit.tools.fast_registration import FastPackageOptions, fast_package
@@ -1352,7 +1353,9 @@ class FlyteRemote(object):
                 archive_fname = pathlib.Path(os.path.join(tmp_dir, "script_mode.tar.gz"))
                 compress_scripts(source_path, str(archive_fname), get_all_modules(source_path, module_name))
                 md5_bytes, upload_native_url = self.upload_file(
-                    archive_fname, project or self.default_project, domain or self.default_domain
+                    archive_fname,
+                    project or self.default_project,
+                    domain or self.default_domain,
                 )
 
         serialization_settings = SerializationSettings(
@@ -1383,7 +1386,6 @@ class FlyteRemote(object):
 
         if isinstance(entity, PythonTask):
             return self.register_task(entity, serialization_settings, version)
-
         if isinstance(entity, WorkflowBase):
             return self.register_workflow(entity, serialization_settings, version, default_launch_plan, options)
         if isinstance(entity, LaunchPlan):
@@ -1666,6 +1668,7 @@ class FlyteRemote(object):
         tags: typing.Optional[typing.List[str]] = None,
         cluster_pool: typing.Optional[str] = None,
         execution_cluster_label: typing.Optional[str] = None,
+        serialization_settings: typing.Optional[SerializationSettings] = None,
     ) -> FlyteWorkflowExecution:
         """
         Execute a task, workflow, or launchplan, either something that's been declared locally, or a fetched entity.
@@ -1692,6 +1695,7 @@ class FlyteRemote(object):
         :param name: execute entity using this name. If not None, use this value instead of ``entity.name``
         :param version: execute entity using this version. If None, uses auto-generated value.
         :param execution_name: name of the execution. If None, uses auto-generated value.
+        :param execution_name_prefix: execution prefix to use. If provided, a random suffix will be appended
         :param image_config:
         :param wait: if True, waits for execution to complete
         :param type_hints: Python types to be passed to the TypeEngine so that it knows how to properly convert the
@@ -1707,10 +1711,11 @@ class FlyteRemote(object):
         :param tags: Tags to be set for the execution.
         :param cluster_pool: Specify cluster pool on which newly created execution should be placed.
         :param execution_cluster_label: Specify label of cluster(s) on which newly created execution should be placed.
+        :param serialization_settings: Optionally provide serialization settings, in case the entity being run needs
+          to first be registered. If not provided, a default will be used.
 
-        .. note:
-
-            The ``name`` and ``version`` arguments do not apply to ``FlyteTask``, ``FlyteLaunchPlan``, and
+        > [!NOTE]
+        > The ``name`` and ``version`` arguments do not apply to ``FlyteTask``, ``FlyteLaunchPlan``, and
             ``FlyteWorkflow`` entity inputs. These values are determined by referencing the entity identifier values.
         """
         if entity.python_interface:
@@ -1818,6 +1823,7 @@ class FlyteRemote(object):
                 cluster_pool=cluster_pool,
                 execution_cluster_label=execution_cluster_label,
                 options=options,
+                serialization_settings=serialization_settings,
             )
         if isinstance(entity, WorkflowBase):
             return self.execute_local_workflow(
@@ -1838,6 +1844,7 @@ class FlyteRemote(object):
                 tags=tags,
                 cluster_pool=cluster_pool,
                 execution_cluster_label=execution_cluster_label,
+                serialization_settings=serialization_settings,
             )
         if isinstance(entity, LaunchPlan):
             return self.execute_local_launch_plan(
@@ -1857,6 +1864,7 @@ class FlyteRemote(object):
                 tags=tags,
                 cluster_pool=cluster_pool,
                 execution_cluster_label=execution_cluster_label,
+                serialization_settings=serialization_settings,
             )
         raise NotImplementedError(f"entity type {type(entity)} not recognized for execution")
 
@@ -2129,6 +2137,7 @@ class FlyteRemote(object):
         cluster_pool: typing.Optional[str] = None,
         execution_cluster_label: typing.Optional[str] = None,
         options: typing.Optional[Options] = None,
+        serialization_settings: typing.Optional[SerializationSettings] = None,
     ) -> FlyteWorkflowExecution:
         """
         Execute a @task-decorated function or TaskTemplate task.
@@ -2150,10 +2159,11 @@ class FlyteRemote(object):
         :param cluster_pool: Specify cluster pool on which newly created execution should be placed.
         :param execution_cluster_label: Specify label of cluster(s) on which newly created execution should be placed.
         :param options: Options to customize the execution.
+        :param serialization_settings: If the task needs to be registered, this can be passed in.
 
         :return: FlyteWorkflowExecution object.
         """
-        ss = SerializationSettings(
+        ss = serialization_settings or SerializationSettings(
             image_config=image_config or ImageConfig.auto_default_image(),
             project=project or self.default_project,
             domain=domain or self._default_domain,
@@ -2170,9 +2180,6 @@ class FlyteRemote(object):
             if self.interactive_mode_enabled:
                 ss.fast_serialization_settings = self._pickle_and_upload_entity(entity, pickled_target_dict)
 
-            # TODO: If this is being registered from eager, it will not reflect the full serialization settings
-            #   object (look into the function, the passed in ss is basically ignored). How should it be piped in?
-            #   https://github.com/flyteorg/flyte/issues/6070
             flyte_task: FlyteTask = self.register_task(entity, ss, version)
 
         return self.execute(
@@ -2212,6 +2219,7 @@ class FlyteRemote(object):
         tags: typing.Optional[typing.List[str]] = None,
         cluster_pool: typing.Optional[str] = None,
         execution_cluster_label: typing.Optional[str] = None,
+        serialization_settings: typing.Optional[SerializationSettings] = None,
     ) -> FlyteWorkflowExecution:
         """
         Execute an @workflow decorated function.
@@ -2232,11 +2240,14 @@ class FlyteRemote(object):
         :param tags: Tags to set for the execution
         :param cluster_pool: Specify cluster pool on which newly created execution should be placed
         :param execution_cluster_label: Specify label of cluster(s) on which newly created execution should be placed
+        :param serialization_settings: Optionally provide serialization settings, in case the entity being run needs
+          to be registered
+
         :return: FlyteWorkflowExecution object
         """
         if not image_config:
             image_config = ImageConfig.auto_default_image()
-        ss = SerializationSettings(
+        ss = serialization_settings or SerializationSettings(
             image_config=image_config,
             project=project or self.default_project,
             domain=domain or self._default_domain,
@@ -2313,6 +2324,7 @@ class FlyteRemote(object):
         tags: typing.Optional[typing.List[str]] = None,
         cluster_pool: typing.Optional[str] = None,
         execution_cluster_label: typing.Optional[str] = None,
+        serialization_settings: typing.Optional[SerializationSettings] = None,
     ) -> FlyteWorkflowExecution:
         """
         Execute a locally defined `LaunchPlan`.
@@ -2332,6 +2344,8 @@ class FlyteRemote(object):
         :param tags: Tags to be passed into the execution.
         :param cluster_pool: Specify cluster pool on which newly created execution should be placed.
         :param execution_cluster_label: Specify label of cluster(s) on which newly created execution should be placed.
+        :param serialization_settings: Optionally provide serialization settings, in case the entity being run needs
+
         :return: FlyteWorkflowExecution object
         """
         resolved_identifiers = self._resolve_identifier_kwargs(entity, project, domain, name, version)
@@ -2348,6 +2362,7 @@ class FlyteRemote(object):
                 version=version,
                 project=project,
                 domain=domain,
+                serialization_settings=serialization_settings,
             )
         return self.execute_remote_task_lp(
             flyte_launchplan,
@@ -2561,7 +2576,8 @@ class FlyteRemote(object):
             if launched_exec.is_done:
                 # The synced underlying execution should've had these populated.
                 execution._inputs = launched_exec.inputs
-                execution._outputs = launched_exec.outputs
+                if launched_exec.is_successful:
+                    execution._outputs = launched_exec.outputs
             execution._workflow_executions.append(launched_exec)
             execution._interface = launched_exec._flyte_workflow.interface
             return execution
@@ -2639,7 +2655,9 @@ class FlyteRemote(object):
                 launch_plan = self.fetch_launch_plan(
                     launch_plan_id.project, launch_plan_id.domain, launch_plan_id.name, launch_plan_id.version
                 )
-                task_execution_interface = launch_plan.interface.transform_interface_to_list()
+                task_execution_interface = launch_plan.interface.transform_interface_to_list(
+                    bound_inputs=set(), excluded_inputs=set()
+                )
                 execution._task_executions = [
                     self.sync_task_execution(
                         FlyteTaskExecution.promote_from_model(task_execution), task_execution_interface
@@ -2976,6 +2994,12 @@ class FlyteRemote(object):
             _, native_url = self.upload_file(dest)
 
         return FastSerializationSettings(enabled=True, distribution_location=native_url, destination_dir=".")
+
+    def get_execution_metrics(self, id: WorkflowExecutionIdentifier, depth: int = 10) -> FlyteExecutionSpan:
+        """
+        Get the metrics for a given execution.
+        """
+        return FlyteExecutionSpan.from_flyte_idl(self.client.get_execution_metrics(id, depth))
 
     @classmethod
     def for_endpoint(

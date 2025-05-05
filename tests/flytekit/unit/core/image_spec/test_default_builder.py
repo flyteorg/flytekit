@@ -43,6 +43,7 @@ def test_create_docker_context(tmp_path):
             pip_secret_mounts=[(".gitconfig", '/etc/gitconfig'), ("secret_src_2", "secret_dst_2")],
             source_copy_mode=CopyFileDetection.ALL,
             copy=[tmp_file.relative_to(Path.cwd()).as_posix()],
+            builder_config={"uv_image": "uv_image_local"},
         )
 
         create_docker_context(image_spec, docker_context_path)
@@ -60,6 +61,8 @@ def test_create_docker_context(tmp_path):
     assert "--mount=type=secret,id=secret_0,target=/etc/gitconfig" in dockerfile_content
     assert "--mount=type=secret,id=secret_1,target=secret_dst_2" in dockerfile_content
     assert "COPY --chown=flytekit ./src /root" in dockerfile_content
+    assert "uv_image_local" in dockerfile_content
+    assert "mambaorg/micromamba:2.0.3-debian12-slim" in dockerfile_content
 
     run_match = re.search(r"RUN.+mkdir my_dir", dockerfile_content)
     assert run_match

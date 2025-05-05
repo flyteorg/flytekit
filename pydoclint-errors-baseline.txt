@@ -133,10 +133,6 @@ flytekit/core/utils.py
     DOC301: Class `ClassDecorator`: __init__() should not have a docstring; please combine it with the docstring of the class
 --------------------
 flytekit/core/workflow.py
-    DOC101: Function `workflow`: Docstring contains fewer arguments than in function signature.
-    DOC103: Function `workflow`: Docstring arguments are different from function arguments. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Arguments in the function signature but not in the docstring: [_workflow_function: Optional[Callable[P, FuncOut]], default_options: Optional[Options], docs: Optional[Documentation], failure_policy: Optional[WorkflowFailurePolicy], interruptible: bool, on_failure: Optional[Union[WorkflowBase, Task]], pickle_untyped: bool].
-    DOC201: Function `workflow` does not have a return section in docstring
-    DOC203: Function `workflow` return type(s) in docstring not consistent with the return annotation. Return annotation has 1 type(s); docstring return section has 0 type(s).
     DOC101: Function `reference_workflow`: Docstring contains fewer arguments than in function signature.
     DOC103: Function `reference_workflow`: Docstring arguments are different from function arguments. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Arguments in the function signature but not in the docstring: [domain: str, name: str, project: str, version: str].
     DOC201: Function `reference_workflow` does not have a return section in docstring
@@ -147,10 +143,6 @@ flytekit/exceptions/system.py
 --------------------
 flytekit/exceptions/user.py
     DOC301: Class `FlyteUserRuntimeException`: __init__() should not have a docstring; please combine it with the docstring of the class
---------------------
-flytekit/extend/backend/base_agent.py
-    DOC601: Class `Resource`: Class docstring contains fewer class attributes than actual class attributes.  (Please read https://jsh9.github.io/pydoclint/checking_class_attributes.html on how to correctly document class attributes.)
-    DOC603: Class `Resource`: Class docstring attributes are different from actual class attributes. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Attributes in the class definition but not in the docstring: [custom_info: Optional[typing.Dict[str, Any]], log_links: Optional[List[TaskLog]], message: Optional[str], outputs: Optional[Union[LiteralMap, typing.Dict[str, Any]]], phase: TaskExecution.Phase]. (Please read https://jsh9.github.io/pydoclint/checking_class_attributes.html on how to correctly document class attributes.)
 --------------------
 flytekit/extras/sqlite3/task.py
     DOC601: Class `SQLite3Config`: Class docstring contains fewer class attributes than actual class attributes.  (Please read https://jsh9.github.io/pydoclint/checking_class_attributes.html on how to correctly document class attributes.)
@@ -173,8 +165,6 @@ flytekit/extras/tensorflow/record.py
     DOC603: Class `TFRecordDatasetConfig`: Class docstring attributes are different from actual class attributes. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Attributes in the class definition but not in the docstring: [buffer_size: Optional[int], compression_type: Optional[str], name: Optional[str], num_parallel_reads: Optional[int]]. (Please read https://jsh9.github.io/pydoclint/checking_class_attributes.html on how to correctly document class attributes.)
 --------------------
 flytekit/image_spec/image_spec.py
-    DOC601: Class `ImageSpec`: Class docstring contains fewer class attributes than actual class attributes.  (Please read https://jsh9.github.io/pydoclint/checking_class_attributes.html on how to correctly document class attributes.)
-    DOC603: Class `ImageSpec`: Class docstring attributes are different from actual class attributes. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Attributes in the class definition but not in the docstring: [apt_packages: Optional[List[str]], base_image: Optional[Union[str, 'ImageSpec']], builder: Optional[str], commands: Optional[List[str]], conda_channels: Optional[List[str]], conda_packages: Optional[List[str]], copy: Optional[List[str]], cuda: Optional[str], cudnn: Optional[str], entrypoint: Optional[List[str]], env: Optional[typing.Dict[str, str]], name: str, packages: Optional[List[str]], pip_extra_args: Optional[str], pip_extra_index_url: Optional[List[str]], pip_index: Optional[str], pip_secret_mounts: Optional[List[Tuple[str, str]]], platform: str, python_exec: Optional[str], python_version: str, registry: Optional[str], registry_config: Optional[str], requirements: Optional[str], source_copy_mode: Optional[CopyFileDetection], source_root: Optional[str], tag_format: Optional[str]]. (Please read https://jsh9.github.io/pydoclint/checking_class_attributes.html on how to correctly document class attributes.)
     DOC109: Method `ImageSpecBuilder.build_image`: The option `--arg-type-hints-in-docstring` is `True` but there are no type hints in the docstring arg list
     DOC110: Method `ImageSpecBuilder.build_image`: The option `--arg-type-hints-in-docstring` is `True` but not all args in the docstring arg list have type hints
     DOC105: Method `ImageSpecBuilder.build_image`: Argument names match, but type hints in these args do not match: image_spec
@@ -432,22 +422,11 @@ flytekit/types/structured/structured_dataset.py
     DOC301: Class `StructuredDatasetDecoder`: __init__() should not have a docstring; please combine it with the docstring of the class
 --------------------
 plugins/flytekit-async-fsspec/flytekitplugins/async_fsspec/s3fs/s3fs.py
-    DOC101: Method `AsyncS3FileSystem._put_file`: Docstring contains fewer arguments than in function signature.
-    DOC106: Method `AsyncS3FileSystem._put_file`: The option `--arg-type-hints-in-signature` is `True` but there are no argument type hints in the signature
-    DOC107: Method `AsyncS3FileSystem._put_file`: The option `--arg-type-hints-in-signature` is `True` but not all args in the signature have type hints
-    DOC103: Method `AsyncS3FileSystem._put_file`: Docstring arguments are different from function arguments. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Arguments in the function signature but not in the docstring: [**kwargs: ].
     DOC201: Method `AsyncS3FileSystem._put_file` does not have a return section in docstring
-    DOC101: Method `AsyncS3FileSystem._get_file`: Docstring contains fewer arguments than in function signature.
-    DOC106: Method `AsyncS3FileSystem._get_file`: The option `--arg-type-hints-in-signature` is `True` but there are no argument type hints in the signature
-    DOC107: Method `AsyncS3FileSystem._get_file`: The option `--arg-type-hints-in-signature` is `True` but not all args in the signature have type hints
-    DOC103: Method `AsyncS3FileSystem._get_file`: Docstring arguments are different from function arguments. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Arguments in the function signature but not in the docstring: [concurrent_download: ].
     DOC201: Method `AsyncS3FileSystem._get_file` does not have a return section in docstring
 --------------------
 plugins/flytekit-aws-athena/flytekitplugins/athena/task.py
     DOC301: Class `AthenaTask`: __init__() should not have a docstring; please combine it with the docstring of the class
---------------------
-plugins/flytekit-aws-sagemaker/flytekitplugins/awssagemaker_inference/boto3_mixin.py
-    DOC301: Class `Boto3AgentMixin`: __init__() should not have a docstring; please combine it with the docstring of the class
 --------------------
 plugins/flytekit-aws-sagemaker/flytekitplugins/awssagemaker_inference/task.py
     DOC301: Class `SageMakerModelTask`: __init__() should not have a docstring; please combine it with the docstring of the class
@@ -602,8 +581,6 @@ plugins/flytekit-spark/flytekitplugins/spark/models.py
     DOC301: Class `SparkJob`: __init__() should not have a docstring; please combine it with the docstring of the class
 --------------------
 plugins/flytekit-spark/flytekitplugins/spark/task.py
-    DOC601: Class `Spark`: Class docstring contains fewer class attributes than actual class attributes.  (Please read https://jsh9.github.io/pydoclint/checking_class_attributes.html on how to correctly document class attributes.)
-    DOC603: Class `Spark`: Class docstring attributes are different from actual class attributes. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Attributes in the class definition but not in the docstring: [applications_path: Optional[str], executor_path: Optional[str], hadoop_conf: Optional[Dict[str, str]], spark_conf: Optional[Dict[str, str]]]. (Please read https://jsh9.github.io/pydoclint/checking_class_attributes.html on how to correctly document class attributes.)
     DOC601: Class `DatabricksV2`: Class docstring contains fewer class attributes than actual class attributes.  (Please read https://jsh9.github.io/pydoclint/checking_class_attributes.html on how to correctly document class attributes.)
     DOC603: Class `DatabricksV2`: Class docstring attributes are different from actual class attributes. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Attributes in the class definition but not in the docstring: [databricks_conf: Optional[Dict[str, Union[str, dict]]], databricks_instance: Optional[str]]. (Please read https://jsh9.github.io/pydoclint/checking_class_attributes.html on how to correctly document class attributes.)
 --------------------

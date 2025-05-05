@@ -1,14 +1,5 @@
 """
-
-.. autoclass:: flytekit.core.context_manager::ExecutionState.Mode
-   :noindex:
-.. autoclass:: flytekit.core.context_manager::ExecutionState.Mode.TASK_EXECUTION
-   :noindex:
-.. autoclass:: flytekit.core.context_manager::ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION
-   :noindex:
-.. autoclass:: flytekit.core.context_manager::ExecutionState.Mode.LOCAL_TASK_EXECUTION
-   :noindex:
-
+These classes provide functionality related context management.
 """
 
 from __future__ import annotations
@@ -68,17 +59,18 @@ class ExecutionParameters(object):
     """
     This is a run-time user-centric context object that is accessible to every @task method. It can be accessed using
 
-    .. code-block:: python
 
-        flytekit.current_context()
+    ```python
+    flytekit.current_context()
+    ```
 
-    This object provides the following
+    This object provides the following objections
     * a statsd handler
     * a logging handler
-    * the execution ID as an :py:class:`flytekit.models.core.identifier.WorkflowExecutionIdentifier` object
+    * the execution ID as an `flytekit.models.core.identifier.WorkflowExecutionIdentifier` object
     * a working directory for the user to write arbitrary files to
 
-    Please do not confuse this object with the :py:class:`flytekit.FlyteContext` object.
+    Please do not confuse this object with the `flytekit.FlyteContext` object.
     """
 
     @dataclass(init=False)
@@ -157,6 +149,21 @@ class ExecutionParameters(object):
 
     def builder(self) -> Builder:
         return ExecutionParameters.Builder(current=self)
+
+    def __repr__(self):
+        cp = f" checkpoint={self.checkpoint}," if self._checkpoint else ""
+        return (
+            f"ExecutionParameters(execution_date={self.execution_date},"
+            f" stats={self.stats},"
+            f" tmp_dir={self.working_directory},"
+            f" execution_id={self.execution_id},"
+            f" {cp},"
+            f" decks={self.decks},"
+            f" raw_output_prefix={self.raw_output_prefix},"
+            f" task_id={self.task_id},"
+            f" output_metadata_prefix={self.output_metadata_prefix},"
+            f" enable_deck={self.enable_deck})"
+        )
 
     def __init__(
         self,
@@ -239,9 +246,8 @@ class ExecutionParameters(object):
         This is a datetime representing the time at which a workflow was started.  This is consistent across all tasks
         executed in a workflow or sub-workflow.
 
-        .. note::
-
-            Do NOT use this execution_date to drive any production logic.  It might be useful as a tag for data to help
+        > [!NOTE]
+        > Do NOT use this execution_date to drive any production logic.  It might be useful as a tag for data to help
             in debugging.
         """
         return self._execution_date
@@ -252,9 +258,8 @@ class ExecutionParameters(object):
         This is the identifier of the workflow execution within the underlying engine.  It will be consistent across all
         task executions in a workflow or sub-workflow execution.
 
-        .. note::
-
-            Do NOT use this execution_id to drive any production logic.  This execution ID should only be used as a tag
+        > [!NOTE]
+        > Do NOT use this execution_id to drive any production logic.  This execution ID should only be used as a tag
             on output data to link back to the workflow run that created it.
         """
         return self._execution_id
@@ -390,12 +395,6 @@ class SecretsManager(object):
         Retrieves a secret using the resolution order -> Env followed by file. If not found raises a ValueError
         param encode_mode, defines the mode to open files, it can either be "r" to read file, or "rb" to read binary file
         """
-
-        from flytekit.configuration.plugin import get_plugin
-
-        if not get_plugin().secret_requires_group():
-            group, group_version = None, None
-
         env_prefixes = [self._env_prefix]
 
         # During local execution check for the key without a prefix
@@ -459,8 +458,8 @@ class CompilationState(object):
         prefix (str): This is because we may one day want to be able to have subworkflows inside other workflows. If
             users choose to not specify their node names, then we can end up with multiple "n0"s. This prefix allows
             us to give those nested nodes a distinct name, as well as properly identify them in the workflow.
-        mode (int): refer to :py:class:`flytekit.extend.ExecutionState.Mode`
-        task_resolver (Optional[TaskResolverMixin]): Please see :py:class:`flytekit.extend.TaskResolverMixin`
+        mode (int): refer to `flytekit.extend.ExecutionState.Mode`
+        task_resolver (Optional[TaskResolverMixin]): Please see `flytekit.extend.TaskResolverMixin`
         nodes (Optional[List]): Stores currently compiled nodes so far.
     """
 
@@ -552,6 +551,8 @@ class ExecutionState(object):
 
         EAGER_LOCAL_EXECUTION = 6
 
+        LOCAL_DYNAMIC_TASK_EXECUTION = 7
+
     mode: Optional[ExecutionState.Mode]
     working_dir: Union[os.PathLike, str]
     engine_dir: Optional[Union[os.PathLike, str]]
@@ -613,6 +614,7 @@ class ExecutionState(object):
             self.mode == ExecutionState.Mode.LOCAL_TASK_EXECUTION
             or self.mode == ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION
             or self.mode == ExecutionState.Mode.EAGER_LOCAL_EXECUTION
+            or self.mode == ExecutionState.Mode.LOCAL_DYNAMIC_TASK_EXECUTION
         )
 
 
@@ -676,9 +678,9 @@ class FlyteContext(object):
     compile workflows, serialize Flyte entities, etc.
 
     Even though this object as a ``current_context`` function on it, it should not be called directly. Please use the
-    :py:class:`flytekit.FlyteContextManager` object instead.
+    `flytekit.FlyteContextManager` object instead.
 
-    Please do not confuse this object with the :py:class:`flytekit.ExecutionParameters` object.
+    Please do not confuse this object with the `flytekit.ExecutionParameters` object.
     """
 
     file_access: FileAccessProvider
@@ -773,7 +775,7 @@ class FlyteContext(object):
         ``FlyteContextManager.current_context()`` instead.
 
         Users of flytekit should be wary not to confuse the object returned from this function
-        with :py:func:`flytekit.current_context`
+        with {{< py_func_ref flytekit.current_context >}}
         """
         return FlyteContextManager.current_context()
 
@@ -784,18 +786,18 @@ class FlyteContext(object):
         The return value depends on the execution environment. In a notebook, the return value is compatible with
         IPython.display and should be rendered in the notebook.
 
-        .. code-block:: python
-
-            with flytekit.new_context() as ctx:
-                my_task(...)
-            ctx.get_deck()
+        ```python
+        with flytekit.new_context() as ctx:
+            my_task(...)
+        ctx.get_deck()
+        ```
 
         OR if you wish to explicitly display
 
-        .. code-block:: python
-
-            from IPython import display
-            display(ctx.get_deck())
+        ```python
+        from IPython import display
+        display(ctx.get_deck())
+        ```
         """
         from flytekit.deck.deck import _get_deck
 
@@ -906,16 +908,16 @@ class FlyteContextManager(object):
 
     Typical usage is
 
-    .. code-block:: python
+    ```python
+    FlyteContextManager.initialize()
+    with FlyteContextManager.with_context(o) as ctx:
+        pass
 
-        FlyteContextManager.initialize()
-        with FlyteContextManager.with_context(o) as ctx:
-          pass
-
-        # If required - not recommended you can use
-        FlyteContextManager.push_context()
-        # but correspondingly a pop_context should be called
-        FlyteContextManager.pop_context()
+    # If required - not recommended you can use
+    FlyteContextManager.push_context()
+    # but correspondingly a pop_context should be called
+    FlyteContextManager.pop_context()
+    ```
     """
 
     signal_handlers: typing.List[typing.Callable[[int, FrameType], typing.Any]] = []

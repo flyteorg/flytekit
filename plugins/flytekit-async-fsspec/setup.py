@@ -9,6 +9,8 @@ plugin_requires = ["flytekit", "s3fs>=2023.3.0,!=2024.3.1"]
 __version__ = "0.0.0+develop"
 
 setup(
+    title="Async FSSpec",
+    title_expanded="Flytekit Async fsspec Plugin",
     name=microlib_name,
     version=__version__,
     author="flyteorg",

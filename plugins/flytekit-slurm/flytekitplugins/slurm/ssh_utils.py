@@ -11,10 +11,26 @@ import asyncssh
 from asyncssh import SSHClientConnection
 
 from flytekit import logger
-from flytekit.extend.backend.utils import get_agent_secret
+from flytekit.extend.backend.utils import get_connector_secret
 
 T = TypeVar("T", bound="SSHConfig")
 SLURM_PRIVATE_KEY = "FLYTE_SLURM_PRIVATE_KEY"
+
+
+@dataclass
+class SlurmCluster:
+    """A Slurm cluster instance is defined by a pair of (Slurm host, username).
+
+    Attributes:
+        host (str): The hostname or address to connect to.
+        username (Optional[str]): The username to authenticate as on the server.
+    """
+
+    host: str
+    username: Optional[str] = None
+
+    def __hash__(self):
+        return hash((self.host, self.username))
 
 
 @dataclass(frozen=True)
@@ -81,7 +97,7 @@ async def ssh_connect(ssh_config: Dict[str, Any]) -> SSHClientConnection:
         )
 
     try:
-        default_client_key = get_agent_secret(secret_key=SLURM_PRIVATE_KEY)
+        default_client_key = get_connector_secret(secret_key=SLURM_PRIVATE_KEY)
     except ValueError:
         logger.info("The secret for key FLYTE_SLURM_PRIVATE_KEY is not set.")
         default_client_key = None
@@ -116,6 +132,49 @@ async def ssh_connect(ssh_config: Dict[str, Any]) -> SSHClientConnection:
             f"Error details:\n{e}"
         )
         sys.exit(1)
+
+
+async def get_ssh_conn(
+    ssh_config: Dict[str, Union[str, List[str], Tuple[str, ...]]],
+    slurm_cluster_to_ssh_conn: Dict[SlurmCluster, SSHClientConnection],
+) -> Tuple[SlurmCluster, SSHClientConnection]:
+    """
+    Get an existing SSH connection or create a new one if needed.
+
+    Args:
+        ssh_config (Dict[str, Union[str, List[str], Tuple[str, ...]]]):
+            SSH configuration dictionary, including host and username.
+        slurm_cluster_to_ssh_conn (Dict[SlurmCluster, SSHClientConnection]):
+            A mapping of SlurmCluster to existing SSHClientConnection objects.
+
+    Returns:
+        Tuple[SlurmCluster, SSHClientConnection]:
+            A tuple containing (SlurmCluster, SSHClientConnection). If no connection
+            for the given SlurmCluster exists, a new one is created and cached.
+    """
+
+    # (Optional) normal code comment instead of docstring line:
+    # Is it necessary to ensure immutability in this function?
+
+    host = ssh_config.get("host")
+    username = ssh_config.get("username")
+    slurm_cluster = SlurmCluster(host=host, username=username)
+
+    if slurm_cluster_to_ssh_conn.get(slurm_cluster) is None:
+        logger.info("SSH connection key not found, creating new connection")
+        conn = await ssh_connect(ssh_config=ssh_config)
+        slurm_cluster_to_ssh_conn[slurm_cluster] = conn
+    else:
+        conn = slurm_cluster_to_ssh_conn[slurm_cluster]
+        try:
+            await conn.run("echo [TEST] SSH connection", check=True)
+            logger.info("Re-using new connection")
+        except Exception as e:
+            logger.info(f"Re-establishing SSH connection due to error: {e}")
+            conn = await ssh_connect(ssh_config=ssh_config)
+            slurm_cluster_to_ssh_conn[slurm_cluster] = conn
+
+    return conn
 
 
 if __name__ == "__main__":

@@ -15,6 +15,8 @@ plugin_requires = [
 __version__ = "0.0.0+develop"
 
 setup(
+    title="Great Expectations",
+    title_expanded="Flytekit Great Expectations Plugin",
     name=microlib_name,
     version=__version__,
     author="flyteorg",

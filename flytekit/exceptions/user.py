@@ -31,7 +31,7 @@ class FlyteUserRuntimeException(_FlyteException):
 
     @property
     def error_code(self):
-        return self._ERROR_CODE
+        return self.value.error_code if hasattr(self.value, "error_code") else self._ERROR_CODE
 
 
 class FlyteTypeException(FlyteUserException, TypeError):

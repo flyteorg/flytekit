@@ -1001,8 +1001,19 @@ def test_dispatch_execute_offloaded_nested_lists_of_literals_offloading_disabled
 @mock.patch("flytekit.core.data_persistence.FileAccessProvider.put_data")
 @mock.patch("flytekit.core.utils.write_proto_to_file")
 def test_dispatch_execute_custom_error_code_with_flyte_user_runtime_exception(mock_write_to_file, mock_upload_dir, mock_get_data, mock_load_proto):
-    class CustomException(FlyteUserRuntimeException):
+    class CustomException(Exception):
         _ERROR_CODE = "CUSTOM_ERROR_CODE"
+
+        @property
+        def error_code(self):
+            return self._ERROR_CODE
+
+    # Mimic real logic - executes and wraps any exception in a FlyteUserRuntimeException
+    def fake_dispatch_execute(*args, **kwargs):
+        try:
+            return python_task.execute(**kwargs)
+        except Exception as e:
+            raise FlyteUserRuntimeException(e) from e
 
     mock_get_data.return_value = True
     mock_upload_dir.return_value = True
@@ -1014,14 +1025,16 @@ def test_dispatch_execute_custom_error_code_with_flyte_user_runtime_exception(mo
         )
     ) as ctx:
         python_task = mock.MagicMock()
-        python_task.dispatch_execute.side_effect = CustomException("custom error")
+        python_task.execute.side_effect = CustomException("custom error")
+        python_task.dispatch_execute.side_effect = fake_dispatch_execute
 
         empty_literal_map = _literal_models.LiteralMap({}).to_flyte_idl()
         mock_load_proto.return_value = empty_literal_map
 
         def verify_output(*args, **kwargs):
-            assert isinstance(args[0], ErrorDocument)
-            assert args[0].error.code == "CUSTOM_ERROR_CODE"
+            error_document = args[0]
+            assert isinstance(error_document, ErrorDocument)
+            assert error_document.error.code == "CUSTOM_ERROR_CODE"
 
         mock_write_to_file.side_effect = verify_output
         _dispatch_execute(ctx, lambda: python_task, "inputs path", "outputs prefix")

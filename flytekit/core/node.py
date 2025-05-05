@@ -7,8 +7,14 @@ from typing import Literal as L
 
 from flyteidl.core import tasks_pb2
 
+from flytekit.core.cache import Cache
 from flytekit.core.pod_template import PodTemplate
-from flytekit.core.resources import Resources, construct_extended_resources, convert_resources_to_resource_model
+from flytekit.core.resources import (
+    Resources,
+    ResourceSpec,
+    construct_extended_resources,
+    convert_resources_to_resource_model,
+)
 from flytekit.core.utils import _dnsify
 from flytekit.extras.accelerators import BaseAccelerator
 from flytekit.loggers import logger
@@ -135,11 +141,17 @@ class Node(object):
         timeout: Optional[Union[int, datetime.timedelta, object]] = TIMEOUT_OVERRIDE_SENTINEL,
         retries: Optional[int] = None,
         interruptible: typing.Optional[bool] = None,
-        cache: typing.Optional[bool] = None,
-        cache_version: typing.Optional[str] = None,
-        cache_serialize: typing.Optional[bool] = None,
+        cache: Optional[Union[bool, Cache]] = None,
+        **kwargs,
     ):
         from flytekit.core.array_node_map_task import ArrayNodeMapTask
+
+        # Maintain backwards compatibility with the old cache parameters,
+        # while cleaning up the task function definition.
+        cache_serialize = kwargs.get("cache_serialize")
+        cache_version = kwargs.get("cache_version")
+        # TODO support ignore_input_vars in with_overrides
+        cache_ignore_input_vars = kwargs.get("cache_ignore_input_vars")
 
         if isinstance(self.flyte_entity, ArrayNodeMapTask):
             # override the sub-node's metadata
@@ -172,7 +184,33 @@ class Node(object):
 
         if cache is not None:
             assert_not_promise(cache, "cache")
-            node_metadata._cacheable = cache
+
+            # Note: any future changes should look into how these cache params are set in tasks
+            # If the cache is of type bool but cache_version is not set, then assume that we want to use the
+            # default cache policies in Cache
+            if isinstance(cache, bool) and cache is True and cache_version is None:
+                cache = Cache(
+                    serialize=cache_serialize if cache_serialize is not None else False,
+                    ignored_inputs=cache_ignore_input_vars if cache_ignore_input_vars is not None else tuple(),
+                )
+
+            if isinstance(cache, Cache):
+                # Validate that none of the deprecated cache-related parameters are set.
+                # if cache_serialize is not None or cache_version is not None or cache_ignore_input_vars is not None:
+                if cache_serialize is not None or cache_version is not None:
+                    raise ValueError(
+                        "cache_serialize, cache_version, and cache_ignore_input_vars are deprecated. Please use Cache object"
+                    )
+
+                # TODO support unset cache version in with_overrides
+                if cache.version is None:
+                    raise ValueError("must specify cache version when overriding")
+
+                cache_version = cache.version
+                cache_serialize = cache.serialize
+                cache = True
+
+        node_metadata._cacheable = cache
 
         if cache_version is not None:
             assert_not_promise(cache_version, "cache_version")
@@ -195,11 +233,10 @@ class Node(object):
         task_config: Optional[Any] = None,
         container_image: Optional[str] = None,
         accelerator: Optional[BaseAccelerator] = None,
-        cache: Optional[bool] = None,
-        cache_version: Optional[str] = None,
-        cache_serialize: Optional[bool] = None,
+        cache: Optional[Union[bool, Cache]] = None,
         shared_memory: Optional[Union[L[True], str]] = None,
         pod_template: Optional[PodTemplate] = None,
+        resources: Optional[Resources] = None,
         *args,
         **kwargs,
     ):
@@ -216,6 +253,14 @@ class Node(object):
             for k, v in aliases.items():
                 self._aliases.append(_workflow_model.Alias(var=k, alias=v))
 
+        if resources is not None:
+            if limits is not None or requests is not None:
+                msg = "`resource` can not be used together with the `limits` or `requests`. Please only set `resource`."
+                raise ValueError(msg)
+            resource_spec = ResourceSpec.from_multiple_resource(resources)
+            requests = resource_spec.requests
+            limits = resource_spec.limits
+
         if requests is not None or limits is not None:
             if requests and not isinstance(requests, Resources):
                 raise AssertionError("requests should be specified as flytekit.Resources")
@@ -230,9 +275,9 @@ class Node(object):
                     )
                 )
 
-            resources = convert_resources_to_resource_model(requests=requests, limits=limits)
-            assert_no_promises_in_resources(resources)
-            self._resources = resources
+            resources_ = convert_resources_to_resource_model(requests=requests, limits=limits)
+            assert_no_promises_in_resources(resources_)
+            self._resources = resources_
 
         if task_config is not None:
             logger.warning("This override is beta. We may want to revisit this in the future.")
@@ -252,7 +297,7 @@ class Node(object):
 
         self._extended_resources = construct_extended_resources(accelerator=accelerator, shared_memory=shared_memory)
 
-        self._override_node_metadata(name, timeout, retries, interruptible, cache, cache_version, cache_serialize)
+        self._override_node_metadata(name, timeout, retries, interruptible, cache, **kwargs)
 
         if pod_template is not None:
             assert_not_promise(pod_template, "podtemplate")

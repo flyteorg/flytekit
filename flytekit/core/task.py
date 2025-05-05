@@ -34,17 +34,16 @@ class TaskPlugins(object):
     Every task that the user wishes to use should be available in this factory.
     Usage
 
-    .. code-block:: python
-
-        TaskPlugins.register_pythontask_plugin(config_object_type, plugin_object_type)
-        # config_object_type is any class that will be passed to the plugin_object as task_config
-        # Plugin_object_type is a derivative of ``PythonFunctionTask``
-
+    ```python
+    TaskPlugins.register_pythontask_plugin(config_object_type, plugin_object_type)
+    # config_object_type is any class that will be passed to the plugin_object as task_config
+    # Plugin_object_type is a derivative of ``PythonFunctionTask``
+    ```
     Examples of available task plugins include different query-based plugins such as
-    :py:class:`flytekitplugins.athena.task.AthenaTask` and :py:class:`flytekitplugins.hive.task.HiveTask`, kubeflow
-    operators like :py:class:`plugins.kfpytorch.flytekitplugins.kfpytorch.task.PyTorchFunctionTask` and
-    :py:class:`plugins.kftensorflow.flytekitplugins.kftensorflow.task.TensorflowFunctionTask`, and generic plugins like
-    :py:class:`flytekitplugins.pod.task.PodFunctionTask` which doesn't integrate with third party tools or services.
+    {{< py_class_ref flytekitplugins.athena.task.AthenaTask >}} and {{< py_class_ref flytekitplugins.hive.task.HiveTask >}}, kubeflow
+    operators like {{< py_class_ref plugins.kfpytorch.flytekitplugins.kfpytorch.task.PyTorchFunctionTask >}} and
+    {{< py_class_ref plugins.kftensorflow.flytekitplugins.kftensorflow.task.TensorflowFunctionTask >}}, and generic plugins like
+    {{< py_class_ref flytekitplugins.pod.task.PodFunctionTask >}} which doesn't integrate with third party tools or services.
 
     The `task_config` is different for every task plugin type. This is filled out by users when they define a task to
     specify plugin-specific behavior and features.  For example, with a query type task plugin, the config might store
@@ -61,11 +60,11 @@ class TaskPlugins(object):
         """
         Use this method to register a new plugin into Flytekit. Usage ::
 
-        .. code-block:: python
-
-            TaskPlugins.register_pythontask_plugin(config_object_type, plugin_object_type)
-            # config_object_type is any class that will be passed to the plugin_object as task_config
-            # Plugin_object_type is a derivative of ``PythonFunctionTask``
+        ```python
+        TaskPlugins.register_pythontask_plugin(config_object_type, plugin_object_type)
+        # config_object_type is any class that will be passed to the plugin_object as task_config
+        # Plugin_object_type is a derivative of ``PythonFunctionTask``
+        ```
         """
         if plugin_config_type in cls._PYTHONFUNCTION_TASK_PLUGINS:
             found = cls._PYTHONFUNCTION_TASK_PLUGINS[plugin_config_type]
@@ -128,6 +127,7 @@ def task(
     accelerator: Optional[BaseAccelerator] = ...,
     pickle_untyped: bool = ...,
     shared_memory: Optional[Union[L[True], str]] = None,
+    resources: Optional[Resources] = ...,
     **kwargs,
 ) -> Callable[[Callable[..., FuncOut]], PythonFunctionTask[T]]: ...
 
@@ -166,6 +166,7 @@ def task(
     accelerator: Optional[BaseAccelerator] = ...,
     pickle_untyped: bool = ...,
     shared_memory: Optional[Union[L[True], str]] = ...,
+    resources: Optional[Resources] = ...,
     **kwargs,
 ) -> Union[Callable[P, FuncOut], PythonFunctionTask[T]]: ...
 
@@ -209,6 +210,7 @@ def task(
     accelerator: Optional[BaseAccelerator] = None,
     pickle_untyped: bool = False,
     shared_memory: Optional[Union[L[True], str]] = None,
+    resources: Optional[Resources] = None,
     **kwargs,
 ) -> Union[
     Callable[P, FuncOut],
@@ -228,20 +230,19 @@ def task(
 
     For a simple python task,
 
-    .. code-block:: python
-
-        @task
-        def my_task(x: int, y: typing.Dict[str, str]) -> str:
-            ...
+    ```python
+    @task
+    def my_task(x: int, y: typing.Dict[str, str]) -> str:
+        ...
+    ```
 
     For specific task types
 
-    .. code-block:: python
-
-        @task(task_config=Spark(), retries=3)
-        def my_task(x: int, y: typing.Dict[str, str]) -> str:
-            ...
-
+    ```python
+    @task(task_config=Spark(), retries=3)
+    def my_task(x: int, y: typing.Dict[str, str]) -> str:
+        ...
+    ```
     Please see some cookbook :std:ref:`task examples <cookbook:tasks>` for additional information.
 
     :param _task_function: This argument is implicitly passed and represents the decorated function
@@ -278,35 +279,34 @@ def task(
                 bloat because of various dependencies and a dependency is only required for this or a set of tasks,
                 and they vary from the default.
 
-                .. code-block:: python
+                ```python
+                # Use default image name `fqn` and alter the tag to `tag-{{default.tag}}` tag of the default image
+                # with a prefix. In this case, it is assumed that the image like
+                # flytecookbook:tag-gitsha is published alongwith the default of flytecookbook:gitsha
+                @task(container_image='{{.images.default.fqn}}:tag-{{images.default.tag}}')
+                def foo():
+                    ...
 
-                    # Use default image name `fqn` and alter the tag to `tag-{{default.tag}}` tag of the default image
-                    # with a prefix. In this case, it is assumed that the image like
-                    # flytecookbook:tag-gitsha is published alongwith the default of flytecookbook:gitsha
-                    @task(container_image='{{.images.default.fqn}}:tag-{{images.default.tag}}')
-                    def foo():
-                        ...
-
-                    # Refer to configurations to configure fqns for other images besides default. In this case it will
-                    # lookup for an image named xyz
-                    @task(container_image='{{.images.xyz.fqn}}:{{images.default.tag}}')
-                    def foo2():
-                        ...
+                # Refer to configurations to configure fqns for other images besides default. In this case it will
+                # lookup for an image named xyz
+                @task(container_image='{{.images.xyz.fqn}}:{{images.default.tag}}')
+                def foo2():
+                    ...
+                ```
     :param environment: Environment variables that should be added for this tasks execution
     :param requests: Specify compute resource requests for your task. For Pod-plugin tasks, these values will apply only
       to the primary container.
     :param limits: Compute limits. Specify compute resource limits for your task. For Pod-plugin tasks, these values
-      will apply only to the primary container. For more information, please see :py:class:`flytekit.Resources`.
+      will apply only to the primary container. For more information, please see {{< py_class_ref flytekit.Resources >}}.
     :param secret_requests: Keys that can identify the secrets supplied at runtime. Ideally the secret keys should also be
                      semi-descriptive. The key values will be available from runtime, if the backend is configured
                      to provide secrets and if secrets are available in the configured secrets store.
                      Possible options for secret stores are - Vault, Confidant, Kube secrets, AWS KMS etc
-                     Refer to :py:class:`Secret` to understand how to specify the request for a secret. It
+                     Refer to {{< py_class_ref Secret >}} to understand how to specify the request for a secret. It
                      may change based on the backend provider.
 
-                     .. note::
-
-                         During local execution, the secrets will be pulled from the local environment variables
+                    > [!NOTE]
+                    > During local execution, the secrets will be pulled from the local environment variables
                          with the format `{GROUP}_{GROUP_VERSION}_{KEY}`, where all the characters are capitalized
                          and the prefix is not used.
 
@@ -319,20 +319,20 @@ def task(
         For example this is useful to run launchplans dynamically, because launchplans must be registered on flyteadmin
         before they can be run. Tasks and workflows do not have this requirement.
 
-        .. code-block:: python
+        ```python
+        @workflow
+        def workflow0():
+            ...
 
-            @workflow
-            def workflow0():
-                ...
+        launchplan0 = LaunchPlan.get_or_create(workflow0)
 
-            launchplan0 = LaunchPlan.get_or_create(workflow0)
-
-            # Specify node_dependency_hints so that launchplan0 will be registered on flyteadmin, despite this being a
-            # dynamic task.
-            @dynamic(node_dependency_hints=[launchplan0])
-            def launch_dynamically():
-                # To run a sub-launchplan it must have previously been registered on flyteadmin.
-                return [launchplan0]*10
+        # Specify node_dependency_hints so that launchplan0 will be registered on flyteadmin, despite this being a
+        # dynamic task.
+        @dynamic(node_dependency_hints=[launchplan0])
+        def launch_dynamically():
+            # To run a sub-launchplan it must have previously been registered on flyteadmin.
+            return [launchplan0]*10
+        ```
     :param task_resolver: Provide a custom task resolver.
     :param disable_deck: (deprecated) If true, this task will not output deck html file
     :param enable_deck: If true, this task will output deck html file
@@ -344,15 +344,24 @@ def task(
     :param pickle_untyped: Boolean that indicates if the task allows unspecified data types.
     :param shared_memory: If True, then shared memory will be attached to the container where the size is equal
         to the allocated memory. If int, then the shared memory is set to that size.
+    :param resources: Specify both the request and the limit. When the value is set to a tuple or list, the
+        first value is the request and the second value is the limit. If the value is a single value, then both the
+        requests and limit is set to that value. For example, the `Resource(cpu=("1", "2"), mem="1Gi")` will set the cpu
+        request to 1, cpu limit to 2, and mem request to 1Gi.
     """
     # Maintain backwards compatibility with the old cache parameters, while cleaning up the task function definition.
-    cache_serialize = kwargs.get("cache_serialize")
-    cache_version = kwargs.get("cache_version")
-    cache_ignore_input_vars = kwargs.get("cache_ignore_input_vars")
+    cache_serialize = kwargs.pop("cache_serialize", None)
+    cache_version = kwargs.pop("cache_version", None)
+    cache_ignore_input_vars = kwargs.pop("cache_ignore_input_vars", None)
+
+    # Any remaining kwargs will be unused and are likely mistakes (eg template instead of pod_template).
+    if kwargs:
+        raise ValueError(f"Unrecognized argument(s) for task: {kwargs.keys()}")
 
     def wrapper(fn: Callable[P, FuncOut]) -> PythonFunctionTask[T]:
         nonlocal cache, cache_serialize, cache_version, cache_ignore_input_vars
 
+        # Note: any future changes should look into how these cache params are set in with_overrides for nodes
         # If the cache is of type bool but cache_version is not set, then assume that we want to use the
         # default cache policies in Cache
         if isinstance(cache, bool) and cache is True and cache_version is None:
@@ -435,6 +444,7 @@ def task(
             accelerator=accelerator,
             pickle_untyped=pickle_untyped,
             shared_memory=shared_memory,
+            resources=resources,
         )
         update_wrapper(task_instance, decorated_fn)
         return task_instance
@@ -479,10 +489,25 @@ def reference_task(
     If at registration time the interface provided causes an issue with compilation, an error will be returned.
 
     Example:
-
+    <!--
     .. literalinclude:: ../../../tests/flytekit/unit/core/test_references.py
        :pyobject: ref_t1
-
+    -->
+    ```python
+    @reference_task(
+    project="flytesnacks",
+    domain="development",
+    name="recipes.aaa.simple.join_strings",
+    version="553018f39e519bdb2597b652639c30ce16b99c79",
+    )
+    def ref_t1(a: typing.List[str]) -> str:
+        '''
+        The empty function acts as a convenient skeleton to make it intuitive to call/reference this task from workflows.
+        The interface of the task must match that of the remote task. Otherwise, remote compilation of the workflow will
+        fail.
+        '''
+        return "hello"
+    ```
     """
 
     def wrapper(fn) -> ReferenceTask:
@@ -559,75 +584,71 @@ def eager(
 
     This type of task will execute all Flyte entities within it eagerly, meaning that all python constructs can be
     used inside of an ``@eager``-decorated function. This is because eager workflows use a
-    :py:class:`~flytekit.remote.remote.FlyteRemote` object to kick off executions when a flyte entity needs to produce a
+    {{< py_class_ref flytekit.remote.remote.FlyteRemote >}} object to kick off executions when a flyte entity needs to produce a
     value. Basically think about it as: every Flyte entity that is called(), the stack frame is an execution with its
     own Flyte URL. Results (or the error) are fetched when the execution is finished.
 
     For example:
 
-    .. code-block:: python
+    ```python
+    from flytekit import task, eager
 
-        from flytekit import task, eager
+    @task
+    def add_one(x: int) -> int:
+        return x + 1
 
-        @task
-        def add_one(x: int) -> int:
-            return x + 1
+    @task
+    def double(x: int) -> int:
+        return x * 2
 
-        @task
-        def double(x: int) -> int:
-            return x * 2
+    @eager
+    async def eager_workflow(x: int) -> int:
+        out = add_one(x=x)
+        return double(x=out)
 
-        @eager
-        async def eager_workflow(x: int) -> int:
-            out = add_one(x=x)
-            return double(x=out)
+    # run locally with asyncio
+    if __name__ == "__main__":
+        import asyncio
 
-        # run locally with asyncio
-        if __name__ == "__main__":
-            import asyncio
+        result = asyncio.run(eager_workflow(x=1))
+        print(f"Result: {result}")  # "Result: 4"
+    ```
+    Unlike {{< py_func_ref dynamic workflows flytekit.dynamic >}}, eager workflows are not compiled into a workflow spec, but
+    uses python's [`async`](https://docs.python.org/3/library/asyncio.html) capabilities to execute flyte entities.
 
-            result = asyncio.run(eager_workflow(x=1))
-            print(f"Result: {result}")  # "Result: 4"
-
-    Unlike :py:func:`dynamic workflows <flytekit.dynamic>`, eager workflows are not compiled into a workflow spec, but
-    uses python's `async <https://docs.python.org/3/library/asyncio.html>`__ capabilities to execute flyte entities.
-
-    .. note::
-
-       Eager workflows only support `@task`, `@workflow`, and `@eager` entities. Conditionals are not supported, use a
+    > [!NOTE]
+    > Eager workflows only support `@task`, `@workflow`, and `@eager` entities. Conditionals are not supported, use a
        plain Python if statement instead.
 
-    .. important::
+    > [!IMPORTANT]
+    > A ``client_secret_group`` and ``client_secret_key`` is needed for authenticating via
+       {{< py_class_ref flytekit.remote.remote.FlyteRemote >}} using the ``client_credentials`` authentication, which is
+       configured via {{< py_class_ref flytekit.configuration.PlatformConfig >}}.
 
-       A ``client_secret_group`` and ``client_secret_key`` is needed for authenticating via
-       :py:class:`~flytekit.remote.remote.FlyteRemote` using the ``client_credentials`` authentication, which is
-       configured via :py:class:`~flytekit.configuration.PlatformConfig`.
+       ```python
+        from flytekit.remote import FlyteRemote
+        from flytekit.configuration import Config
 
-       .. code-block:: python
-
-            from flytekit.remote import FlyteRemote
-            from flytekit.configuration import Config
-
-            @eager(
-                remote=FlyteRemote(config=Config.auto(config_file="config.yaml")),
-                client_secret_group="my_client_secret_group",
-                client_secret_key="my_client_secret_key",
-            )
-            async def eager_workflow(x: int) -> int:
-                out = await add_one(x)
-                return await double(one)
-
+        @eager(
+            remote=FlyteRemote(config=Config.auto(config_file="config.yaml")),
+            client_secret_group="my_client_secret_group",
+            client_secret_key="my_client_secret_key",
+        )
+        async def eager_workflow(x: int) -> int:
+            out = await add_one(x)
+            return await double(one)
+        ```
        Where ``config.yaml`` contains is a flytectl-compatible config file.
-       For more details, see `here <https://docs.flyte.org/en/latest/flytectl/overview.html#configuration>`__.
+       For more details, see [`here`](https://docs.flyte.org/en/latest/flytectl/overview.html#configuration).
 
        When using a sandbox cluster started with ``flytectl demo start``, however, the ``client_secret_group``
        and ``client_secret_key`` are not needed, :
 
-       .. code-block:: python
-
-            @eager
-            async def eager_workflow(x: int) -> int:
-                ...
+       ```python
+        @eager
+        async def eager_workflow(x: int) -> int:
+            ...
+     ```
     """
 
     if _fn is None:

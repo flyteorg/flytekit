@@ -5,10 +5,10 @@
    :template: custom.rst
    :toctree: generated/
 
-   PerianAgent
+   PerianConnector
    PerianConfig
    PerianTask
 """
 
-from .agent import PerianAgent
+from .connector import PerianConnector
 from .task import PerianConfig, PerianContainerTask, PerianTask

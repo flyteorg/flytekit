@@ -1,6 +1,6 @@
 """
 This Plugin adds the capability of running distributed pytorch training to Flyte using backend plugins, natively on
-Kubernetes. It leverages `Pytorch Job <https://github.com/kubeflow/pytorch-operator>`_ Plugin from kubeflow.
+Kubernetes. It leverages [`Pytorch Job`](https://github.com/kubeflow/pytorch-operator) Plugin from kubeflow.
 """
 
 import os
@@ -95,7 +95,7 @@ class Master:
 @dataclass
 class PyTorch(object):
     """
-    Configuration for an executable `PyTorch Job <https://github.com/kubeflow/pytorch-operator>`_. Use this
+    Configuration for an executable [`PyTorch Job`](https://github.com/kubeflow/pytorch-operator). Use this
     to run distributed PyTorch training on Kubernetes. Please notice, in most cases, you should not worry
     about the configuration of the master and worker groups. The default configuration should work. The only
     field you should change is the number of workers. Both replicas will use the same image, and the same
@@ -106,7 +106,8 @@ class PyTorch(object):
         worker: Configuration for the worker replica group.
         run_policy: Configuration for the run policy.
         num_workers: [DEPRECATED] This argument is deprecated. Use `worker.replicas` instead.
-        increase_shared_mem (bool): PyTorch uses shared memory to share data between processes. If torch multiprocessing is used
+        increase_shared_mem (bool): [DEPRECATED] This argument is deprecated. Use `@task(shared_memory=...)` instead.
+            PyTorch uses shared memory to share data between processes. If torch multiprocessing is used
             (e.g. for multi-processed data loaders) the default shared memory segment size that the container runs with might not be enough
             and and one might have to increase the shared memory size. This option configures the task's pod template to mount
             an `emptyDir` volume with medium `Memory` to to `/dev/shm`.
@@ -124,12 +125,12 @@ class PyTorch(object):
 @dataclass
 class Elastic(object):
     """
-    Configuration for `torch elastic training <https://pytorch.org/docs/stable/elastic/run.html>`_.
+    Configuration for [`torch elastic training`](https://pytorch.org/docs/stable/elastic/run.html).
 
     Use this to run single- or multi-node distributed pytorch elastic training on k8s.
 
     Single-node elastic training is executed in a k8s pod when `nnodes` is set to 1.
-    Multi-node training is executed otherwise using a `Pytorch Job <https://github.com/kubeflow/training-operator>`_.
+    Multi-node training is executed otherwise using a [`Pytorch Job`](https://github.com/kubeflow/training-operator).
 
     Like `torchrun`, this plugin sets the environment variable `OMP_NUM_THREADS` to 1 if it is not set.
     Please see https://pytorch.org/tutorials/recipes/recipes/tuning_guide.html for potential performance improvements.
@@ -146,7 +147,8 @@ class Elastic(object):
             Default timeouts are set to 15 minutes to account for the fact that some workers might start faster than others: Some pods might
             be assigned to a running node which might have the image in its cache while other workers might require a node scale up and image pull.
 
-        increase_shared_mem (bool): PyTorch uses shared memory to share data between processes. If torch multiprocessing is used
+        increase_shared_mem (bool): [DEPRECATED] This argument is deprecated. Use `@task(shared_memory=...)` instead.
+            PyTorch uses shared memory to share data between processes. If torch multiprocessing is used
             (e.g. for multi-processed data loaders) the default shared memory segment size that the container runs with might not be enough
             and and one might have to increase the shared memory size. This option configures the task's pod template to mount
             an `emptyDir` volume with medium `Memory` to to `/dev/shm`.
@@ -189,7 +191,8 @@ class PyTorchFunctionTask(PythonFunctionTask[PyTorch]):
             task_type_version=1,
             **kwargs,
         )
-        if self.task_config.increase_shared_mem:
+
+        if self.task_config.increase_shared_mem and (self.shared_memory is False or self.shared_memory is None):
             if self.pod_template is None:
                 self.pod_template = PodTemplate()
             add_shared_mem_volume_to_pod_template(self.pod_template)
@@ -336,7 +339,7 @@ class PytorchElasticFunctionTask(PythonFunctionTask[Elastic]):
         """
         self.rdzv_backend = "c10d"
 
-        if self.task_config.increase_shared_mem:
+        if self.task_config.increase_shared_mem and (self.shared_memory is False or self.shared_memory is None):
             if self.pod_template is None:
                 self.pod_template = PodTemplate()
             add_shared_mem_volume_to_pod_template(self.pod_template)

@@ -71,7 +71,7 @@ def test_local_exec():
         task_config=SnowflakeConfig(
             account="TEST-ACCOUNT",
             user="FLYTE",
-            database="FLYTEAGENT",
+            database="FLYTE",
             schema="PUBLIC",
             warehouse="COMPUTE_WH",
         ),
@@ -92,7 +92,7 @@ def test_sql_template():
         task_config=SnowflakeConfig(
             account="TEST-ACCOUNT",
             user="FLYTE",
-            database="FLYTEAGENT",
+            database="FLYTE",
             schema="PUBLIC",
             warehouse="COMPUTE_WH",
         ),

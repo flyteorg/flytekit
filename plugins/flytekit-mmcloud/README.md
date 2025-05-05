@@ -1,6 +1,6 @@
 # Flytekit Memory Machine Cloud Plugin
 
-Flyte Agent plugin to allow executing Flyte tasks using MemVerge Memory Machine Cloud.
+Flyte Connector plugin to allow executing Flyte tasks using MemVerge Memory Machine Cloud.
 
 To install the plugin, run the following command:
 
@@ -20,7 +20,7 @@ This plugin allows executing `PythonFunctionTask` using MMCloud without changing
 
 ### Credentials
 
-The following [secrets](https://docs.flyte.org/en/latest/user_guide/productionizing/secrets.html) are required to be defined for the agent server:
+The following [secrets](https://docs.flyte.org/en/latest/user_guide/productionizing/secrets.html) are required to be defined for the connector server:
 * `mmc_address`: MMCloud OpCenter address
 * `mmc_username`: MMCloud OpCenter username
 * `mmc_password`: MMCloud OpCenter password
@@ -83,22 +83,22 @@ def training_workflow(hyperparameters: dict) -> LogisticRegression:
     )
 ```
 
-### Agent Image
+### Connector Image
 
-Install `flytekitplugins-mmcloud` in the agent image.
+Install `flytekitplugins-mmcloud` in the connector image.
 
-A `float` binary (obtainable via the OpCenter) is required. Copy it to the agent image `PATH`.
+A `float` binary (obtainable via the OpCenter) is required. Copy it to the connector image `PATH`.
 
-Sample `Dockerfile` for building an agent image:
+Sample `Dockerfile` for building an connector image:
 ```dockerfile
 FROM python:3.11-slim-bookworm
 
 WORKDIR /root
 ENV PYTHONPATH /root
 
-# flytekit will autoload the agent if package is installed.
+# flytekit will autoload the connector if package is installed.
 RUN pip install flytekitplugins-mmcloud
 COPY float /usr/local/bin/float
 
-CMD pyflyte serve agent --port 8000
+CMD pyflyte serve connector --port 8000
 ```

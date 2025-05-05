@@ -24,10 +24,8 @@ dependencies = [
     "flyteidl>=1.15.1",
     "fsspec>=2023.3.0",
     "googleapis-common-protos>=1.57",
-    # Skipping those versions to account for the unwanted output coming from grpcio and grpcio-status.
-    # Issue being tracked in https://github.com/flyteorg/flyte/issues/6082.
-    "grpcio<=1.68.0",
-    "grpcio-status<=1.68.0",
+    "grpcio",
+    "grpcio-status",
     "importlib-metadata",
     "joblib",
     "jsonlines",
@@ -149,7 +147,14 @@ ignore-words-list = "ot,te,raison,fo,lits,assertIn"
 skip = "./docs/build,./.git,*.txt"
 
 [project.optional-dependencies]
+# TODO: Remove it when we remove all the agent code
 agent = [
+    "grpcio-health-checking<=1.68.0",
+    "httpx",
+    "prometheus-client",
+]
+
+connector = [
     "grpcio-health-checking<=1.68.0",
     "httpx",
     "prometheus-client",
