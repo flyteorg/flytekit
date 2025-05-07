@@ -12,6 +12,7 @@ from rich import print as rprint
 from flytekit.configuration import FastSerializationSettings, ImageConfig, SerializationSettings
 from flytekit.constants import CopyFileDetection
 from flytekit.core.context_manager import FlyteContextManager
+from flytekit.core.resources import ResourceSpec
 from flytekit.loggers import logger
 from flytekit.models import launch_plan, task
 from flytekit.models.core.identifier import Identifier
@@ -251,6 +252,7 @@ def register(
     remote: FlyteRemote,
     copy_style: CopyFileDetection,
     env: typing.Optional[typing.Dict[str, str]],
+    default_resources: typing.Optional[ResourceSpec],
     dry_run: bool = False,
     activate_launchplans: bool = False,
     skip_errors: bool = False,
@@ -273,6 +275,7 @@ def register(
         image_config=image_config,
         fast_serialization_settings=None,  # should probably add incomplete fast settings
         env=env,
+        default_resources=default_resources,
     )
 
     if not version and copy_style == CopyFileDetection.NO_COPY:
