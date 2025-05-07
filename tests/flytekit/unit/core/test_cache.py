@@ -127,6 +127,14 @@ def test_basic_salt_cache_policy(default_serialization_settings):
     assert serialized_t_cached.template.metadata.discoverable == True
     assert serialized_t_cached.template.metadata.discovery_version == "348b4b8c52d8868e0c202ce4d26d59906c13716197b611a0a7a215074159df79"
 
+    # test successfully create task while passing a CachePolicy list
+    @task(cache=Cache(salt="a-sprinkle-of-salt", policies=[SaltCachePolicy(), SaltCachePolicy()]))
+    def t_cached_with_multiple_policies(a: int) -> int:
+        return a + 2
+
+    serialized_t_cached = get_serializable_task(OrderedDict(), default_serialization_settings, t_cached_with_multiple_policies)
+    assert serialized_t_cached.template.metadata.discoverable == True
+
 
 @mock.patch("flytekit.configuration.plugin.FlytekitPlugin.get_default_cache_policies")
 def test_set_default_policies(mock_get_default_cache_policies, default_serialization_settings):

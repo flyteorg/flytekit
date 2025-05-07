@@ -1,33 +1,10 @@
 """
-==================
-Extending Flytekit
-==================
 
-.. currentmodule:: flytekit.extend
+## Extending Flytekit
+
 
 This package contains things that are useful when extending Flytekit.
 
-.. autosummary::
-   :nosignatures:
-   :template: custom.rst
-   :toctree: generated/
-
-   get_serializable
-   context_manager
-   IgnoreOutputs
-   ExecutionState
-   Image
-   ImageConfig
-   Interface
-   Promise
-   TaskPlugins
-   DictTransformer
-   T
-   TypeEngine
-   TypeTransformer
-   PythonCustomizedContainerTask
-   ExecutableTemplateShimTask
-   ShimTaskExecutor
 """
 
 from flytekit.configuration import Image, ImageConfig, SerializationSettings

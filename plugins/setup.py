@@ -25,6 +25,7 @@ SOURCES = {
     "flytekitplugins-envd": "flytekit-envd",
     "flytekitplugins-flyteinteractive": "flytekit-flyteinteractive",
     "flytekitplugins-great_expectations": "flytekit-greatexpectations",
+    "flytekitplugins-geopandas": "flytekit-geopandas",
     "flytekitplugins-hive": "flytekit-hive",
     "flytekitplugins-huggingface": "flytekit-huggingface",
     "flytekitplugins-inference": "flytekit-inference",
@@ -48,6 +49,7 @@ SOURCES = {
     "flytekitplugins-sqlalchemy": "flytekit-sqlalchemy",
     "flytekitplugins-vaex": "flytekit-vaex",
     "flytekitplugins-whylogs": "flytekit-whylogs",
+    "flytekitplugins-xarray-zarr": "flytekit-xarray-zarr",
 }
 
 

@@ -75,10 +75,12 @@ class BatchSize:
     """
     This is used to annotate a FlyteDirectory when we want to download/upload the contents of the directory in batches. For example,
 
+    ```python
     @task
     def t1(directory: Annotated[FlyteDirectory, BatchSize(10)]) -> Annotated[FlyteDirectory, BatchSize(100)]:
         ...
         return FlyteDirectory(...)
+    ```
 
     In the above example flytekit will download all files from the input `directory` in chunks of 10, i.e. first it
     downloads 10 files, loads them to memory, then writes those 10 to local disk, then it loads the next 10, so on
@@ -450,56 +452,55 @@ class RestrictedTypeTransformer(TypeTransformer[T], ABC):
 
 class DataclassTransformer(TypeTransformer[object]):
     """
-    The Dataclass Transformer provides a type transformer for dataclasses.
+        The Dataclass Transformer provides a type transformer for dataclasses.
 
-    The dataclass is converted to and from MessagePack Bytes by the mashumaro library
-    and is transported between tasks using the Binary IDL representation.
-    Also, the type declaration will try to extract the JSON Schema for the
-    object, if possible, and pass it with the definition.
+        The dataclass is converted to and from MessagePack Bytes by the mashumaro library
+        and is transported between tasks using the Binary IDL representation.
+        Also, the type declaration will try to extract the JSON Schema for the
+        object, if possible, and pass it with the definition.
 
-    The lifecycle of the dataclass in the Flyte type system is as follows:
+        The lifecycle of the dataclass in the Flyte type system is as follows:
 
-    1. Serialization: The dataclass transformer converts the dataclass to MessagePack Bytes.
-        (1) Handle dataclass attributes to make them serializable with mashumaro.
-        (2) Use the mashumaro API to serialize the dataclass to MessagePack Bytes.
-        (3) Use MessagePack Bytes to create a Flyte Literal.
-        (4) Serialize the Flyte Literal to a Binary IDL Object.
+        1. Serialization: The dataclass transformer converts the dataclass to MessagePack Bytes.
+            (1) Handle dataclass attributes to make them serializable with mashumaro.
+            (2) Use the mashumaro API to serialize the dataclass to MessagePack Bytes.
+            (3) Use MessagePack Bytes to create a Flyte Literal.
+            (4) Serialize the Flyte Literal to a Binary IDL Object.
 
-    2. Deserialization: The dataclass transformer converts the MessagePack Bytes back to a dataclass.
-        (1) Convert MessagePack Bytes to a dataclass using mashumaro.
-        (2) Handle dataclass attributes to ensure they are of the correct types.
+        2. Deserialization: The dataclass transformer converts the MessagePack Bytes back to a dataclass.
+            (1) Convert MessagePack Bytes to a dataclass using mashumaro.
+            (2) Handle dataclass attributes to ensure they are of the correct types.
 
-    For Json Schema, we use https://github.com/fuhrysteve/marshmallow-jsonschema library.
+        For Json Schema, we use https://github.com/fuhrysteve/marshmallow-jsonschema library.
 
-    Example
+        Example
 
-    .. code-block:: python
-
+        ```python
         @dataclass
         class Test(DataClassJsonMixin):
-           a: int
-           b: str
+            a: int
+            b: str
 
         from marshmallow_jsonschema import JSONSchema
         t = Test(a=10,b="e")
         JSONSchema().dump(t.schema())
+        ```
 
-    Output will look like
+        Output will look like
 
-    .. code-block:: json
-
+        ```python
         {'$schema': 'http://json-schema.org/draft-07/schema#',
-         'definitions': {'TestSchema': {'properties': {'a': {'title': 'a',
-             'type': 'number',
-             'format': 'integer'},
+            'definitions': {'TestSchema': {'properties': {'a': {'title': 'a',
+                'type': 'number',
+                'format': 'integer'},
             'b': {'title': 'b', 'type': 'string'}},
-           'type': 'object',
-           'additionalProperties': False}},
-         '$ref': '#/definitions/TestSchema'}
+            'type': 'object',
+            'additionalProperties': False}},
+            '$ref': '#/definitions/TestSchema'}
+    ```
 
-    .. note::
-
-        The schema support is experimental and is useful for auto-completing in the UI/CLI
+        > [!NOTE]
+        > The schema support is experimental and is useful for auto-completing in the UI/CLI
 
     """
 
