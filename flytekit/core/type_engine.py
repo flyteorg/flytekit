@@ -1702,7 +1702,10 @@ class ListTransformer(AsyncTypeTransformer[T]):
             return self.from_binary_idl(lv.scalar.binary, expected_python_type)  # type: ignore
 
         try:
-            lits = lv.collection.literals
+            if lv and lv.scalar and lv.scalar.union.value.collection.literals:
+                lits = lv.scalar.union.value.collection.literals
+            else:
+                lits = lv.collection.literals
         except AttributeError:
             raise TypeTransformerFailedError(
                 (
