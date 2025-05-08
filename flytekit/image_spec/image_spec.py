@@ -186,7 +186,7 @@ class ImageSpec:
     def __hash__(self):
         return hash(self.id)
 
-    @property
+    @cached_property
     def tag(self) -> str:
         """
         Calculate a hash from the image spec. The hash will be the tag of the image.

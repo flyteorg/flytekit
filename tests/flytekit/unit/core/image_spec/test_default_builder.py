@@ -225,6 +225,14 @@ def test_should_push_env(monkeypatch, push_image_spec):
         assert "--push" in call_args[0]
 
 
+def test_build_raises_if_tag_changed():
+    image_spec = ImageSpec(name="my_flytekit", python_version="3.12", registry="localhost:30000")
+    image_spec.tag = "arbitrarily_set_cached_tag" # This simulates a tag change due to file changes.
+    builder = DefaultImageBuilder()
+    with pytest.raises(ValueError, match="image tag changed"):
+        builder.build_image(image_spec)
+
+
 def test_create_docker_context_uv_lock(tmp_path):
     docker_context_path = tmp_path / "builder_root"
     docker_context_path.mkdir()
@@ -292,7 +300,7 @@ def test_uv_lock_error_no_packages(monkeypatch, tmp_path, lock_file):
     image_spec = ImageSpec(
         name="FLYTEKIT",
         python_version="3.12",
-        requirements=os.fspath(lock_file),
+        requirements=os.fspath(lock_file_path),
         packages=["ruff"],
     )
     builder = DefaultImageBuilder()
