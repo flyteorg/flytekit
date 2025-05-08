@@ -34,6 +34,7 @@ from flytekit.utils.asyn import loop_manager
 # for key and secret
 _FSSPEC_S3_KEY_ID = "key"
 _FSSPEC_S3_SECRET = "secret"
+
 _ANON = "anon"
 
 Uploadable = typing.Union[str, os.PathLike, pathlib.Path, bytes, io.BufferedReader, io.BytesIO, io.StringIO]
@@ -59,6 +60,9 @@ def s3_setup_args(s3_cfg: configuration.S3Config, anonymous: bool = False) -> Di
 
     if anonymous:
         kwargs[_ANON] = True
+
+    if s3_cfg.server_side_encryption:
+        kwargs["s3_additional_kwargs"] = {"ServerSideEncryption": s3_cfg.server_side_encryption}
 
     return kwargs
 
