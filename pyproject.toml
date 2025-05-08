@@ -38,7 +38,6 @@ dependencies = [
     "msgpack>=1.1.0",
     "obstore==0.6.0",
     "protobuf!=4.25.0",
-    "pydantic>=2.11.4",
     "pygments",
     "python-json-logger>=2.0.0",
     "pytimeparse>=1.1.8",
