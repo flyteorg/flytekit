@@ -11,7 +11,7 @@ Similar to {{< py_class_ref flytekit.types.file.FlyteFile >}} there are some 'pr
 
 import typing
 
-from .types import FlyteDirectory, FlyteDirToMultipartBlobTransformer
+from .types import DataFormat, FlyteDirectory, FlyteDirToMultipartBlobTransformer, StreamingKwargs
 
 # The following section provides some predefined aliases for commonly used FlyteDirectory formats.
 
