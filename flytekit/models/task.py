@@ -185,6 +185,7 @@ class TaskMetadata(_common.FlyteIdlEntity):
         cache_ignore_input_vars,
         is_eager: bool = False,
         generates_deck: bool = False,
+        metadata: typing.Optional["K8sObjectMetadata"] = None,
     ):
         """
         Information needed at runtime to determine behavior such as whether or not outputs are discoverable, timeouts,
@@ -208,6 +209,7 @@ class TaskMetadata(_common.FlyteIdlEntity):
         :param pod_template_name: The name of the existing PodTemplate resource which will be used in this task.
         :param cache_ignore_input_vars: Input variables that should not be included when calculating hash for cache.
         :param is_eager:
+        :param metadata: Kubernetes metadata for the task.
         """
         self._discoverable = discoverable
         self._runtime = runtime
@@ -221,6 +223,7 @@ class TaskMetadata(_common.FlyteIdlEntity):
         self._cache_ignore_input_vars = cache_ignore_input_vars
         self._is_eager = is_eager
         self._generates_deck = generates_deck
+        self._metadata = metadata
 
     @property
     def is_eager(self):
@@ -318,6 +321,14 @@ class TaskMetadata(_common.FlyteIdlEntity):
         """
         return self._cache_ignore_input_vars
 
+    @property
+    def metadata(self) -> typing.Optional["K8sObjectMetadata"]:
+        """
+        Kubernetes metadata for the task.
+        :rtype: K8sObjectMetadata
+        """
+        return self._metadata
+
     def to_flyte_idl(self):
         """
         :rtype: flyteidl.admin.task_pb2.TaskMetadata
@@ -334,6 +345,7 @@ class TaskMetadata(_common.FlyteIdlEntity):
             cache_ignore_input_vars=self.cache_ignore_input_vars,
             is_eager=self.is_eager,
             generates_deck=BoolValue(value=self.generates_deck),
+            metadata=self.metadata.to_flyte_idl() if self.metadata else None,
         )
         if self.timeout:
             tm.timeout.FromTimedelta(self.timeout)
@@ -358,6 +370,7 @@ class TaskMetadata(_common.FlyteIdlEntity):
             cache_ignore_input_vars=pb2_object.cache_ignore_input_vars,
             is_eager=pb2_object.is_eager,
             generates_deck=pb2_object.generates_deck.value if pb2_object.HasField("generates_deck") else False,
+            metadata=K8sObjectMetadata.from_flyte_idl(pb2_object.metadata) if pb2_object.HasField("metadata") else None,
         )
 
 
@@ -985,7 +998,11 @@ class Container(_common.FlyteIdlEntity):
 
 
 class K8sObjectMetadata(_common.FlyteIdlEntity):
-    def __init__(self, labels: typing.Dict[str, str] = None, annotations: typing.Dict[str, str] = None):
+    def __init__(
+        self,
+        labels: typing.Optional[typing.Dict[str, str]] = None,
+        annotations: typing.Optional[typing.Dict[str, str]] = None,
+    ):
         """
         This defines additional metadata for building a kubernetes pod.
         """
