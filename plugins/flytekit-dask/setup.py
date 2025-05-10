@@ -13,6 +13,8 @@ plugin_requires = [
 __version__ = "0.0.0+develop"
 
 setup(
+    title="Dask",
+    title_expanded="Flytekit Dask Plugin",
     name=microlib_name,
     version=__version__,
     author="flyteorg",

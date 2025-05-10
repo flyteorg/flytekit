@@ -33,7 +33,7 @@ from flyteidl.admin.signal_pb2 import Signal, SignalListRequest, SignalSetReques
 from flyteidl.core import literals_pb2
 from rich.progress import Progress, TextColumn, TimeElapsedColumn
 
-from flytekit import ImageSpec
+from flytekit import ImageSpec, PodTemplate
 from flytekit.clients.friendly import SynchronousFlyteClient
 from flytekit.clients.helpers import iterate_node_executions, iterate_task_executions
 from flytekit.configuration import Config, DataConfig, FastSerializationSettings, ImageConfig, SerializationSettings
@@ -831,7 +831,11 @@ class FlyteRemote(object):
         if version is None and self.interactive_mode_enabled:
             md5_bytes, pickled_target_dict = _get_pickled_target_dict(entity)
             return self._version_from_hash(
-                md5_bytes, ss, entity.python_interface.default_inputs_as_kwargs, *self._get_image_names(entity)
+                md5_bytes,
+                ss,
+                entity.python_interface.default_inputs_as_kwargs,
+                *FlyteRemote._get_image_names(entity),
+                *FlyteRemote._get_pod_template_hash(entity),
             ), pickled_target_dict
         elif version is not None:
             return version, None
@@ -1287,13 +1291,25 @@ class FlyteRemote(object):
         # and does not increase entropy of the hash while making it very inconvenient to copy-and-paste.
         return base64.urlsafe_b64encode(h.digest()).decode("ascii").rstrip("=")
 
-    def _get_image_names(self, entity: typing.Union[PythonAutoContainerTask, WorkflowBase]) -> typing.List[str]:
+    @staticmethod
+    def _get_image_names(entity: typing.Union[PythonAutoContainerTask, WorkflowBase]) -> typing.List[str]:
         if isinstance(entity, PythonAutoContainerTask) and isinstance(entity.container_image, ImageSpec):
             return [entity.container_image.image_name()]
         if isinstance(entity, WorkflowBase):
             image_names = []
             for n in entity.nodes:
-                image_names.extend(self._get_image_names(n.flyte_entity))
+                image_names.extend(FlyteRemote._get_image_names(n.flyte_entity))
+            return image_names
+        return []
+
+    @staticmethod
+    def _get_pod_template_hash(entity: typing.Union[PythonAutoContainerTask, WorkflowBase]) -> typing.List[str]:
+        if isinstance(entity, PythonAutoContainerTask) and isinstance(entity.pod_template, PodTemplate):
+            return [entity.pod_template.version_hash()]
+        if isinstance(entity, WorkflowBase):
+            image_names = []
+            for n in entity.nodes:
+                image_names.extend(FlyteRemote._get_pod_template_hash(n.flyte_entity))
             return image_names
         return []
 
@@ -1382,7 +1398,11 @@ class FlyteRemote(object):
             # but we don't have to use it when registering with the Flyte backend.
             # For that add the hash of the compilation settings to hash of file
             version = self._version_from_hash(
-                md5_bytes, serialization_settings, default_inputs, *self._get_image_names(entity)
+                md5_bytes,
+                serialization_settings,
+                default_inputs,
+                *FlyteRemote._get_image_names(entity),
+                *FlyteRemote._get_pod_template_hash(entity),
             )
 
         if isinstance(entity, PythonTask):
@@ -1717,9 +1737,8 @@ class FlyteRemote(object):
         :param serialization_settings: Optionally provide serialization settings, in case the entity being run needs
           to first be registered. If not provided, a default will be used.
 
-        .. note:
-
-            The ``name`` and ``version`` arguments do not apply to ``FlyteTask``, ``FlyteLaunchPlan``, and
+        > [!NOTE]
+        > The ``name`` and ``version`` arguments do not apply to ``FlyteTask``, ``FlyteLaunchPlan``, and
             ``FlyteWorkflow`` entity inputs. These values are determined by referencing the entity identifier values.
         """
         if entity.python_interface:
@@ -2261,7 +2280,11 @@ class FlyteRemote(object):
         if version is None and self.interactive_mode_enabled:
             md5_bytes, pickled_target_dict = _get_pickled_target_dict(entity)
             version = self._version_from_hash(
-                md5_bytes, ss, entity.python_interface.default_inputs_as_kwargs, *self._get_image_names(entity)
+                md5_bytes,
+                ss,
+                entity.python_interface.default_inputs_as_kwargs,
+                *FlyteRemote._get_image_names(entity),
+                *FlyteRemote._get_pod_template_hash(entity),
             )
 
         resolved_identifiers = self._resolve_identifier_kwargs(entity, project, domain, name, version)

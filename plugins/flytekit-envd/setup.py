@@ -9,6 +9,8 @@ plugin_requires = ["flytekit>=1.12.0", "envd"]
 __version__ = "0.0.0+develop"
 
 setup(
+    title="Envd",
+    title_expanded="Flytekit Envd Plugin",
     name=microlib_name,
     version=__version__,
     author="flyteorg",

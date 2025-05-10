@@ -18,7 +18,7 @@ def say_hello() -> str:
 
 # %%
 # You can treat the outputs of a task as you normally would a Python function. Assign the output to two variables
-# and use them in subsequent tasks as normal. See :py:func:`flytekit.workflow`
+# and use them in subsequent tasks as normal. See {{< py_func_ref flytekit.workflow >}}
 # You can change the signature of the workflow to take in an argument like this:
 # def my_wf(name: str) -> str:
 @workflow

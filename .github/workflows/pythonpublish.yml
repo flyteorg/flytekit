@@ -22,8 +22,8 @@ jobs:
       - name: Put version in environment
         id: bump
         run: |
-          # from refs/tags/v1.2.3 get 1.2.3
-          VERSION=$(echo $GITHUB_REF | sed 's#.*/v##')
+          # from 'refs/tags/v1.2.3' get 1.2.3
+          VERSION=$(echo $GITHUB_REF | sed 's|refs/tags/||')
           echo "version=$VERSION" >> $GITHUB_OUTPUT
         shell: bash
       - name: Build and publish
@@ -35,8 +35,8 @@ jobs:
           twine upload dist/*
       - name: Autobump plugin version
         run: |
-          # from refs/tags/v1.2.3 get 1.2.3
-          VERSION=$(echo $GITHUB_REF | sed 's#.*/v##')
+          # from 'refs/tags/v1.2.3' get 1.2.3
+          VERSION=$(echo $GITHUB_REF | sed 's|refs/tags/||')
           VERSION=$VERSION make -C plugins update_all_versions
         shell: bash
       - name: Build all Plugins and publish
@@ -49,8 +49,8 @@ jobs:
       - name: Sleep until pypi is available
         id: pypiwait
         run: |
-          # from refs/tags/v1.2.3 get 1.2.3 and make sure it's not an empty string
-          VERSION=$(echo $GITHUB_REF | sed 's#.*/v##')
+          # from 'refs/tags/v1.2.3 get 1.2.3' and make sure it's not an empty string
+          VERSION=$(echo $GITHUB_REF | sed 's|refs/tags/||')
           if [ -z "$VERSION" ]
           then
             echo "No tagged version found, exiting"
@@ -214,12 +214,12 @@ jobs:
         with:
           context: "."
           platforms: linux/arm64, linux/amd64
-          target: agent-slim
+          target: connector-slim
           push: ${{ github.event_name == 'release' }}
           tags: ${{ steps.flyteagent-slim-names.outputs.tags }}
           build-args: |
             VERSION=${{ needs.deploy.outputs.version }}
-          file: ./Dockerfile.agent
+          file: ./Dockerfile.connector
           cache-from: type=gha
           cache-to: type=gha,mode=max
       - name: Confirm Agent can start
@@ -230,12 +230,81 @@ jobs:
         with:
           context: "."
           platforms: linux/arm64, linux/amd64
-          target: agent-all
+          target: connector-all
           push: ${{ github.event_name == 'release' }}
           tags: ${{ steps.flyteagent-names.outputs.tags }}
           build-args: |
             VERSION=${{ needs.deploy.outputs.version }}
-          file: ./Dockerfile.agent
+          file: ./Dockerfile.connector
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  build-and-push-flyteconnector-images:
+    runs-on: ubuntu-latest
+    needs: deploy
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: "0"
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+      - name: Set up Docker Buildx
+        id: buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Login to GitHub Container Registry
+        if: ${{ github.event_name == 'release' }}
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: "${{ secrets.FLYTE_BOT_USERNAME }}"
+          password: "${{ secrets.FLYTE_BOT_PAT }}"
+      - name: Prepare Flyte connector Slim Image Names
+        id: flyteconnector-slim-names
+        uses: docker/metadata-action@v3
+        with:
+          images: |
+            ghcr.io/${{ github.repository_owner }}/flyteconnector-slim
+          tags: |
+            latest
+            ${{ github.sha }}
+            ${{ needs.deploy.outputs.version }}
+      - name: Prepare Flyte Connector Image Names
+        id: flyteconnector-names
+        uses: docker/metadata-action@v3
+        with:
+          images: |
+            ghcr.io/${{ github.repository_owner }}/flyteconnector
+          tags: |
+            latest
+            ${{ github.sha }}
+            ${{ needs.deploy.outputs.version }}
+      - name: Push flyteconnector-slim Image to GitHub Registry
+        uses: docker/build-push-action@v2
+        with:
+          context: "."
+          platforms: linux/arm64, linux/amd64
+          target: connector-slim
+          push: ${{ github.event_name == 'release' }}
+          tags: ${{ steps.flyteconnector-slim-names.outputs.tags }}
+          build-args: |
+            VERSION=${{ needs.deploy.outputs.version }}
+          file: ./Dockerfile.connector
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: Confirm Connector can start
+        run: |
+          docker run --rm ghcr.io/${{ github.repository_owner }}/flyteconnector-slim:${{ github.sha }} pyflyte serve connector --port 8000 --timeout 1
+      - name: Push flyteconnector-all Image to GitHub Registry
+        uses: docker/build-push-action@v2
+        with:
+          context: "."
+          platforms: linux/arm64, linux/amd64
+          target: connector-all
+          push: ${{ github.event_name == 'release' }}
+          tags: ${{ steps.flyteconnector-names.outputs.tags }}
+          build-args: |
+            VERSION=${{ needs.deploy.outputs.version }}
+          file: ./Dockerfile.connector
           cache-from: type=gha
           cache-to: type=gha,mode=max
 

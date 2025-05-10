@@ -310,6 +310,7 @@ jobs:
           - flytekit-duckdb
           - flytekit-envd
           - flytekit-flyteinteractive
+          - flytekit-geopandas
           - flytekit-greatexpectations
           - flytekit-hive
           - flytekit-huggingface
@@ -343,6 +344,8 @@ jobs:
           - flytekit-sqlalchemy
           - flytekit-vaex
           - flytekit-whylogs
+          # Below is a list of community plugins. Please keep in alphabetical order.
+          - community/flytekit-xarray-zarr
         exclude:
           - python-version: 3.9
             plugin-names: "flytekit-aws-sagemaker"

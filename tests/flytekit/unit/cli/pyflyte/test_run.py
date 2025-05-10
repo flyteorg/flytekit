@@ -99,6 +99,47 @@ def test_pyflyte_run_wf(remote, remote_flag, workflow_file):
         assert result.exit_code == 0
 
 
+@pytest.mark.parametrize("workflow_file", [WorkflowFileLocation.NORMAL], indirect=["workflow_file"])
+@pytest.mark.parametrize(
+    "interruptible_cli_val,expected_interruptible_override",
+    [
+        ("true", True),
+        ("True", True),
+        ("TRUE", True),
+        ("false", False),
+        ("False", False),
+        ("FALSE", False),
+        (None, None),
+    ],
+)
+def test_pyflyte_run_wf_interruptible(workflow_file, interruptible_cli_val, expected_interruptible_override):
+    """Tests that the '--interruptible' option passed to 'pyflyte run' is correctly passed to the remote execution."""
+    # Build the pyflyte args
+    pyflyte_args = [
+        "run",
+        "--remote",
+        str(workflow_file),
+        "wf_with_list",
+        "--a", "[1,2,3]",
+    ]
+    # Insert "--interruptible" if interruptible_cli_val is not None
+    if interruptible_cli_val is not None:
+        pyflyte_args = pyflyte_args[:2] + ["--interruptible", interruptible_cli_val] + pyflyte_args[2:]
+    # Run the command - but mock 'FlyteRemote' to check what value 'remote.execute' was called with
+    with mock.patch("flytekit.configuration.plugin.FlyteRemote") as mocked_remote:
+        runner = CliRunner()
+        result = runner.invoke(
+            pyflyte.main,
+            pyflyte_args,
+            catch_exceptions=False,
+        )
+        assert result.exit_code == 0, result.stdout
+        # Check that 'remote.execute' was called once with the correct interruptible override
+        assert mocked_remote.return_value.execute.call_count == 1
+        assert mocked_remote.return_value.execute.call_args[1]["interruptible"] == expected_interruptible_override
+
+
+
 def test_pyflyte_run_with_labels():
     workflow_file = pathlib.Path(__file__).parent / "workflow.py"
     with mock.patch("flytekit.configuration.plugin.FlyteRemote"):
