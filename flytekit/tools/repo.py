@@ -11,7 +11,8 @@ from rich import print as rprint
 
 from flytekit.configuration import FastSerializationSettings, ImageConfig, SerializationSettings
 from flytekit.constants import CopyFileDetection
-from flytekit.core.context_manager import FlyteContextManager
+from flytekit.core.base_task import PythonTask
+from flytekit.core.context_manager import FlyteContextManager, FlyteEntities
 from flytekit.core.resources import ResourceSpec
 from flytekit.loggers import logger
 from flytekit.models import launch_plan, task
@@ -312,7 +313,14 @@ def register(
         )
         serialization_settings.fast_serialization_settings = fast_serialization_settings
         if not version:
-            version = remote._version_from_hash(md5_bytes, serialization_settings, service_account, raw_data_prefix)  # noqa
+            images, pod_templates = [], []
+            for entity in FlyteEntities.entities.copy():
+                if isinstance(entity, PythonTask):
+                    images.extend(FlyteRemote._get_image_names(entity))
+                    images.extend(FlyteRemote._get_pod_template_hash(entity))
+            version = remote._version_from_hash(
+                md5_bytes, serialization_settings, service_account, raw_data_prefix, *images, *pod_templates
+            )  # noqa
             serialization_settings.version = version
             click.secho(f"Computed version is {version}", fg="yellow")
 
