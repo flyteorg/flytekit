@@ -9,6 +9,8 @@ plugin_requires = ["flytekit>=1.3.0b2", "whylogs[viz]>=1.1.16"]
 __version__ = "0.0.0+develop"
 
 setup(
+    title="whylogs",
+    title_expanded="Flytekit whylogs Plugin",
     name=microlib_name,
     version=__version__,
     author="whylabs",

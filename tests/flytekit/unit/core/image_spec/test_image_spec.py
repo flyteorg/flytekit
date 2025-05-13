@@ -5,13 +5,14 @@ from unittest.mock import Mock
 import mock
 import pytest
 
+from flytekit.configuration import (FastSerializationSettings, ImageConfig,
+                                    SerializationSettings)
+from flytekit.constants import CopyFileDetection
 from flytekit.core import context_manager
 from flytekit.core.context_manager import ExecutionState
+from flytekit.core.python_auto_container import update_image_spec_copy_handling
 from flytekit.image_spec import ImageSpec
 from flytekit.image_spec.image_spec import _F_IMG_ID, ImageBuildEngine
-from flytekit.core.python_auto_container import update_image_spec_copy_handling
-from flytekit.configuration import SerializationSettings, FastSerializationSettings, ImageConfig
-from flytekit.constants import CopyFileDetection
 
 REQUIREMENT_FILE = os.path.join(os.path.dirname(os.path.realpath(__file__)), "requirements.txt")
 REGISTRY_CONFIG_FILE = os.path.join(os.path.dirname(os.path.realpath(__file__)), "registry_config.json")
@@ -33,7 +34,8 @@ def test_image_spec(mock_image_spec_builder, monkeypatch):
         requirements=REQUIREMENT_FILE,
         registry_config=REGISTRY_CONFIG_FILE,
         entrypoint=["/bin/bash"],
-        copy=["/src/file1.txt"]
+        copy=["/src/file1.txt"],
+        builder_options={"builder_option": "builder_option_value"},
     )
     assert image_spec._is_force_push is False
 
@@ -62,6 +64,7 @@ def test_image_spec(mock_image_spec_builder, monkeypatch):
     assert image_spec._is_force_push is True
     assert image_spec.entrypoint == ["/bin/bash"]
     assert image_spec.copy == ["/src/file1.txt", "/src", "/src/file2.txt"]
+    assert image_spec.builder_options == {"builder_option": "builder_option_value"}
 
     assert image_spec.image_name() == f"localhost:30001/flytekit:{image_spec.tag}"
     ctx = context_manager.FlyteContext.current_context()
@@ -301,3 +304,35 @@ def test_image_spec_same_id_and_tag_with_builder():
     image_spec_with_builder = ImageSpec(name="my_image", builder="envd")
     assert image_spec.id == image_spec_with_builder.id
     assert image_spec.tag == image_spec_with_builder.tag
+
+
+def test_dev_packages():
+    image_spec = ImageSpec(name="localhost:30000/flytekit:0.1.5")
+    new_image_spec = image_spec.with_runtime_packages(["my-new-package"])
+    assert new_image_spec.runtime_packages == ["my-new-package"]
+
+def test_invalid_builder_options():
+    msg = "builder_options must be a dictionary or None"
+    with pytest.raises(ValueError, match=msg):
+        ImageSpec(name="localhost:30000/flytekit:0.1.5", builder_options="invalid_builder_option")
+    with pytest.raises(ValueError, match=msg):
+        ImageSpec(name="localhost:30000/flytekit:0.1.5",
+                  builder_options=["invalid_builder_option"])
+
+def test_with_builder_options():
+    image_spec = ImageSpec(
+      name="localhost:30000/flytekit:0.1.5",
+      builder_options={
+          "existing_builder_option_1": "existing_builder_option_value_1",
+      }
+    )
+    new_image_spec = image_spec.with_builder_options(
+        {"new_builder_option_1": "new_builder_option_value_1"})
+
+    assert image_spec.builder_options == {
+        "existing_builder_option_1": "existing_builder_option_value_1",
+    }
+    assert new_image_spec.builder_options == {
+        "existing_builder_option_1": "existing_builder_option_value_1",
+        "new_builder_option_1": "new_builder_option_value_1"
+    }

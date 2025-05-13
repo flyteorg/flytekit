@@ -9,6 +9,8 @@ plugin_requires = ["flytekit>=1.12.0", "memray"]
 __version__ = "0.0.0+develop"
 
 setup(
+    title="Memray Profiling",
+    title_expanded="Memray Profiling Plugin",
     name=microlib_name,
     version=__version__,
     author="flyteorg",

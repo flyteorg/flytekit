@@ -10,6 +10,8 @@ plugin_requires = ["flytekit>=1.13.3", "neptune>=1.10.4"]
 __version__ = "0.0.0+develop"
 
 setup(
+    title="Neptune",
+    title_expanded="Flytekit Neptune Plugin",
     name=microlib_name,
     version=__version__,
     author="flyteorg",

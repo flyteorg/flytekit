@@ -1,16 +1,6 @@
-"""
-Flytekit StructuredDataset
-==========================================================
-.. currentmodule:: flytekit.types.structured
+""" """
 
-.. autosummary::
-   :template: custom.rst
-   :toctree: generated/
-
-    StructuredDataset
-    StructuredDatasetDecoder
-    StructuredDatasetEncoder
-"""
+import functools
 
 from flytekit.deck.renderer import ArrowRenderer, TopFrameRenderer
 from flytekit.lazy_import.lazy_module import is_imported
@@ -25,6 +15,7 @@ from .structured_dataset import (
 )
 
 
+@functools.lru_cache(maxsize=None)
 def register_csv_handlers():
     from .basic_dfs import CSVToPandasDecodingHandler, PandasToCSVEncodingHandler
 
@@ -32,6 +23,7 @@ def register_csv_handlers():
     StructuredDatasetTransformerEngine.register(CSVToPandasDecodingHandler(), default_format_for_type=True)
 
 
+@functools.lru_cache(maxsize=None)
 def register_pandas_handlers():
     import pandas as pd
 
@@ -42,6 +34,7 @@ def register_pandas_handlers():
     StructuredDatasetTransformerEngine.register_renderer(pd.DataFrame, TopFrameRenderer())
 
 
+@functools.lru_cache(maxsize=None)
 def register_arrow_handlers():
     import pyarrow as pa
 
@@ -52,6 +45,7 @@ def register_arrow_handlers():
     StructuredDatasetTransformerEngine.register_renderer(pa.Table, ArrowRenderer())
 
 
+@functools.lru_cache(maxsize=None)
 def register_bigquery_handlers():
     try:
         from .bigquery import (
@@ -72,6 +66,7 @@ def register_bigquery_handlers():
         )
 
 
+@functools.lru_cache(maxsize=None)
 def register_snowflake_handlers():
     try:
         from .snowflake import PandasToSnowflakeEncodingHandlers, SnowflakeToPandasDecodingHandler

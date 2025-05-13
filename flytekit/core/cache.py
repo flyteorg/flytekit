@@ -73,6 +73,8 @@ class Cache:
             self._policies = get_plugin().get_default_cache_policies()
         elif isinstance(self.policies, CachePolicy):
             self._policies = [self.policies]
+        elif isinstance(self.policies, list) and all(isinstance(policy, CachePolicy) for policy in self.policies):
+            self._policies = self.policies
 
         if self.version is None and not self._policies:
             raise ValueError("If version is not defined then at least one cache policy needs to be set")

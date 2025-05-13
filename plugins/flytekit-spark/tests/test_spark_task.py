@@ -4,6 +4,7 @@ from unittest import mock
 import pandas as pd
 import pyspark
 import pytest
+import tempfile
 
 from google.protobuf.json_format import MessageToDict
 from flytekit import PodTemplate
@@ -157,8 +158,10 @@ def test_to_html():
     assert pd.DataFrame(df.schema, columns=["StructField"]).to_html() == output
 
 
+@mock.patch("tempfile.mkdtemp", return_value="/tmp/123")
+@mock.patch("shutil.make_archive")
 @mock.patch("pyspark.context.SparkContext.addPyFile")
-def test_spark_addPyFile(mock_add_pyfile):
+def test_spark_addPyFile(mock_add_pyfile, mock_shutil_make_archive, mock_tempfile_mkdtemp):
     @task(
         task_config=Spark(
             spark_conf={"spark": "1"},
@@ -190,9 +193,10 @@ def test_spark_addPyFile(mock_add_pyfile):
         ).with_serialization_settings(serialization_settings)
     ) as new_ctx:
         my_spark.pre_execute(new_ctx.user_space_params)
-        mock_add_pyfile.assert_called_once()
-        os.remove(os.path.join(os.getcwd(), "flyte_wf.zip"))
 
+        mock_tempfile_mkdtemp.assert_called_once()
+        mock_shutil_make_archive.assert_called_once_with("/tmp/123/flyte_wf", "zip", os.getcwd())
+        mock_add_pyfile.assert_called_once_with("/tmp/123/flyte_wf.zip")
 
 def test_spark_with_image_spec():
     custom_image = ImageSpec(

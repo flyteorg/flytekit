@@ -9,6 +9,8 @@ plugin_requires = ["flytekit>=1.11.0,<2.0.0", "kubernetes>=23.6.0,<24.0.0", "fly
 __version__ = "0.0.0+develop"
 
 setup(
+    title="Kubernetes Stateful",
+    title_expanded="K8s Stateful Service Plugin",
     name=microlib_name,
     version=__version__,
     author="LinkedIn",

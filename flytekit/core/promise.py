@@ -15,6 +15,7 @@ from flytekit.core import constants as _common_constants
 from flytekit.core import context_manager as _flyte_context
 from flytekit.core import interface as flyte_interface
 from flytekit.core import type_engine
+from flytekit.core.cache import Cache
 from flytekit.core.context_manager import (
     BranchEvalMode,
     ExecutionParameters,
@@ -83,7 +84,7 @@ async def _translate_inputs_to_literals(
 
     :param ctx: Context needed in case a non-primitive literal needs to be translated to a Flyte literal (like a file)
     :param incoming_values: This is a map of your task's input or wf's output kwargs basically
-    :param flyte_interface_types: One side of an :py:class:`flytekit.models.interface.TypedInterface` basically.
+    :param flyte_interface_types: One side of an {{< py_class_ref flytekit.models.interface.TypedInterface >}} basically.
     :param native_types: Map to native Python type.
     """
     if incoming_values is None:
@@ -593,9 +594,7 @@ class Promise(object):
         task_config: Optional[Any] = None,
         container_image: Optional[str] = None,
         accelerator: Optional[BaseAccelerator] = None,
-        cache: Optional[bool] = None,
-        cache_version: Optional[str] = None,
-        cache_serialize: Optional[bool] = None,
+        cache: Optional[Union[bool, Cache]] = None,
         *args,
         **kwargs,
     ):
@@ -614,8 +613,6 @@ class Promise(object):
                 container_image=container_image,
                 accelerator=accelerator,
                 cache=cache,
-                cache_version=cache_version,
-                cache_serialize=cache_serialize,
                 *args,
                 **kwargs,
             )

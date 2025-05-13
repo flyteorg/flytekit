@@ -2,18 +2,10 @@
 Notifications are primarily used when defining Launch Plans (also can be used when launching executions) and will trigger
 the Flyte platform to send emails when a workflow run reaches certain stages (fails or succeeds, etc.).
 
-.. note::
-
-    Notifications require some setup and configuration on the Flyte platform side. Please contact your Flyte platform
-    admins to get this feature enabled. See :std:ref:`cookbook:setting up workflow notifications`
-
-Each notification type takes a list of :py:class:`flytekit.models.core.execution.WorkflowExecutionPhase` and a list of
+Each notification type takes a list of {{< py_class_ref flytekit.models.core.execution.WorkflowExecutionPhase >}} and a list of
 emails. Even though there are different notification classes in this module, they all just send email. The differentiation
 offers semantic meaning to the end-user but do not functionally behave differently. Successful integration with Slack
 and Pagerduty is incumbent on those email API being set-up correctly.
-
-.. autoclass:: flytekit.core.notification.Notification
-
 """
 
 from typing import List
@@ -60,11 +52,11 @@ class PagerDuty(Notification):
     """
     This notification should be used when sending emails to the PagerDuty service.
 
-    .. code-block:: python
+    ```python
+    from flytekit.models.core.execution import WorkflowExecutionPhase
 
-        from flytekit.models.core.execution import WorkflowExecutionPhase
-
-        PagerDuty(phases=[WorkflowExecutionPhase.SUCCEEDED], recipients_email=["my-team@email.com"])
+    PagerDuty(phases=[WorkflowExecutionPhase.SUCCEEDED], recipients_email=["my-team@email.com"])
+    ```
     """
 
     def __init__(self, phases: List[int], recipients_email: List[str]):
@@ -72,6 +64,7 @@ class PagerDuty(Notification):
         :param list[int] phases: A required list of phases for which to fire the event.  Events can only be fired for
             terminal phases.  Phases should be as defined in: flytekit.models.core.execution.WorkflowExecutionPhase
         :param list[str] recipients_email: A required non-empty list of recipients for the notification.
+
         """
         super(PagerDuty, self).__init__(phases, pager_duty=_common_model.PagerDutyNotification(recipients_email))
 
@@ -80,17 +73,17 @@ class Email(Notification):
     """
     This notification should be used when sending regular emails to people.
 
-    .. code-block:: python
+    ```python
+    from flytekit.models.core.execution import WorkflowExecutionPhase
 
-        from flytekit.models.core.execution import WorkflowExecutionPhase
-
-        Email(phases=[WorkflowExecutionPhase.SUCCEEDED], recipients_email=["my-team@email.com"])
+    Email(phases=[WorkflowExecutionPhase.SUCCEEDED], recipients_email=["my-team@email.com"])
+    ```
     """
 
     def __init__(self, phases: List[int], recipients_email: List[str]):
         """
         :param list[int] phases: A required list of phases for which to fire the event.  Events can only be fired for
-            terminal phases. Phases should be as defined in: :py:class:`flytekit.models.core.execution.WorkflowExecutionPhase`
+            terminal phases. Phases should be as defined in: {{< py_class_ref flytekit.models.core.execution.WorkflowExecutionPhase >}}
         :param list[str] recipients_email: A required non-empty list of recipients for the notification.
         """
         super(Email, self).__init__(phases, email=_common_model.EmailNotification(recipients_email))
@@ -100,11 +93,11 @@ class Slack(Notification):
     """
     This notification should be used when sending emails to the Slack.
 
-    .. code-block:: python
+    ```python
+    from flytekit.models.core.execution import WorkflowExecutionPhase
 
-        from flytekit.models.core.execution import WorkflowExecutionPhase
-
-        Slack(phases=[WorkflowExecutionPhase.SUCCEEDED], recipients_email=["my-team@email.com"])
+    Slack(phases=[WorkflowExecutionPhase.SUCCEEDED], recipients_email=["my-team@email.com"])
+    ```
     """
 
     def __init__(self, phases: List[int], recipients_email: List[str]):

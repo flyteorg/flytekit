@@ -93,8 +93,8 @@ id=micromamba \
 
 DOCKER_FILE_TEMPLATE = Template("""\
 #syntax=docker/dockerfile:1.5
-FROM ghcr.io/astral-sh/uv:0.5.1 as uv
-FROM mambaorg/micromamba:2.0.3-debian12-slim as micromamba
+FROM $UV_IMAGE as uv
+FROM $MICROMAMBA_IMAGE as micromamba
 
 FROM $BASE_IMAGE
 
@@ -139,7 +139,15 @@ SHELL ["/bin/bash", "-c"]
 USER flytekit
 RUN mkdir -p $$HOME && \
     echo "export PATH=$$PATH" >> $$HOME/.profile
+
+# NOTE: Important to set this env var all the way at the bottom
+# Otherwise the slightest change to an imagespec's ID would unnecessarily invalidate
+# too many layers in the build cache.
+ENV $_F_IMG_ID_ENV
 """)
+
+DEFAULT_UV_IMAGE = "ghcr.io/astral-sh/uv:0.5.1"
+DEFAULT_MICROMAMBA_IMAGE = "mambaorg/micromamba:2.0.3-debian12-slim"
 
 
 def get_flytekit_for_pypi():
@@ -329,7 +337,7 @@ def create_docker_context(image_spec: ImageSpec, tmp_dir: Path):
         raise ValueError(msg)
 
     uv_python_install_command = prepare_python_install(image_spec, tmp_dir)
-    env_dict = {"PYTHONPATH": "/root", _F_IMG_ID: image_spec.id}
+    env_dict = {"PYTHONPATH": "/root"}
 
     if image_spec.env:
         env_dict.update(image_spec.env)
@@ -405,6 +413,14 @@ def create_docker_context(image_spec: ImageSpec, tmp_dir: Path):
     else:
         extra_copy_cmds = ""
 
+    uv_image = DEFAULT_UV_IMAGE
+    micromamba_image = DEFAULT_MICROMAMBA_IMAGE
+    if image_spec.builder_config is not None:
+        uv_image = image_spec.builder_config.get("uv_image", uv_image)
+        micromamba_image = image_spec.builder_config.get("micromamba_image", micromamba_image)
+
+    _f_img_id_env = f"{_F_IMG_ID}={image_spec.id}"
+
     docker_content = DOCKER_FILE_TEMPLATE.substitute(
         UV_PYTHON_INSTALL_COMMAND=uv_python_install_command,
         APT_INSTALL_COMMAND=apt_install_command,
@@ -413,10 +429,13 @@ def create_docker_context(image_spec: ImageSpec, tmp_dir: Path):
         PYTHON_EXEC=python_install_template.python_exec,
         BASE_IMAGE=base_image,
         ENV=env,
+        _F_IMG_ID_ENV=_f_img_id_env,
         COPY_COMMAND_RUNTIME=copy_command_runtime,
         ENTRYPOINT=entrypoint,
         RUN_COMMANDS=run_commands,
         EXTRA_COPY_CMDS=extra_copy_cmds,
+        UV_IMAGE=uv_image,
+        MICROMAMBA_IMAGE=micromamba_image,
     )
 
     dockerfile_path = tmp_dir / "Dockerfile"
@@ -452,6 +471,7 @@ class DefaultImageBuilder(ImageSpecBuilder):
         # "registry_config",
         "commands",
         "copy",
+        "builder_config",
     }
 
     def build_image(self, image_spec: ImageSpec) -> str:

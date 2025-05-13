@@ -9,6 +9,8 @@ plugin_requires = ["flytekit>=1.15.0", "optuna>=4.0.0,<5.0.0", "typing-extension
 __version__ = "0.0.0+develop"
 
 setup(
+    title="Optuna (wrapper)",
+    title_expanded="Fully Parallelized Wrapper Around Optuna Using Flyte",
     name=microlib_name,
     version=__version__,
     author="flyteorg",

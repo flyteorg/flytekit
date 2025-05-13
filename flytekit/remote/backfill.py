@@ -24,22 +24,23 @@ def create_backfill_workflow(
 
     the Backfill plan is generated as (start_date - exclusive, end_date inclusive)
 
-    .. code-block:: python
-       :caption: Correct usage for dates example
+    > [!NOTE]
+    > Correct usage for dates example
 
-        lp = Launchplan.get_or_create(...)
-        start_date = datetime.datetime(2023, 1, 1)
-        end_date =  start_date + datetime.timedelta(days=10)
-        wf = create_backfill_workflow(start_date, end_date, for_lp=lp)
+    ```python
+    lp = Launchplan.get_or_create(...)
+    start_date = datetime.datetime(2023, 1, 1)
+    end_date =  start_date + datetime.timedelta(days=10)
+    wf = create_backfill_workflow(start_date, end_date, for_lp=lp)
+    ```
+    > [!WARNING]
+    > Incorrect date example
 
-
-    .. code-block:: python
-       :caption: Incorrect date example
-
-        wf = create_backfill_workflow(end_date, start_date, for_lp=lp) # end_date is before start_date
-        # OR
-        wf = create_backfill_workflow(start_date, start_date, for_lp=lp) # start and end date are same
-
+    ```python
+    wf = create_backfill_workflow(end_date, start_date, for_lp=lp) # end_date is before start_date
+    # OR
+    wf = create_backfill_workflow(start_date, start_date, for_lp=lp) # start and end date are same
+    ```
 
     :param start_date: datetime generate a backfill starting at this datetime (exclusive)
     :param end_date: datetime generate a backfill ending at this datetime (inclusive)

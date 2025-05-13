@@ -9,6 +9,8 @@ plugin_requires = ["flytekit", "skl2onnx>=1.10.3", "networkx<3.2; python_version
 __version__ = "0.0.0+develop"
 
 setup(
+    title="ONNX ScikitLearn",
+    title_expanded="Flytekit ONNX ScikitLearn Plugin",
     name=f"flytekitplugins-{PLUGIN_NAME}",
     version=__version__,
     author="flyteorg",
