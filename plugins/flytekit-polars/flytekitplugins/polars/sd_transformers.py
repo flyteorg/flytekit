@@ -91,7 +91,6 @@ class ParquetToPolarsDataFrameDecodingHandler(StructuredDatasetDecoder):
         current_task_metadata: StructuredDatasetMetadata,
     ) -> pl.DataFrame:
         uri = flyte_value.uri
-
         kwargs = get_fsspec_storage_options(
             protocol=fsspec_utils.get_protocol(uri),
             data_config=ctx.file_access.data_config,
@@ -153,7 +152,6 @@ class ParquetToPolarsLazyFrameDecodingHandler(StructuredDatasetDecoder):
         current_task_metadata: StructuredDatasetMetadata,
     ) -> pl.LazyFrame:
         uri = flyte_value.uri
-
         kwargs = get_fsspec_storage_options(
             protocol=fsspec_utils.get_protocol(uri),
             data_config=ctx.file_access.data_config,

@@ -7,6 +7,7 @@ from base64 import b64encode
 import fsspec
 import pytest
 from fsspec.implementations.http import HTTPFileSystem
+from obstore.fsspec import register
 
 from flytekit.configuration import Config
 from flytekit.core.data_persistence import FileAccessProvider
@@ -118,6 +119,8 @@ def test_remote_upload_with_data_persistence(sandbox_remote):
 
 @pytest.mark.parametrize("url_prefix", ["s3://my-s3-bucket", "abfs://my-azure-container", "abfss://my-azure-container", "gcs://my-gcs-bucket"])
 def test_common_matching(url_prefix):
+    # ensure all url_prefix are registered
+    register(["s3", "abfs", "abfss", "gcs"])
     urls = [
         url_prefix + url_suffix
         for url_suffix in [

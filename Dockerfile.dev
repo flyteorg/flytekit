@@ -40,7 +40,9 @@ RUN SETUPTOOLS_SCM_PRETEND_VERSION_FOR_FLYTEKIT=$PSEUDO_VERSION \
             -e /flytekit \
             -e /flytekit/plugins/flytekit-deck-standard \
             -e /flytekit/plugins/flytekit-flyteinteractive \
+            obstore==0.6.0 \
             markdown \
+            decorator \
             pandas \
             pillow \
             plotly \

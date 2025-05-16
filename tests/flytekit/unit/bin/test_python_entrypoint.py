@@ -428,7 +428,7 @@ def test_setup_for_fast_register():
 @mock.patch("google.auth.compute_engine._metadata")
 def test_setup_cloud_prefix(mock_gcs):
     with setup_execution("s3://", checkpoint_path=None, prev_checkpoint=None) as ctx:
-        assert ctx.file_access._default_remote.protocol[0] == "s3"
+        assert ctx.file_access._default_remote.protocol == "s3"
 
     with setup_execution("gs://", checkpoint_path=None, prev_checkpoint=None) as ctx:
         assert "gs" in ctx.file_access._default_remote.protocol

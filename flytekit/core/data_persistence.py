@@ -10,6 +10,7 @@ import os
 import pathlib
 import tempfile
 import typing
+from datetime import timedelta
 from time import sleep
 from typing import Any, Dict, Optional, Union, cast
 from uuid import UUID
@@ -18,23 +19,28 @@ import fsspec
 from decorator import decorator
 from fsspec.asyn import AsyncFileSystem
 from fsspec.utils import get_protocol
+from obstore.exceptions import GenericError
+from obstore.fsspec import register
 from typing_extensions import Unpack
 
 from flytekit import configuration
 from flytekit.configuration import DataConfig
 from flytekit.core.local_fsspec import FlyteLocalFileSystem
 from flytekit.core.utils import timeit
-from flytekit.exceptions.system import FlyteDownloadDataException, FlyteUploadDataException
+from flytekit.exceptions.system import (
+    FlyteDownloadDataException,
+    FlyteUploadDataException,
+)
 from flytekit.exceptions.user import FlyteAssertion, FlyteDataNotFoundException
 from flytekit.interfaces.random import random
 from flytekit.loggers import logger
 from flytekit.utils.asyn import loop_manager
 
-# Refer to https://github.com/fsspec/s3fs/blob/50bafe4d8766c3b2a4e1fc09669cf02fb2d71454/s3fs/core.py#L198
+# Refer to https://github.com/developmentseed/obstore/blob/33654fc37f19a657689eb93327b621e9f9e01494/obstore/python/obstore/store/_aws.pyi#L11
 # for key and secret
-_FSSPEC_S3_KEY_ID = "key"
-_FSSPEC_S3_SECRET = "secret"
-_ANON = "anon"
+_FSSPEC_S3_KEY_ID = "access_key_id"
+_FSSPEC_S3_SECRET = "secret_access_key"
+_SKIP_SIGNATURE = "skip_signature"
 
 Uploadable = typing.Union[str, os.PathLike, pathlib.Path, bytes, io.BufferedReader, io.BytesIO, io.StringIO]
 
@@ -43,58 +49,102 @@ Uploadable = typing.Union[str, os.PathLike, pathlib.Path, bytes, io.BufferedRead
 _WRITE_SIZE_CHUNK_BYTES = int(os.environ.get("_F_P_WRITE_CHUNK_SIZE", "26214400"))  # 25 * 2**20
 
 
-def s3_setup_args(s3_cfg: configuration.S3Config, anonymous: bool = False) -> Dict[str, Any]:
-    kwargs: Dict[str, Any] = {
-        "cache_regions": True,
-    }
-    if s3_cfg.access_key_id:
-        kwargs[_FSSPEC_S3_KEY_ID] = s3_cfg.access_key_id
+def s3_setup_args(s3_cfg: configuration.S3Config, anonymous: bool = False, **kwargs) -> Dict[str, Any]:
+    """
+    Setup s3 storage, bucket is needed to create obstore store object
+    """
 
-    if s3_cfg.secret_access_key:
-        kwargs[_FSSPEC_S3_SECRET] = s3_cfg.secret_access_key
+    config: Dict[str, Any] = {}
 
-    # S3fs takes this as a special arg
-    if s3_cfg.endpoint is not None:
-        kwargs["client_kwargs"] = {"endpoint_url": s3_cfg.endpoint}
+    if _FSSPEC_S3_KEY_ID in kwargs or s3_cfg.access_key_id:
+        config[_FSSPEC_S3_KEY_ID] = kwargs.pop(_FSSPEC_S3_KEY_ID, s3_cfg.access_key_id)
+    if _FSSPEC_S3_SECRET in kwargs or s3_cfg.secret_access_key:
+        config[_FSSPEC_S3_SECRET] = kwargs.pop(_FSSPEC_S3_SECRET, s3_cfg.secret_access_key)
+    if "endpoint_url" in kwargs or s3_cfg.endpoint:
+        config["endpoint_url"] = kwargs.pop("endpoint_url", s3_cfg.endpoint)
+
+    retries = kwargs.pop("retries", s3_cfg.retries)
+    backoff = kwargs.pop("backoff", s3_cfg.backoff)
 
     if anonymous:
-        kwargs[_ANON] = True
+        config[_SKIP_SIGNATURE] = True
+
+    retry_config = {
+        "max_retries": retries,
+        "backoff": {
+            "base": 2,
+            "init_backoff": backoff,
+            "max_backoff": timedelta(seconds=16),
+        },
+        "retry_timeout": timedelta(minutes=3),
+    }
+
+    client_options = {"timeout": "99999s", "allow_http": True}
+
+    if config:
+        kwargs["config"] = config
+    kwargs["client_options"] = client_options or None
+    kwargs["retry_config"] = retry_config or None
 
     return kwargs
 
 
-def azure_setup_args(azure_cfg: configuration.AzureBlobStorageConfig, anonymous: bool = False) -> Dict[str, Any]:
-    kwargs: Dict[str, Any] = {}
+def azure_setup_args(
+    azure_cfg: configuration.AzureBlobStorageConfig,
+    anonymous: bool = False,
+    **kwargs,
+) -> Dict[str, Any]:
+    """
+    Setup azure blob storage, bucket is needed to create obstore store object
+    """
 
-    if azure_cfg.account_name:
-        kwargs["account_name"] = azure_cfg.account_name
-    if azure_cfg.account_key:
-        kwargs["account_key"] = azure_cfg.account_key
-    if azure_cfg.client_id:
-        kwargs["client_id"] = azure_cfg.client_id
-    if azure_cfg.client_secret:
-        kwargs["client_secret"] = azure_cfg.client_secret
-    if azure_cfg.tenant_id:
-        kwargs["tenant_id"] = azure_cfg.tenant_id
-    kwargs[_ANON] = anonymous
+    config: Dict[str, Any] = {}
+
+    if "account_name" in kwargs or azure_cfg.account_name:
+        config["account_name"] = kwargs.get("account_name", azure_cfg.account_name)
+    if "account_key" in kwargs or azure_cfg.account_key:
+        config["account_key"] = kwargs.get("account_key", azure_cfg.account_key)
+    if "client_id" in kwargs or azure_cfg.client_id:
+        config["client_id"] = kwargs.get("client_id", azure_cfg.client_id)
+    if "client_secret" in kwargs or azure_cfg.client_secret:
+        config["client_secret"] = kwargs.get("client_secret", azure_cfg.client_secret)
+    if "tenant_id" in kwargs or azure_cfg.tenant_id:
+        config["tenant_id"] = kwargs.get("tenant_id", azure_cfg.tenant_id)
+
+    if anonymous:
+        config[_SKIP_SIGNATURE] = True
+
+    client_options = {"timeout": "99999s", "allow_http": "true"}
+
+    if config:
+        kwargs["config"] = config
+    kwargs["client_options"] = client_options
+
     return kwargs
 
 
 def get_fsspec_storage_options(
-    protocol: str, data_config: typing.Optional[DataConfig] = None, anonymous: bool = False, **kwargs
+    protocol: str,
+    data_config: typing.Optional[DataConfig] = None,
+    anonymous: bool = False,
+    **kwargs,
 ) -> Dict[str, Any]:
     data_config = data_config or DataConfig.auto()
 
     if protocol == "file":
         return {"auto_mkdir": True, **kwargs}
     if protocol == "s3":
-        return {**s3_setup_args(data_config.s3, anonymous=anonymous), **kwargs}
+        return {
+            **s3_setup_args(data_config.s3, anonymous=anonymous, **kwargs),
+            **kwargs,
+        }
     if protocol == "gs":
-        if anonymous:
-            kwargs["token"] = _ANON
         return kwargs
     if protocol in ("abfs", "abfss"):
-        return {**azure_setup_args(data_config.azure, anonymous=anonymous), **kwargs}
+        return {
+            **azure_setup_args(data_config.azure, anonymous=anonymous, **kwargs),
+            **kwargs,
+        }
     return {}
 
 
@@ -208,19 +258,24 @@ class FileAccessProvider(object):
             kwargs["auto_mkdir"] = True
             return FlyteLocalFileSystem(**kwargs)
         elif protocol == "s3":
-            s3kwargs = s3_setup_args(self._data_config.s3, anonymous=anonymous)
+            s3kwargs = s3_setup_args(self._data_config.s3, anonymous=anonymous, **kwargs)
             s3kwargs.update(kwargs)
             return fsspec.filesystem(protocol, **s3kwargs)  # type: ignore
         elif protocol == "gs":
-            if anonymous:
-                kwargs["token"] = _ANON
             return fsspec.filesystem(protocol, **kwargs)  # type: ignore
+        elif protocol in ("abfs", "abfss"):
+            azkwargs = azure_setup_args(self._data_config.azure, anonymous=anonymous, **kwargs)
+            azkwargs.update(kwargs)
+            return fsspec.filesystem(protocol, **azkwargs)  # type: ignore
         elif protocol == "ftp":
             kwargs.update(fsspec.implementations.ftp.FTPFileSystem._get_kwargs_from_urls(path))
             return fsspec.filesystem(protocol, **kwargs)
 
         storage_options = get_fsspec_storage_options(
-            protocol=protocol, anonymous=anonymous, data_config=self._data_config, **kwargs
+            protocol=protocol,
+            anonymous=anonymous,
+            data_config=self._data_config,
+            **kwargs,
         )
         kwargs.update(storage_options)
 
@@ -232,7 +287,14 @@ class FileAccessProvider(object):
         protocol = get_protocol(path)
         loop = asyncio.get_running_loop()
 
-        return self.get_filesystem(protocol, anonymous=anonymous, path=path, asynchronous=True, loop=loop, **kwargs)
+        return self.get_filesystem(
+            protocol,
+            anonymous=anonymous,
+            path=path,
+            asynchronous=True,
+            loop=loop,
+            **kwargs,
+        )
 
     def get_filesystem_for_path(self, path: str = "", anonymous: bool = False, **kwargs) -> fsspec.AbstractFileSystem:
         protocol = get_protocol(path)
@@ -314,7 +376,9 @@ class FileAccessProvider(object):
                 import shutil
 
                 return shutil.copytree(
-                    self.strip_file_header(from_path), self.strip_file_header(to_path), dirs_exist_ok=True
+                    self.strip_file_header(from_path),
+                    self.strip_file_header(to_path),
+                    dirs_exist_ok=True,
                 )
             logger.info(f"Getting {from_path} to {to_path}")
             if isinstance(file_system, AsyncFileSystem):
@@ -324,10 +388,15 @@ class FileAccessProvider(object):
             if isinstance(dst, (str, pathlib.Path)):
                 return dst
             return to_path
-        except OSError as oe:
+        except (OSError, GenericError) as oe:
             logger.debug(f"Error in getting {from_path} to {to_path} rec {recursive} {oe}")
             if isinstance(file_system, AsyncFileSystem):
-                exists = await file_system._exists(from_path)  # pylint: disable=W0212
+                try:
+                    exists = await file_system._exists(from_path)  # pylint: disable=W0212
+                except GenericError:
+                    # for obstore, as it does not raise FileNotFoundError in fsspec but GenericError
+                    # force it to try get_filesystem(anonymous=True)
+                    exists = True
             else:
                 exists = file_system.exists(from_path)
             if not exists:
@@ -357,7 +426,9 @@ class FileAccessProvider(object):
                 import shutil
 
                 return shutil.copytree(
-                    self.strip_file_header(from_path), self.strip_file_header(to_path), dirs_exist_ok=True
+                    self.strip_file_header(from_path),
+                    self.strip_file_header(to_path),
+                    dirs_exist_ok=True,
                 )
             from_path, to_path = self.recursive_paths(from_path, to_path)
         if self._execution_metadata:
@@ -619,7 +690,11 @@ class FileAccessProvider(object):
     get_data = loop_manager.synced(async_get_data)
 
     async def async_put_data(
-        self, local_path: Union[str, os.PathLike], remote_path: str, is_multipart: bool = False, **kwargs
+        self,
+        local_path: Union[str, os.PathLike],
+        remote_path: str,
+        is_multipart: bool = False,
+        **kwargs,
     ) -> str:
         """
         The implication here is that we're always going to put data to the remote location, so we .remote to ensure
@@ -648,6 +723,9 @@ class FileAccessProvider(object):
 
     # Public synchronous version
     put_data = loop_manager.synced(async_put_data)
+
+
+register(["s3", "gs", "abfs", "abfss"], asynchronous=True)
 
 
 flyte_tmp_dir = tempfile.mkdtemp(prefix="flyte-")
