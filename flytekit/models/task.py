@@ -183,6 +183,7 @@ class TaskMetadata(_common.FlyteIdlEntity):
         cache_serializable,
         pod_template_name,
         cache_ignore_input_vars,
+        execution_mode,
         is_eager: bool = False,
         generates_deck: bool = False,
     ):
@@ -221,6 +222,13 @@ class TaskMetadata(_common.FlyteIdlEntity):
         self._cache_ignore_input_vars = cache_ignore_input_vars
         self._is_eager = is_eager
         self._generates_deck = generates_deck
+        self._execution_mode = execution_mode
+
+    def __post_init__(self):
+        if self.execution_mode is None:
+            from flytekit.core.python_function_task import PythonFunctionTask
+
+            self.execution_mode = PythonFunctionTask.ExecutionBehavior.DEFAULT
 
     @property
     def is_eager(self):
@@ -318,6 +326,13 @@ class TaskMetadata(_common.FlyteIdlEntity):
         """
         return self._cache_ignore_input_vars
 
+    @property
+    def execution_mode(self):
+        """
+        The execution mode is either default or dynamic
+        """
+        return self._execution_mode
+
     def to_flyte_idl(self):
         """
         :rtype: flyteidl.admin.task_pb2.TaskMetadata
@@ -334,6 +349,7 @@ class TaskMetadata(_common.FlyteIdlEntity):
             cache_ignore_input_vars=self.cache_ignore_input_vars,
             is_eager=self.is_eager,
             generates_deck=BoolValue(value=self.generates_deck),
+            mode=self.execution_mode.to_flyte_idl(),
         )
         if self.timeout:
             tm.timeout.FromTimedelta(self.timeout)
@@ -345,6 +361,8 @@ class TaskMetadata(_common.FlyteIdlEntity):
         :param flyteidl.core.task_pb2.TaskMetadata pb2_object:
         :rtype: TaskMetadata
         """
+        from flytekit.core.python_function_task import PythonFunctionTask
+
         return cls(
             discoverable=pb2_object.discoverable,
             runtime=RuntimeMetadata.from_flyte_idl(pb2_object.runtime),
@@ -358,6 +376,7 @@ class TaskMetadata(_common.FlyteIdlEntity):
             cache_ignore_input_vars=pb2_object.cache_ignore_input_vars,
             is_eager=pb2_object.is_eager,
             generates_deck=pb2_object.generates_deck.value if pb2_object.HasField("generates_deck") else False,
+            execution_mode=PythonFunctionTask.ExecutionBehavior.from_flyte_idl(pb2_object.mode),
         )
 
 
