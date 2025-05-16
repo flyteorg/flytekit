@@ -13,6 +13,7 @@ import os
 import sys
 import textwrap
 import threading
+import types
 import typing
 from abc import ABC, abstractmethod
 from collections import OrderedDict
@@ -566,7 +567,13 @@ class DataclassTransformer(TypeTransformer[object]):
                         original_type = type(v)
                         if UnionTransformer.is_optional_type(expected_type):
                             expected_type = UnionTransformer.get_sub_type_in_optional(expected_type)
-                        if original_type != expected_type:
+
+                        if UnionTransformer.is_union(expected_type) and UnionTransformer.in_union(
+                            original_type, expected_type
+                        ):
+                            pass
+
+                        elif original_type != expected_type:
                             raise TypeTransformerFailedError(
                                 f"Type of Val '{original_type}' is not an instance of {expected_type}"
                             )
@@ -1945,6 +1952,14 @@ class UnionTransformer(AsyncTypeTransformer[T]):
 
     def __init__(self):
         super().__init__("Typed Union", typing.Union)
+
+    @staticmethod
+    def is_union(t: Type[Any] | types.UnionType) -> bool:
+        return _is_union_type(t)
+
+    @staticmethod
+    def in_union(t: Type[Any], union: types.UnionType) -> bool:
+        return t in typing.get_args(union)
 
     @staticmethod
     def is_optional_type(t: Type) -> bool:
