@@ -102,18 +102,16 @@ class ArrayNodeMapTask(PythonTask):
         if isinstance(actual_task, PythonInstanceTask):
             mod = actual_task.task_type
             f = actual_task.lhs
+        elif isinstance(actual_task, ContainerTask):
+            mod = "raw_container_task"
+            f = actual_task.name
         else:
             _, mod, f, _ = tracker.extract_task_module(cast(PythonFunctionTask, actual_task).task_function)
         sorted_bounded_inputs = ",".join(sorted(self._bound_inputs))
         h = hashlib.md5(
             f"{sorted_bounded_inputs}{concurrency}{min_successes}{min_success_ratio}".encode("utf-8")
         ).hexdigest()
-
-        if isinstance(actual_task, ContainerTask):
-            self.name = f"raw_container_task.mapper_{actual_task.name}_{h}"
-        else:
-            _, mod, f, _ = tracker.extract_task_module(actual_task.task_function)
-            self._name = f"{mod}.map_{f}_{h}-arraynode"
+        self._name = f"{mod}.map_{f}_{h}-arraynode"
 
         self._cmd_prefix: Optional[List[str]] = None
         self._concurrency: Optional[int] = concurrency
