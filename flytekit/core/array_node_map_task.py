@@ -380,7 +380,7 @@ class ArrayNodeMapTask(PythonTask):
                     single_instance_inputs[k] = kwargs[k]
             try:
                 o = self._run_task.execute(**single_instance_inputs)
-                # For Continer task, it will return the LiteralMap. We need to convert it to native
+                # For Container task, it will return the LiteralMap. We need to convert it to native
                 # type here.
                 if isinstance(o, _literal_models.LiteralMap):
                     vals = [Promise(var, o.literals[var]) for var in o.literals.keys()]
@@ -437,7 +437,7 @@ def map_task(
 
 
 def array_node_map_task(
-    task_function: PythonFunctionTask,
+    task_function: PythonFunctionTask | ContainerTask,
     concurrency: Optional[int] = None,
     # TODO why no min_successes?
     min_success_ratio: float = 1.0,
