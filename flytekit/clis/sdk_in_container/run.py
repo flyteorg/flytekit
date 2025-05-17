@@ -473,9 +473,6 @@ def to_click_option(
         is_remote=run_level_params.is_remote,
     )
 
-    if literal_converter.is_bool() and not default_val:
-        default_val = False
-
     description_extra = ""
     if literal_var.type.simple == SimpleType.STRUCT:
         if default_val and not isinstance(default_val, ArtifactQuery):

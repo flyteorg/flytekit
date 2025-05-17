@@ -914,7 +914,8 @@ def test_entity_non_found_in_file():
 
 @mock.patch("flytekit.configuration.plugin.FlyteRemote", spec=FlyteRemote)
 @mock.patch("flytekit.clients.friendly.SynchronousFlyteClient", spec=SynchronousFlyteClient)
-def test_remote_task(mock_client, mock_remote):
+@mock.patch("flytekit.interaction.click_types.FlyteLiteralConverter.convert")
+def test_remote_task_boolean_False(mock_convert, mock_client, mock_remote):
 
     ctx = FlyteContextManager.current_context()
 
@@ -943,7 +944,36 @@ def test_remote_task(mock_client, mock_remote):
 
     assert result_1.exit_code == 0
 
-    result_2 = runner.invoke(
+    mock_convert.assert_called()
+    for call in mock_convert.call_args_list:
+        args, _ = call
+        param = args[1] if len(args) > 1 else None
+        value = args[2] if len(args) > 2 else None
+        if param and param.name == "flag":
+            assert param.default is None
+            assert value is False
+
+@mock.patch("flytekit.configuration.plugin.FlyteRemote", spec=FlyteRemote)
+@mock.patch("flytekit.clients.friendly.SynchronousFlyteClient", spec=SynchronousFlyteClient)
+@mock.patch("flytekit.interaction.click_types.FlyteLiteralConverter.convert")
+def test_remote_task_boolean_True(mock_convert, mock_client, mock_remote):
+
+    ctx = FlyteContextManager.current_context()
+
+    @task()
+    def example_task(flag: bool) -> bool:
+        return flag
+
+    mock_remote_instance = mock.MagicMock()
+    mock_remote.return_value = mock_remote_instance
+    mock_remote_instance.context = ctx
+    mock_remote_instance._client = mock_client
+
+    mock_remote_instance.fetch_task.return_value = example_task
+
+    runner = CliRunner()
+
+    result = runner.invoke(
         pyflyte.main,
         [
             "run", "remote-task",
@@ -953,4 +983,13 @@ def test_remote_task(mock_client, mock_remote):
         catch_exceptions=False,
     )
 
-    assert result_2.exit_code == 0
+    assert result.exit_code == 0
+
+    mock_convert.assert_called()
+    for call in mock_convert.call_args_list:
+        args, _ = call
+        param = args[1] if len(args) > 1 else None
+        value = args[2] if len(args) > 2 else None
+        if param and param.name == "flag":
+            assert param.default is None
+            assert value is True
