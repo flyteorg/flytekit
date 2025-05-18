@@ -406,5 +406,5 @@ def test_task_k8s_metadata(default_serialization_settings):
     #################
     ts = get_serializable_task(OrderedDict(), default_serialization_settings, k8s_metadata_task)
 
-    assert ts.template.metadata.metadata.labels == {"lkey": "lval"}
-    assert ts.template.metadata.metadata.annotations == {"akey": "aval"}
+    assert ts.template.metadata.k8s_object_metadata.labels == {"lkey": "lval"}
+    assert ts.template.metadata.k8s_object_metadata.annotations == {"akey": "aval"}

@@ -189,7 +189,7 @@ class TaskMetadata(object):
             pod_template_name=self.pod_template_name,
             cache_ignore_input_vars=self.cache_ignore_input_vars,
             is_eager=self.is_eager,
-            metadata=_task_model.K8sObjectMetadata(
+            k8s_object_metadata=_task_model.K8sObjectMetadata(
                 labels=self.labels,
                 annotations=self.annotations,
             ),
