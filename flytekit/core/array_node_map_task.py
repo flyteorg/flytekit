@@ -104,7 +104,7 @@ class ArrayNodeMapTask(PythonTask):
             mod = actual_task.task_type
             f = actual_task.lhs
         elif isinstance(actual_task, ContainerTask):
-            mod = "raw_container_task"
+            mod = actual_task.task_type
             f = actual_task.name
         else:
             _, mod, f, _ = tracker.extract_task_module(cast(PythonFunctionTask, actual_task).task_function)
@@ -272,7 +272,7 @@ class ArrayNodeMapTask(PythonTask):
         return super().__call__(*args, **kwargs)
 
     def _literal_map_to_python_input(
-        self, literal_map: _literal_models.LiteralMap, ctx: FlyteContext | None = None
+        self, literal_map: _literal_models.LiteralMap, ctx: Optional[FlyteContext] = None
     ) -> Dict[str, Any]:
         if ctx is None:
             ctx = FlyteContextManager.current_context()
@@ -437,7 +437,7 @@ def map_task(
 
 
 def array_node_map_task(
-    task_function: PythonFunctionTask | ContainerTask,
+    task_function: Union[PythonFunctionTask, ContainerTask],
     concurrency: Optional[int] = None,
     # TODO why no min_successes?
     min_success_ratio: float = 1.0,
