@@ -25,7 +25,7 @@ _F_IMG_ID = "_F_IMG_ID"
 FLYTE_FORCE_PUSH_IMAGE_SPEC = "FLYTE_FORCE_PUSH_IMAGE_SPEC"
 # If the IMAGESPEC_FAST_FAIL env variable is set to TRUE, ImageSpec will fail the registration rather than assuming
 # an image exists if the image cannot be found or built.
-IMAGESPEC_FAST_FAIL = "IMAGESPEC_FAST_FAIL"
+IMAGESPEC_FAST_FAIL = "FLYTE_IMG_FAST_FAIL"
 
 
 @dataclass
