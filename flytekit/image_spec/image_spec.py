@@ -23,6 +23,9 @@ from flytekit.exceptions.user import FlyteAssertion
 DOCKER_HUB = "docker.io"
 _F_IMG_ID = "_F_IMG_ID"
 FLYTE_FORCE_PUSH_IMAGE_SPEC = "FLYTE_FORCE_PUSH_IMAGE_SPEC"
+# If the IMAGESPEC_FAST_FAIL env variable is set to TRUE, ImageSpec will fail the registration rather than assuming
+# an image exists if the image cannot be found or built.
+IMAGESPEC_FAST_FAIL = "IMAGESPEC_FAST_FAIL"
 
 
 @dataclass
@@ -110,6 +113,7 @@ class ImageSpec:
     def __post_init__(self):
         self.name = self.name.lower()
         self._is_force_push = os.environ.get(FLYTE_FORCE_PUSH_IMAGE_SPEC, False)  # False by default
+        self._imagespec_fast_fail = os.environ.get(IMAGESPEC_FAST_FAIL, False)  # False by default
         if self.registry:
             self.registry = self.registry.lower()
             if not validate_container_registry_name(self.registry):
@@ -454,6 +458,11 @@ class ImageSpecBuilder:
 
         Returns:
             True if the image should be built, otherwise it returns False.
+
+        Raises:
+            RuntimeError: If IMAGESPEC_FAST_FAIL is set to True and ImageSpec
+                          fails to check if the image exists due to a permission
+                          issue or other reason.
         """
         img_name = image_spec.image_name()
         exist = image_spec.exist()
@@ -466,6 +475,14 @@ class ImageSpecBuilder:
                 return True
             click.secho(f"Image {img_name} found. Skip building.", fg="blue")
         else:
+            if image_spec._imagespec_fast_fail:
+                click.secho(f"IMAGESPEC_FAST_FAIL set to {image_spec._imagespec_fast_fail}.", fg="red")
+                raise RuntimeError(
+                    "Build failed as ImageSpec failed to check if the image exists due to a "
+                    "permission issue or other reason. \n"
+                    "Note, this fast failure is configured with IMAGESPEC_FAST_FAIL."
+                )
+
             click.secho(f"Flytekit assumes the image {img_name} already exists.", fg="blue")
         return False
 
