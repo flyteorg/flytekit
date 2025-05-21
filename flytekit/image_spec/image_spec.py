@@ -480,7 +480,7 @@ class ImageSpecBuilder:
                 raise RuntimeError(
                     "Build failed as ImageSpec failed to check if the image exists due to a "
                     "permission issue or other reason. \n"
-                    "Note, this fast failure is configured with IMAGESPEC_FAST_FAIL."
+                    "Note, this fast failure is configured with the env var `IMAGESPEC_FAST_FAIL`."
                 )
 
             click.secho(f"Flytekit assumes the image {img_name} already exists.", fg="blue")
