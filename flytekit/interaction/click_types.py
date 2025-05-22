@@ -11,6 +11,8 @@ import sys
 import typing
 import typing as t
 from typing import cast, get_args
+from packaging.version import Version
+from click import __version__ as click_version
 
 import rich_click as click
 import yaml
@@ -140,8 +142,15 @@ class FileParamType(click.ParamType):
 class PickleParamType(click.ParamType):
     name = "pickle"
 
-    def get_metavar(self, param: "Parameter") -> t.Optional[str]:
-        return "Python Object <Module>:<Object>"
+    # click add args "ctx" to get_metavar in version 8.2.0
+    if Version(click_version) >= Version("8.2.0"):
+        from click.core import Context
+
+        def get_metavar(self, param: "Parameter", ctx: Context) -> t.Optional[str]:
+            return "Python Object <Module>:<Object>"
+    else:
+        def get_metavar(self, param: "Parameter") -> t.Optional[str]:
+            return "Python Object <Module>:<Object>"
 
     def convert(
         self, value: typing.Any, param: typing.Optional[click.Parameter], ctx: typing.Optional[click.Context]
