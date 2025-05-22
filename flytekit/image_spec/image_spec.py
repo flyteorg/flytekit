@@ -17,7 +17,6 @@ import click
 import requests
 from packaging.version import Version
 
-from flytekit.clis.helpers import str2bool
 from flytekit.constants import CopyFileDetection
 from flytekit.exceptions.user import FlyteAssertion
 
@@ -112,6 +111,8 @@ class ImageSpec:
     builder_config: Optional[typing.Dict[str, typing.Any]] = None
 
     def __post_init__(self):
+        from flytekit.clis.helpers import str2bool
+
         self.name = self.name.lower()
         self._is_force_push = str2bool(os.environ.get(FLYTE_FORCE_PUSH_IMAGE_SPEC, "FALSE"))  # False by default
         self._fast_fail = str2bool(os.environ.get(FLYTE_IMG_FAST_FAIL, "FALSE"))  # False by default
