@@ -8,7 +8,9 @@ from flyteidl.admin.workflow_pb2 import WorkflowSpec
 from flyteidl.core import identifier_pb2 as _identifier_pb2
 from flyteidl.core import workflow_pb2 as _workflow_pb2
 
-from flytekit.configuration import DOMAIN_PLACEHOLDER, PROJECT_PLACEHOLDER, VERSION_PLACEHOLDER
+PROJECT_PLACEHOLDER = "{{ registration.project }}"
+DOMAIN_PLACEHOLDER = "{{ registration.domain }}"
+VERSION_PLACEHOLDER = "{{ registration.version }}"
 
 
 def parse_args_into_dict(input_arguments):

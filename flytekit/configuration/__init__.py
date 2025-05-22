@@ -133,9 +133,6 @@ from flytekit.image_spec import ImageSpec
 from flytekit.image_spec.image_spec import ImageBuildEngine
 from flytekit.loggers import logger
 
-PROJECT_PLACEHOLDER = "{{ registration.project }}"
-DOMAIN_PLACEHOLDER = "{{ registration.domain }}"
-VERSION_PLACEHOLDER = "{{ registration.version }}"
 DEFAULT_RUNTIME_PYTHON_INTERPRETER = "/opt/venv/bin/python3"
 DEFAULT_FLYTEKIT_ENTRYPOINT_FILELOC = "bin/entrypoint.py"
 DEFAULT_IMAGE_NAME = "default"
