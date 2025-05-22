@@ -1,4 +1,5 @@
 import os
+import pathlib
 import typing
 from enum import Enum
 from typing import Any, Dict, List, Optional, OrderedDict, Tuple, Type
@@ -52,8 +53,8 @@ class ContainerTask(PythonTask):
         outputs: Optional[Dict[str, Type]] = None,
         requests: Optional[Resources] = None,
         limits: Optional[Resources] = None,
-        input_data_dir: Optional[str] = None,
-        output_data_dir: Optional[str] = None,
+        input_data_dir: str | pathlib.Path = "/var/inputs",
+        output_data_dir: str | pathlib.Path = "/var/outputs",
         metadata_format: MetadataFormat = MetadataFormat.JSON,
         io_strategy: Optional[IOStrategy] = None,
         secret_requests: Optional[List[Secret]] = None,
