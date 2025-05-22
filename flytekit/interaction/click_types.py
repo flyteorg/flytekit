@@ -11,12 +11,12 @@ import sys
 import typing
 import typing as t
 from typing import cast, get_args
-from packaging.version import Version
-from click import __version__ as click_version
 
 import rich_click as click
 import yaml
+from click import __version__ as click_version
 from dataclasses_json import DataClassJsonMixin, dataclass_json
+from packaging.version import Version
 from pytimeparse import parse
 
 from flytekit import BlobType, FlyteContext, Literal, LiteralType, StructuredDataset
@@ -149,6 +149,7 @@ class PickleParamType(click.ParamType):
         def get_metavar(self, param: "Parameter", ctx: Context) -> t.Optional[str]:
             return "Python Object <Module>:<Object>"
     else:
+
         def get_metavar(self, param: "Parameter") -> t.Optional[str]:
             return "Python Object <Module>:<Object>"
 
