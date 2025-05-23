@@ -472,6 +472,7 @@ def to_click_option(
         python_type=python_type,
         is_remote=run_level_params.is_remote,
     )
+    breakpoint()
 
     if literal_converter.is_bool() and not default_val:
         default_val = False
@@ -508,7 +509,7 @@ def to_click_option(
         ]
     else:
         click_cli_parameter_names = [f"--{input_name}"]
-
+    breakpoint()
     return click.Option(
         param_decls=click_cli_parameter_names,
         type=literal_converter.click_type,
@@ -554,6 +555,7 @@ def run_remote(
     msg = "Running execution on remote."
     if run_level_params.wait_execution:
         msg += " Waiting to complete..."
+    breakpoint()
     p = Progress(TimeElapsedColumn(), TextColumn(msg), transient=True)
     t = p.add_task("exec", visible=False)
     with p:
@@ -870,6 +872,7 @@ class DynamicEntityLaunchCommand(click.RichCommand):
         run_level_params: RunLevelParams = ctx.obj
         r = run_level_params.remote_instance()
         entity = self._fetch_entity(ctx)
+        breakpoint()
         run_remote(
             r,
             entity,

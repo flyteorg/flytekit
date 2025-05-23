@@ -535,6 +535,7 @@ class FlyteLiteralConverter(object):
                 # Click produces datetime, so converting to date to avoid type mismatch error
                 value = value.date()
             # If the input matches the default value in the launch plan, serialization can be skipped.
+            breakpoint()
             if param and value == param.default:
                 return None
 
