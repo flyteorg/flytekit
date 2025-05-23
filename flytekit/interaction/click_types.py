@@ -14,7 +14,8 @@ from typing import cast, get_args
 
 import rich_click as click
 import yaml
-from click import __version__ as click_version, Parameter
+from click import Parameter
+from click import __version__ as click_version
 from dataclasses_json import DataClassJsonMixin, dataclass_json
 from packaging.version import Version
 from pytimeparse import parse
