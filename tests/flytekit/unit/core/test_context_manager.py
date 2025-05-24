@@ -19,6 +19,7 @@ from flytekit.configuration import (
 )
 from flytekit.core import mock_stats, context_manager
 from flytekit.core.context_manager import ExecutionParameters, FlyteContext, FlyteContextManager, SecretsManager
+from flytekit.core.resources import ResourceSpec, Resources
 from flytekit.models.core import identifier as id_models
 
 
@@ -301,6 +302,7 @@ def test_serialization_settings_transport():
         domain="domain",
         version="version",
         env={"hello": "blah"},
+        default_resources=ResourceSpec(requests=Resources(cpu="1", mem="2Gi"), limits=Resources(cpu="1", mem="2Gi")),
         image_config=ImageConfig(
             default_image=default_img,
             images=[default_img],
@@ -322,7 +324,7 @@ def test_serialization_settings_transport():
     ss = SerializationSettings.from_transport(tp)
     assert ss is not None
     assert ss == serialization_settings
-    assert len(tp) == 408
+    assert len(tp) == 480
 
 
 def test_exec_params():

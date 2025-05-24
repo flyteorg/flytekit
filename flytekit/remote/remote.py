@@ -56,6 +56,7 @@ from flytekit.core.python_auto_container import (
 )
 from flytekit.core.python_function_task import PythonFunctionTask
 from flytekit.core.reference_entity import ReferenceEntity, ReferenceSpec
+from flytekit.core.resources import ResourceSpec
 from flytekit.core.task import ReferenceTask
 from flytekit.core.tracker import extract_task_module
 from flytekit.core.type_engine import LiteralsResolver, TypeEngine, strict_type_hint_matching
@@ -1326,6 +1327,7 @@ class FlyteRemote(object):
         source_path: typing.Optional[str] = None,
         module_name: typing.Optional[str] = None,
         envs: typing.Optional[typing.Dict[str, str]] = None,
+        default_resources: typing.Optional[ResourceSpec] = None,
         fast_package_options: typing.Optional[FastPackageOptions] = None,
     ) -> typing.Union[FlyteWorkflow, FlyteTask, FlyteLaunchPlan, ReferenceEntity]:
         """
@@ -1342,6 +1344,7 @@ class FlyteRemote(object):
         :param source_path: The root of the project path
         :param module_name: the name of the module
         :param envs: Environment variables to be passed to the serialization
+        :param default_resources: Default resources to be passed to the serialization. These override the resource spec for any tasks that have no statically defined resource requests and limits.
         :param fast_package_options: Options to customize copy_all behavior, ignored when copy_all is False.
         :return:
         """
@@ -1380,6 +1383,7 @@ class FlyteRemote(object):
             image_config=image_config,
             git_repo=_get_git_repo_url(source_path),
             env=envs,
+            default_resources=default_resources,
             fast_serialization_settings=FastSerializationSettings(
                 enabled=True,
                 destination_dir=destination_dir,
