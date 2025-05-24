@@ -95,7 +95,6 @@ from flytekit.models.launch_plan import LaunchPlanState
 from flytekit.models.literals import Literal, LiteralMap
 from flytekit.models.matchable_resource import ExecutionClusterLabel
 from flytekit.models.project import Project
-from flytekit.models.types import SimpleType
 from flytekit.remote.backfill import create_backfill_workflow
 from flytekit.remote.data import download_literal
 from flytekit.remote.entities import FlyteLaunchPlan, FlyteNode, FlyteTask, FlyteTaskNode, FlyteWorkflow
@@ -1560,8 +1559,6 @@ class FlyteRemote(object):
             input_flyte_type_map = entity.interface.inputs
 
             for k, v in inputs.items():
-                if v is None and entity.interface.inputs.get(k).type.simple == SimpleType.BOOLEAN:
-                    v = False
                 if input_flyte_type_map.get(k) is None:
                     raise user_exceptions.FlyteValueException(
                         k, f"The {entity.__class__.__name__} doesn't have this input key."

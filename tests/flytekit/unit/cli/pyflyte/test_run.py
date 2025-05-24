@@ -913,83 +913,52 @@ def test_entity_non_found_in_file():
     assert "FlyteEntityNotFoundException: Task/Workflow \'my_wffffff\' not found in module \n\'pyflyte.workflow\'" in result.stdout
 
 @mock.patch("flytekit.configuration.plugin.FlyteRemote", spec=FlyteRemote)
-@mock.patch("flytekit.clients.friendly.SynchronousFlyteClient", spec=SynchronousFlyteClient)
-@mock.patch("flytekit.interaction.click_types.FlyteLiteralConverter.convert")
-def test_remote_task_boolean_False(mock_convert, mock_client, mock_remote):
-
-    ctx = FlyteContextManager.current_context()
-
+@mock.patch("flytekit.clis.sdk_in_container.run.run_remote")
+def test_remote_task_boolean_True(mock_run_remote, mock_remote):
     @task()
     def example_task(flag: bool) -> bool:
         return flag
 
     mock_remote_instance = mock.MagicMock()
     mock_remote.return_value = mock_remote_instance
-    mock_remote_instance.context = ctx
-    mock_remote_instance._client = mock_client
-
     mock_remote_instance.fetch_task.return_value = example_task
 
     runner = CliRunner()
-
-    result_1 = runner.invoke(
-        pyflyte.main,
-        [
-            "run", "remote-task",
-            "some_module.example_task",
-            "--no-flag"
-        ],
-        catch_exceptions=False,
-    )
-
-    assert result_1.exit_code == 0
-
-    mock_convert.assert_called()
-    for call in mock_convert.call_args_list:
-        args, _ = call
-        param = args[1] if len(args) > 1 else None
-        value = args[2] if len(args) > 2 else None
-        if param and param.name == "flag":
-            assert param.default is None
-            assert value is False
-
-@mock.patch("flytekit.configuration.plugin.FlyteRemote", spec=FlyteRemote)
-@mock.patch("flytekit.clients.friendly.SynchronousFlyteClient", spec=SynchronousFlyteClient)
-@mock.patch("flytekit.interaction.click_types.FlyteLiteralConverter.convert")
-def test_remote_task_boolean_True(mock_convert, mock_client, mock_remote):
-
-    ctx = FlyteContextManager.current_context()
-
-    @task()
-    def example_task(flag: bool) -> bool:
-        return flag
-
-    mock_remote_instance = mock.MagicMock()
-    mock_remote.return_value = mock_remote_instance
-    mock_remote_instance.context = ctx
-    mock_remote_instance._client = mock_client
-
-    mock_remote_instance.fetch_task.return_value = example_task
-
-    runner = CliRunner()
-
     result = runner.invoke(
         pyflyte.main,
-        [
-            "run", "remote-task",
-            "some_module.example_task",
-            "--flag"
-        ],
+        ["run", "remote-task", "some_module.example_task", "--flag"],
         catch_exceptions=False,
     )
 
     assert result.exit_code == 0
 
-    mock_convert.assert_called()
-    for call in mock_convert.call_args_list:
-        args, _ = call
-        param = args[1] if len(args) > 1 else None
-        value = args[2] if len(args) > 2 else None
-        if param and param.name == "flag":
-            assert param.default is None
-            assert value is True
+    mock_run_remote.assert_called_once()
+    args, _ = mock_run_remote.call_args
+    flag_literal = args[4]["flag"]
+    inputs = flag_literal.scalar.primitive.boolean
+    assert inputs == True
+
+@mock.patch("flytekit.configuration.plugin.FlyteRemote", spec=FlyteRemote)
+@mock.patch("flytekit.clis.sdk_in_container.run.run_remote")
+def test_remote_task_boolean_False(mock_run_remote, mock_remote):
+    @task()
+    def example_task(flag: bool) -> bool:
+        return flag
+
+    mock_remote_instance = mock.MagicMock()
+    mock_remote.return_value = mock_remote_instance
+    mock_remote_instance.fetch_task.return_value = example_task
+
+    runner = CliRunner()
+    result = runner.invoke(
+        pyflyte.main,
+        ["run", "remote-task", "some_module.example_task", "--no-flag"],
+        catch_exceptions=False,
+    )
+
+    assert result.exit_code == 0
+
+    mock_run_remote.assert_called_once()
+    args, _ = mock_run_remote.call_args
+    inputs = args[4]['flag']
+    assert inputs == False
