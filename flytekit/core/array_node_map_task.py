@@ -380,8 +380,8 @@ class ArrayNodeMapTask(PythonTask):
                     single_instance_inputs[k] = kwargs[k]
             try:
                 o = self._run_task.execute(**single_instance_inputs)
-                # For Container task, it will return the LiteralMap. We need to convert it to native
-                # type here.
+                # For running container task in local execution, it will return
+                # the LiteralMap. We need to convert it to native type here.
                 if isinstance(o, _literal_models.LiteralMap):
                     vals = [Promise(var, o.literals[var]) for var in o.literals.keys()]
                     result = create_task_output(vals, self.python_interface)
