@@ -472,10 +472,8 @@ def to_click_option(
         python_type=python_type,
         is_remote=run_level_params.is_remote,
     )
-
     if literal_converter.is_bool() and not default_val:
         default_val = False
-
     description_extra = ""
     if literal_var.type.simple == SimpleType.STRUCT:
         if default_val and not isinstance(default_val, ArtifactQuery):
@@ -517,6 +515,7 @@ def to_click_option(
         required=required,
         help=literal_var.description + description_extra,
         callback=literal_converter.convert,
+        is_flag=literal_converter.is_bool(),
     )
 
 
@@ -870,12 +869,17 @@ class DynamicEntityLaunchCommand(click.RichCommand):
         run_level_params: RunLevelParams = ctx.obj
         r = run_level_params.remote_instance()
         entity = self._fetch_entity(ctx)
+
+        param_defaults = {param.name: param.default for param in ctx.command.params}
+
+        filtered_inputs = {k: param_defaults.get(k, v) if v is None else v for k, v in ctx.params.items()}
+
         run_remote(
             r,
             entity,
             run_level_params.project,
             run_level_params.domain,
-            ctx.params,
+            filtered_inputs,
             run_level_params,
             type_hints=entity.python_interface.inputs if entity.python_interface else None,
         )
