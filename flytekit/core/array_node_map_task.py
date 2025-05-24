@@ -17,7 +17,6 @@ from flytekit.core.container_task import ContainerTask
 from flytekit.core.context_manager import ExecutionState, FlyteContext, FlyteContextManager
 from flytekit.core.interface import transform_interface_to_list_interface
 from flytekit.core.launch_plan import LaunchPlan
-from flytekit.core.promise import Promise, create_native_named_tuple, create_task_output
 from flytekit.core.python_function_task import PythonFunctionTask, PythonInstanceTask
 from flytekit.core.task import ReferenceTask
 from flytekit.core.type_engine import TypeEngine
@@ -380,13 +379,6 @@ class ArrayNodeMapTask(PythonTask):
                     single_instance_inputs[k] = kwargs[k]
             try:
                 o = self._run_task.execute(**single_instance_inputs)
-                # For running container task in local execution, it will return
-                # the LiteralMap. We need to convert it to native type here.
-                if isinstance(o, _literal_models.LiteralMap):
-                    vals = [Promise(var, o.literals[var]) for var in o.literals.keys()]
-                    result = create_task_output(vals, self.python_interface)
-                    ctx = FlyteContextManager.current_context()
-                    o = create_native_named_tuple(ctx, result, self._run_task.python_interface)
                 if outputs_expected:
                     outputs.append(o)
             except Exception as exc:
