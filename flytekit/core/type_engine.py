@@ -16,7 +16,7 @@ import threading
 import typing
 from abc import ABC, abstractmethod
 from collections import OrderedDict
-from functools import lru_cache
+from functools import lru_cache, reduce
 from types import GenericAlias
 from typing import Any, Dict, List, NamedTuple, Optional, Type, cast
 
@@ -1097,26 +1097,24 @@ def _handle_json_schema_property(
     A helper to handle the properties of a JSON schema and returns their equivalent Flyte attribute name and type.
     """
 
-    # Handle Optional[T] or Union[T, None] first
+    # Handle Optional[T] or Union[T1, T2, ...]
     if property_val.get("anyOf"):
-        ######### A few sanity checks to make sure we're handling Optional[T] or Union[T, None] properly ###############
-        # 1 - Check that the schema is a valid Optional[T] or Union[T, None]
-        has_two_types = len(property_val["anyOf"]) == 2
-        has_exactly_one_null_type = sum(item.get("type") == "null" for item in property_val["anyOf"]) == 1
-        if not (has_two_types and has_exactly_one_null_type):
-            raise ValueError(
-                f"Invalid Union type: {property_val['anyOf']}, only Optional[T] or Union[T, None] is supported for dataclass JSON desererialization."
-            )
-        non_null_type = next(item for item in property_val["anyOf"] if item.get("type") != "null")
-        # 2 - Check that the non-null type isn't a Union/Optional itself
-        if non_null_type.get("anyOf"):
+        # Sanity check 'anyOf' is not empty
+        assert len(property_val["anyOf"]) > 0
+        # Check that there are no nested Optional or Union types because this function is kept simple
+        # to support only one more level of recursion.
+        if any(item.get("anyOf") for item in property_val["anyOf"]):
             raise ValueError(
                 f"The property with name {property_key} has a nested Optional or Union type, this is not allowed for dataclass JSON deserialization."
             )
-        ############################# End of sanity checks ############################################################
-        # Handle the non-null type and wrap it in an Optional[T] before returning
-        attr_key, attr_type = _handle_json_schema_property(property_key, non_null_type)
-        return (attr_key, typing.Optional[attr_type])  # type: ignore
+        attr_types = []
+        for item in property_val["anyOf"]:
+            _, attr_type = _handle_json_schema_property(property_key, item)
+            attr_types.append(attr_type)
+
+        # Gather all the types and return a Union[T1, T2, ...]
+        attr_union_type = reduce(lambda x, y: typing.Union[x, y], attr_types)
+        return (property_key, attr_union_type)  # type: ignore
 
     # Handle enum
     if property_val.get("enum"):
@@ -1127,6 +1125,9 @@ def _handle_json_schema_property(
     # Handle list
     if property_type == "array":
         return (property_key, typing.List[_get_element_type(property_val["items"])])  # type: ignore
+    # Handle null types (i.e. None)
+    elif property_val.get("type") == "null":
+        return (property_key, type(None))  # type: ignore
     # Handle dataclass and dict
     elif property_type == "object":
         if property_val.get("anyOf"):
@@ -2443,8 +2444,6 @@ def _get_element_type(element_property: typing.Dict[str, str]) -> Type:
             return int
         else:
             return float
-    elif element_type == "null":
-        return type(None)
     return str
 
 
