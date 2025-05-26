@@ -16,7 +16,7 @@ from urllib.parse import urlparse
 import uuid
 import pytest
 from unittest import mock
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 
 from flytekit import LaunchPlan, kwtypes, WorkflowExecutionPhase, task, workflow
 from flytekit.configuration import Config, ImageConfig, SerializationSettings
@@ -1147,6 +1147,25 @@ def test_execute_workflow_with_dataclass():
         image_config=ImageConfig.from_images(IMAGE),
     )
     assert out.outputs["o0"] == ""
+
+def test_execute_wf_out_dataclass_with_optional():
+    """Test remote execution of a workflow outputting a dataclass where optional fields are present."""
+    from tests.flytekit.integration.remote.workflows.basic.dataclass_with_optional_wf import MyDataClassWithOptional
+
+    in_dataclass = MyDataClassWithOptional(foo={"a": 1.0, "b": 2.0}, bar={"c": 3.0, "d": 4.0})
+
+    execution_id = run(
+        "dataclass_with_optional_wf.py",
+        "wf",
+        "--in_dataclass",
+        json.dumps(asdict(in_dataclass)),
+    )
+
+    remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN, interactive_mode_enabled=True)
+    execution = remote.fetch_execution(name=execution_id, project=PROJECT, domain=DOMAIN)
+    execution = remote.wait(execution=execution, timeout=datetime.timedelta(minutes=10))
+
+    assert asdict(execution.outputs["o0"]) == asdict(in_dataclass)
 
 
 def test_register_wf_twice(register):
