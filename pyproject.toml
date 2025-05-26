@@ -22,7 +22,7 @@ dependencies = [
     "docstring-parser>=0.9.0",
     "flyteidl>=1.15.1",
     "fsspec>=2023.3.0",
-    "gcsfs>=2023.3.0",
+    "gcsfs>=2023.3.0,!=2025.5.0,!=2025.5.0post1",  # Bug in 2025.5.0, 2025.5.0post1 https://github.com/fsspec/gcsfs/issues/687
     "googleapis-common-protos>=1.57",
     "grpcio",
     "grpcio-status",

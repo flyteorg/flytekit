@@ -494,7 +494,18 @@ class DefaultImageBuilder(ImageSpecBuilder):
 
         with tempfile.TemporaryDirectory() as tmp_dir:
             tmp_path = Path(tmp_dir)
+
+            initial_image_tag = image_spec.tag
             create_docker_context(image_spec, tmp_path)
+
+            # Check that hash-based image tag didn't change while creating the context.
+            # This doesn't cover all the cases, but this is a good check.
+            del image_spec.tag
+            if image_spec.tag != initial_image_tag:
+                raise ValueError(
+                    f"Hash-based image tag changed from {initial_image_tag} to {image_spec.tag} while creating the context,"
+                    f"indicating the content has been modified. Aborting because image tag may not match what is built."
+                )
 
             command = [
                 "docker",
