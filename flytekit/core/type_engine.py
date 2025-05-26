@@ -1089,56 +1089,82 @@ class EnumTransformer(TypeTransformer[enum.Enum]):
             raise TypeTransformerFailedError(f"Value {v} is not in Enum {t}")
 
 
-def generate_attribute_list_from_dataclass_json_mixin(schema: dict, schema_name: typing.Any):
+def _handle_json_schema_property(
+    property_key: str,
+    property_val: dict,
+) -> typing.Tuple[str, typing.Any]:
+    """
+    A helper to handle the properties of a JSON schema and returns their equivalent Flyte attribute name and type.
+    """
+
+    # Handle Optional[T] or Union[T, None] first
+    if property_val.get("anyOf"):
+        ######### A few sanity checks to make sure we're handling Optional[T] or Union[T, None] properly ###############
+        # 1 - Check that the schema is a valid Optional[T] or Union[T, None]
+        has_two_types = len(property_val["anyOf"]) == 2
+        has_exactly_one_null_type = sum(item.get("type") == "null" for item in property_val["anyOf"]) == 1
+        if not (has_two_types and has_exactly_one_null_type):
+            raise ValueError(f"Invalid Union type: {property_val['anyOf']}, only Optional[T] or Union[T, None] is supported for dataclass JSON desererialization.")
+        non_null_type = next(item for item in property_val["anyOf"] if item.get("type") != "null")
+        # 2 - Check that the non-null type isn't a Union/Optional itself
+        if non_null_type.get("anyOf"):
+            raise ValueError(f"The property with name {property_key} has a nested Optional or Union type, this is not allowed for dataclass JSON deserialization.")
+        ############################# End of sanity checks ############################################################
+        # Handle the non-null type and wrap it in an Optional[T] before returning
+        attr_key, attr_type = _handle_json_schema_property(property_key, non_null_type)
+        return (attr_key, typing.Optional[attr_type])  # type: ignore
+
+    # Handle enum
+    if property_val.get("enum"):
+        property_type = "enum"
+    else:
+        property_type = property_val["type"]
+
+    # Handle list
+    if property_type == "array":
+        return (property_key, typing.List[_get_element_type(property_val["items"])])  # type: ignore
+    # Handle dataclass and dict
+    elif property_type == "object":
+        if property_val.get("anyOf"):
+            # For optional with dataclass
+            sub_schemea = property_val["anyOf"][0]
+            sub_schemea_name = sub_schemea["title"]
+            return (
+                property_key,
+                typing.cast(
+                    GenericAlias, convert_mashumaro_json_schema_to_python_class(sub_schemea, sub_schemea_name)
+                ),
+            )
+        elif property_val.get("additionalProperties"):
+            # For typing.Dict type
+            elem_type = _get_element_type(property_val["additionalProperties"])
+            return (property_key, typing.Dict[str, elem_type])  # type: ignore
+        elif property_val.get("title"):
+            # For nested dataclass
+            sub_schemea_name = property_val["title"]
+            return (
+                property_key,
+                typing.cast(
+                    GenericAlias, convert_mashumaro_json_schema_to_python_class(property_val, sub_schemea_name)
+                ),
+            )
+        else:
+            # For untyped dict
+            return (property_key, dict)  # type: ignore
+    elif property_type == "enum":
+        return (property_key, str)  # type: ignore
+    # Handle None, int, float, bool or str
+    else:
+        return (property_key, _get_element_type(property_val))  # type: ignore
+
+
+def generate_attribute_list_from_dataclass_json_mixin(
+    schema: dict,
+    schema_name: typing.Any,
+):
     attribute_list: typing.List[typing.Tuple[Any, Any]] = []
     for property_key, property_val in schema["properties"].items():
-        property_type = ""
-        if property_val.get("anyOf"):
-            property_type = property_val["anyOf"][0]["type"]
-        elif property_val.get("enum"):
-            property_type = "enum"
-        else:
-            property_type = property_val["type"]
-        # Handle list
-        if property_type == "array":
-            attribute_list.append((property_key, typing.List[_get_element_type(property_val["items"])]))  # type: ignore
-        # Handle dataclass and dict
-        elif property_type == "object":
-            if property_val.get("anyOf"):
-                # For optional with dataclass
-                sub_schemea = property_val["anyOf"][0]
-                sub_schemea_name = sub_schemea["title"]
-                attribute_list.append(
-                    (
-                        property_key,
-                        typing.cast(
-                            GenericAlias, convert_mashumaro_json_schema_to_python_class(sub_schemea, sub_schemea_name)
-                        ),
-                    )
-                )
-            elif property_val.get("additionalProperties"):
-                # For typing.Dict type
-                elem_type = _get_element_type(property_val["additionalProperties"])
-                attribute_list.append((property_key, typing.Dict[str, elem_type]))  # type: ignore
-            elif property_val.get("title"):
-                # For nested dataclass
-                sub_schemea_name = property_val["title"]
-                attribute_list.append(
-                    (
-                        property_key,
-                        typing.cast(
-                            GenericAlias, convert_mashumaro_json_schema_to_python_class(property_val, sub_schemea_name)
-                        ),
-                    )
-                )
-            else:
-                # For untyped dict
-                attribute_list.append((property_key, dict))  # type: ignore
-        elif property_type == "enum":
-            attribute_list.append([property_key, str])  # type: ignore
-        # Handle int, float, bool or str
-        else:
-            attribute_list.append([property_key, _get_element_type(property_val)])  # type: ignore
+        attribute_list.append(_handle_json_schema_property(property_key, property_val))
     return attribute_list
 
 
@@ -2415,6 +2441,8 @@ def _get_element_type(element_property: typing.Dict[str, str]) -> Type:
             return int
         else:
             return float
+    elif element_type == "null":
+        return type(None)
     return str
 
 
