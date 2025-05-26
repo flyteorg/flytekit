@@ -233,6 +233,17 @@ class PythonAutoContainerTask(PythonTask[T], ABC, metaclass=FlyteTrackedABC):
             if elem:
                 env.update(elem)
 
+        # Override the task's resource spec if it was not set statically in the task definition
+
+        def _resources_unspecified(resources: ResourceSpec) -> bool:
+            return resources == ResourceSpec(
+                requests=Resources(),
+                limits=Resources(),
+            )
+
+        if isinstance(settings.default_resources, ResourceSpec) and _resources_unspecified(self.resources):
+            self._resources = settings.default_resources
+
         # Add runtime dependencies into environment
         if isinstance(self.container_image, ImageSpec) and self.container_image.runtime_packages:
             runtime_packages = " ".join(self.container_image.runtime_packages)
