@@ -113,6 +113,7 @@ class _AsyncLoopManager:
             runner = _TaskRunner()
             self._runner_map[name] = runner
 
+        print(self._runner_map.__dict__)
         return runner.run(coro)
 
     def synced(self, coro_func: Callable[P, Awaitable[T]]) -> Callable[P, T]:
@@ -120,6 +121,7 @@ class _AsyncLoopManager:
 
         @functools.wraps(coro_func)
         def wrapped(*args: Any, **kwargs: Any) -> T:
+            print("YES")
             return self.run_sync(coro_func, *args, **kwargs)
 
         return wrapped

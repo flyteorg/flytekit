@@ -617,6 +617,7 @@ class FileAccessProvider(object):
             )
 
     get_data = loop_manager.synced(async_get_data)
+    print(get_data.__dict__)
 
     async def async_put_data(
         self, local_path: Union[str, os.PathLike], remote_path: str, is_multipart: bool = False, **kwargs
