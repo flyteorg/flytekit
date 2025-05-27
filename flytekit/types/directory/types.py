@@ -193,6 +193,9 @@ class FlyteDirectory(SerializableType, DataClassJsonMixin, os.PathLike, typing.G
         This function should be called by os.listdir as well.
         """
         if not self._downloaded:
+            import asyncio
+
+            print(asyncio.iscoroutinefunction(self._downloader.func))
             self._downloader()
             self._downloaded = True
         return self.path

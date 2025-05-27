@@ -84,10 +84,6 @@ class _TaskRunner:
 
         res = fut.result(None)
 
-        print(res)
-        if res and os.path.isdir(res.values()[0]):
-            print(f"length of res: {len(os.listdir(res.values()[0]))}")
-
         return res
 
 
