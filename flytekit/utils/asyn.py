@@ -71,7 +71,6 @@ class _TaskRunner:
     def run(self, coro: Any) -> Any:
         """Synchronously run a coroutine on a background thread."""
         name = f"{threading.current_thread().name} : loop-runner"
-        print(name)
         with self.__lock:
             if self.__loop is None:
                 with _selector_policy():
@@ -82,11 +81,12 @@ class _TaskRunner:
                 self.__runner_thread = threading.Thread(target=self._execute, daemon=True, name=name)
                 self.__runner_thread.start()
         fut = asyncio.run_coroutine_threadsafe(coro, self.__loop)
-        print(fut)
 
         res = fut.result(None)
 
         print(res)
+        if res and os.path.isdir(res.values()[0]):
+            print(f"length of res: {len(os.listdir(res.values()[0]))}")
 
         return res
 
