@@ -662,11 +662,7 @@ class FlyteDirToMultipartBlobTransformer(AsyncTypeTransformer[FlyteDirectory]):
 
         batch_size = get_batch_size(expected_python_type)
 
-        from flytekit.utils.asyn import loop_manager
-
-        _downloader = lambda: loop_manager.run_sync(
-            ctx.file_access.async_get_data, uri, local_folder, is_multipart=True, batch_size=batch_size
-        )
+        _downloader = partial(ctx.file_access.get_data, uri, local_folder, is_multipart=True, batch_size=batch_size)
 
         expected_format = self.get_format(expected_python_type)
 

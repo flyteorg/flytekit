@@ -97,12 +97,12 @@ class _AsyncLoopManager:
         """
         name = threading.current_thread().name + f"PID:{os.getpid()}"
         coro = coro_func(*args, **kwargs)
-        if name not in self._runner_map:
-            if len(self._runner_map) > 500:
-                logger.warning(
-                    "More than 500 event loop runners created!!! This could be a case of runaway recursion..."
-                )
-            self._runner_map[name] = _TaskRunner()
+        # if name not in self._runner_map:
+        #     if len(self._runner_map) > 500:
+        #         logger.warning(
+        #             "More than 500 event loop runners created!!! This could be a case of runaway recursion..."
+        #         )
+        self._runner_map[name] = _TaskRunner()
         return self._runner_map[name].run(coro)
 
     def synced(self, coro_func: Callable[P, Awaitable[T]]) -> Callable[P, T]:
@@ -110,7 +110,6 @@ class _AsyncLoopManager:
 
         @functools.wraps(coro_func)
         def wrapped(*args: Any, **kwargs: Any) -> T:
-            print("YES")
             return self.run_sync(coro_func, *args, **kwargs)
 
         return wrapped
