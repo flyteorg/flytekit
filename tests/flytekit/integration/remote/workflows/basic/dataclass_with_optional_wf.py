@@ -20,3 +20,20 @@ def t1(in_dataclass: MyDataClassWithOptional) -> MyDataClassWithOptional:
 @workflow
 def wf(in_dataclass: MyDataClassWithOptional) -> MyDataClassWithOptional:
     return t1(in_dataclass=in_dataclass)  # type: ignore
+
+
+@dataclass
+class MyParentDataClass:
+    child: MyDataClassWithOptional
+    a: Optional[dict[str, float]] = None
+    b: Optional[MyDataClassWithOptional] = None
+
+
+@task
+def t2(in_dataclass: MyParentDataClass) -> MyParentDataClass:
+    return in_dataclass
+
+
+@workflow
+def wf_nested_dc(in_dataclass: MyParentDataClass) -> MyParentDataClass:
+    return t2(in_dataclass=in_dataclass)  # type: ignore

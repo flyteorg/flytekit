@@ -1097,12 +1097,13 @@ def _handle_json_schema_property(
     A helper to handle the properties of a JSON schema and returns their equivalent Flyte attribute name and type.
     """
 
-    # Handle Optional[T] or Union[T1, T2, ...]
+    # Handle Optional[T] or Union[T1, T2, ...] at the top level for proper recursion
     if property_val.get("anyOf"):
         # Sanity check 'anyOf' is not empty
         assert len(property_val["anyOf"]) > 0
-        # Check that there are no nested Optional or Union types because this function is kept simple
-        # to support only one more level of recursion.
+        # Check that there are no nested Optional or Union types - no need to support that pattern
+        # as it would just add complexity without much benefit
+        # A few examples: Optional[Optional[T]] or Union[T1, T2, Union[T3, T4], etc...]
         if any(item.get("anyOf") for item in property_val["anyOf"]):
             raise ValueError(
                 f"The property with name {property_key} has a nested Optional or Union type, this is not allowed for dataclass JSON deserialization."
@@ -1130,25 +1131,19 @@ def _handle_json_schema_property(
         return (property_key, type(None))  # type: ignore
     # Handle dataclass and dict
     elif property_type == "object":
-        if property_val.get("anyOf"):
-            # For optional with dataclass
-            sub_schemea = property_val["anyOf"][0]
-            sub_schemea_name = sub_schemea["title"]
-            return (
-                property_key,
-                typing.cast(GenericAlias, convert_mashumaro_json_schema_to_python_class(sub_schemea, sub_schemea_name)),
-            )
-        elif property_val.get("additionalProperties"):
+        # NOTE: No need to handle optional dataclasses here (i.e. checking for property_val.get("anyOf"))
+        # those are handled in the top level of the function with recursion.
+        if property_val.get("additionalProperties"):
             # For typing.Dict type
             elem_type = _get_element_type(property_val["additionalProperties"])
             return (property_key, typing.Dict[str, elem_type])  # type: ignore
         elif property_val.get("title"):
             # For nested dataclass
-            sub_schemea_name = property_val["title"]
+            sub_schema_name = property_val["title"]
             return (
                 property_key,
                 typing.cast(
-                    GenericAlias, convert_mashumaro_json_schema_to_python_class(property_val, sub_schemea_name)
+                    GenericAlias, convert_mashumaro_json_schema_to_python_class(property_val, sub_schema_name)
                 ),
             )
         else:
