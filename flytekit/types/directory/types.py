@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import json
 import os
 import pathlib
@@ -22,15 +23,24 @@ from mashumaro.types import SerializableType
 
 from flytekit.core.constants import MESSAGEPACK
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
-from flytekit.core.type_engine import AsyncTypeTransformer, TypeEngine, TypeTransformerFailedError, get_batch_size
+from flytekit.core.type_engine import (
+    AsyncTypeTransformer,
+    TypeEngine,
+    TypeTransformerFailedError,
+    get_batch_size,
+)
 from flytekit.exceptions.user import FlyteAssertion
-from flytekit.extras.pydantic_transformer.decorator import model_serializer, model_validator
+from flytekit.extras.pydantic_transformer.decorator import (
+    model_serializer,
+    model_validator,
+)
 from flytekit.models import types as _type_models
 from flytekit.models.core import types as _core_types
 from flytekit.models.core.types import BlobType
 from flytekit.models.literals import Binary, Blob, BlobMetadata, Literal, Scalar
 from flytekit.models.types import LiteralType
 from flytekit.types.file import FileExt, FlyteFile
+from flytekit.utils.asyn import loop_manager
 
 T = typing.TypeVar("T")
 PathType = typing.Union[str, os.PathLike]
@@ -193,15 +203,13 @@ class FlyteDirectory(SerializableType, DataClassJsonMixin, os.PathLike, typing.G
         This function should be called by os.listdir as well.
         """
         if not self._downloaded:
-            import asyncio
-
             if asyncio.iscoroutinefunction(self._downloader.func):
-                # If the downloader is a coroutine function, we need to run it in the event loop
-                from flytekit.utils.asyn import loop_manager
-
+                # If the downloader is a coroutine function, we need to run it in the event loop.
+                # This is needed when using the Elastic task config with the start method set to spawn.
+                # It's possibly due to pickling and unpickling the task function, which may not rebind properly to the synced version.
                 loop_manager.synced(self._downloader)()
             else:
-                # If the downloader is not a coroutine, we can just call it directly
+                # If the downloader is not a coroutine, we can just call it directly.
                 self._downloader()
             self._downloaded = True
         return self.path
