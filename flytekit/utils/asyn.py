@@ -97,14 +97,23 @@ class _AsyncLoopManager:
         """
         name = threading.current_thread().name + f"PID:{os.getpid()}"
         coro = coro_func(*args, **kwargs)
-        if name not in self._runner_map:
+        runner = self._runner_map.get(name)
+
+        # Reinitialize the runner if it's missing or corrupted
+        if (
+            runner is None
+            or getattr(runner, "_TaskRunner__runner_thread", None) is None
+            or getattr(runner, "_TaskRunner__loop", None) is None
+        ):
             if len(self._runner_map) > 500:
                 logger.warning(
                     "More than 500 event loop runners created!!! This could be a case of runaway recursion..."
                 )
-            self._runner_map[name] = _TaskRunner()
-        print(self._runner_map[name].__dict__)
-        return self._runner_map[name].run(coro)
+            logger.info(f"Creating or reinitializing TaskRunner for: {name}")
+            runner = _TaskRunner()
+            self._runner_map[name] = runner
+
+        return runner.run(coro)
 
     def synced(self, coro_func: Callable[P, Awaitable[T]]) -> Callable[P, T]:
         """Make loop run coroutine until it returns. Runs in other thread"""
