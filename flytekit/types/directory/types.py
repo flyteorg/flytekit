@@ -210,8 +210,8 @@ class FlyteDirectory(SerializableType, DataClassJsonMixin, os.PathLike, typing.G
 
             if asyncio.iscoroutinefunction(underlying_func):
                 # If the downloader is a coroutine function, we need to run it in the event loop.
-                # This is needed when using the Elastic task config with the start method set to spawn.
-                # It's possibly due to pickling and unpickling the task function, which may not rebind properly to the synced version.
+                # This is required when using the Elastic task config with the start method set to 'spawn'.
+                # This is possibly due to pickling and unpickling the task function, which may not properly rebind to the synced version.
                 loop_manager.synced(self._downloader)()
             else:
                 # If the downloader is not a coroutine, we can just call it directly.
