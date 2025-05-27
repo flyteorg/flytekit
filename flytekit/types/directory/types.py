@@ -195,8 +195,14 @@ class FlyteDirectory(SerializableType, DataClassJsonMixin, os.PathLike, typing.G
         if not self._downloaded:
             import asyncio
 
-            print(asyncio.iscoroutinefunction(self._downloader.func))
-            self._downloader()
+            if asyncio.iscoroutinefunction(self._downloader.func):
+                # If the downloader is a coroutine function, we need to run it in the event loop
+                from flytekit.utils.asyn import loop_manager
+
+                loop_manager.synced(self._downloader)()
+            else:
+                # If the downloader is not a coroutine, we can just call it directly
+                self._downloader()
             self._downloaded = True
         return self.path
 
