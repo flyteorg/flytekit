@@ -91,6 +91,15 @@ class _AsyncLoopManager:
     def __init__(self):
         self._runner_map: dict[str, _TaskRunner] = {}
 
+    def __getstate__(self):
+        # Don't pickle the runner map - TaskRunners don't survive pickling
+        return {}
+
+    def __setstate__(self, state):
+        # Initialize with empty runner map in the new process
+        print("Reinitializing _AsyncLoopManager in new process")
+        self._runner_map = {}
+
     def run_sync(self, coro_func: Callable[..., Awaitable[T]], *args, **kwargs) -> T:
         """
         This should be called from synchronous functions to run an async function.
