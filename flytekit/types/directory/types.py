@@ -203,7 +203,12 @@ class FlyteDirectory(SerializableType, DataClassJsonMixin, os.PathLike, typing.G
         This function should be called by os.listdir as well.
         """
         if not self._downloaded:
-            if asyncio.iscoroutinefunction(self._downloader.func):
+            if isinstance(self._downloader, partial):
+                underlying_func = self._downloader.func
+            else:
+                underlying_func = self._downloader
+
+            if asyncio.iscoroutinefunction(underlying_func):
                 # If the downloader is a coroutine function, we need to run it in the event loop.
                 # This is needed when using the Elastic task config with the start method set to spawn.
                 # It's possibly due to pickling and unpickling the task function, which may not rebind properly to the synced version.
