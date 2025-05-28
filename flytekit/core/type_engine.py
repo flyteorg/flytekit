@@ -1127,7 +1127,7 @@ def _handle_json_schema_property(
     if property_type == "array":
         return (property_key, typing.List[_get_element_type(property_val["items"])])  # type: ignore
     # Handle null types (i.e. None)
-    elif property_val.get("type") == "null":
+    elif property_type == "null":
         return (property_key, type(None))  # type: ignore
     # Handle dataclass and dict
     elif property_type == "object":
