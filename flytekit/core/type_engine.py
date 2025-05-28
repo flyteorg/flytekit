@@ -1142,9 +1142,7 @@ def _handle_json_schema_property(
             sub_schema_name = property_val["title"]
             return (
                 property_key,
-                typing.cast(
-                    GenericAlias, convert_mashumaro_json_schema_to_python_class(property_val, sub_schema_name)
-                ),
+                typing.cast(GenericAlias, convert_mashumaro_json_schema_to_python_class(property_val, sub_schema_name)),
             )
         else:
             # For untyped dict
