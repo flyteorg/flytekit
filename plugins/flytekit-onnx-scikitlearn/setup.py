@@ -4,7 +4,7 @@ PLUGIN_NAME = "onnxscikitlearn"
 
 microlib_name = f"flytekitplugins-{PLUGIN_NAME}"
 
-plugin_requires = ["flytekit", "skl2onnx>=1.10.3", "networkx<3.2; python_version<'3.9'", "onnx<1.18.0"]
+plugin_requires = ["flytekit", "skl2onnx>=1.10.3,<1.19.0", "networkx<3.2; python_version<'3.9'"]
 
 __version__ = "0.0.0+develop"
 
