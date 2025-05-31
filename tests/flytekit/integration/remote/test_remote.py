@@ -16,7 +16,7 @@ from urllib.parse import urlparse
 import uuid
 import pytest
 from unittest import mock
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 
 from flytekit import LaunchPlan, kwtypes, WorkflowExecutionPhase, task, workflow
 from flytekit.configuration import Config, ImageConfig, SerializationSettings
@@ -1148,6 +1148,88 @@ def test_execute_workflow_with_dataclass():
     )
     assert out.outputs["o0"] == ""
 
+def test_execute_wf_out_dataclass_with_optional():
+    """Test remote execution of a workflow outputting a dataclass where optional fields are present."""
+    from tests.flytekit.integration.remote.workflows.basic.dataclass_with_optional_wf import MyDataClassWithOptional, MyParentDataClass
+
+    remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
+
+    # Simple case where dataclasses are not nested
+    in_dataclass = MyDataClassWithOptional(foo={"a": 1.0, "b": 2.0}, bar={"c": 3.0, "d": 4.0})
+
+    execution_id = run(
+        "dataclass_with_optional_wf.py",
+        "wf",
+        "--in_dataclass",
+        json.dumps(asdict(in_dataclass)),
+    )
+
+    execution = remote.fetch_execution(name=execution_id, project=PROJECT, domain=DOMAIN)
+    execution = remote.wait(execution=execution, timeout=datetime.timedelta(minutes=10))
+
+    assert asdict(execution.outputs["o0"]) == {
+        "foo": {"a": 1.0, "b": 2.0},
+        "bar": {"c": 3.0, "d": 4.0},
+        "baz": None,
+        "qux": None,
+    }
+
+    # Case where dataclasses are nested (all fields are populated)
+    in_dataclass = MyParentDataClass(
+        child=MyDataClassWithOptional(foo={"a": 1.0, "b": 2.0}, bar={"c": 3.0, "d": 4.0}),
+        a={"a": 1.0, "b": 2.0},
+        b=MyDataClassWithOptional(foo={"a": 1.0, "b": 2.0}, bar={"c": 3.0, "d": 4.0}),
+    )
+
+    execution_id = run(
+        "dataclass_with_optional_wf.py",
+        "wf_nested_dc",
+        "--in_dataclass",
+        json.dumps(asdict(in_dataclass)),
+    )
+
+    execution = remote.fetch_execution(name=execution_id, project=PROJECT, domain=DOMAIN)
+    execution = remote.wait(execution=execution, timeout=datetime.timedelta(minutes=10))
+    assert asdict(execution.outputs["o0"]) == {
+        "child": {
+            "foo": {"a": 1.0, "b": 2.0},
+            "bar": {"c": 3.0, "d": 4.0},
+            "baz": None,
+            "qux": None,
+        },
+        "a": {"a": 1.0, "b": 2.0},
+        "b": {
+            "foo": {"a": 1.0, "b": 2.0},
+            "bar": {"c": 3.0, "d": 4.0},
+            "baz": None,
+            "qux": None,
+        }
+    }
+
+    # Case where dataclasses are nested (optionals are left as None)
+    in_dataclass = MyParentDataClass(
+        child=MyDataClassWithOptional(foo={"a": 1.0, "b": 2.0}, bar={"c": 3.0, "d": 4.0}),
+    )
+
+    execution_id = run(
+        "dataclass_with_optional_wf.py",
+        "wf_nested_dc",
+        "--in_dataclass",
+        json.dumps(asdict(in_dataclass)),
+    )
+
+    execution = remote.fetch_execution(name=execution_id, project=PROJECT, domain=DOMAIN)
+    execution = remote.wait(execution=execution, timeout=datetime.timedelta(minutes=10))
+    assert asdict(execution.outputs["o0"]) == {
+        "child": {
+            "foo": {"a": 1.0, "b": 2.0},
+            "bar": {"c": 3.0, "d": 4.0},
+            "baz": None,
+            "qux": None,
+        },
+        "a": None,
+        "b": None,
+    }
 
 def test_register_wf_twice(register):
     # Register the same workflow again should not raise an error

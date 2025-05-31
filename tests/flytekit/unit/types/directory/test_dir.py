@@ -1,12 +1,13 @@
 import tempfile
+from functools import partial
 from pathlib import Path
 from typing import Optional
 
 import pytest
-import flytekit
-from flytekit import task, workflow
-from flytekit.types.directory import FlyteDirectory
 
+from flytekit import task, workflow
+from flytekit.core.context_manager import FlyteContextManager
+from flytekit.types.directory import FlyteDirectory
 
 N_FILES_PER_DIR = 3
 
@@ -51,6 +52,12 @@ def test_src_path_with_different_types(local_tmp_dirs) -> None:
             with open(fd / f"{file_idx}.txt", "r") as f:
                 assert f.read() == str(file_idx)
 
+    def _verify_download(fd: FlyteDirectory) -> None:
+        fd.download()
+        for file_idx in range(N_FILES_PER_DIR):
+            with open(fd / f"{file_idx}.txt", "r") as f:
+                assert f.read() == str(file_idx)
+
 
     source_path, remote_dir = local_tmp_dirs
 
@@ -65,5 +72,7 @@ def test_src_path_with_different_types(local_tmp_dirs) -> None:
     fd_3 = wf(source_path=source_path, use_pathlike_src_path=True, remote_dir=None)
     _verify_files(fd_3)
 
-    fd_4 = wf(source_path=source_path, use_pathlike_src_path=True, remote_dir=remote_dir)
-    _verify_files(fd_4)
+    # simulate a remote download by setting the downloader to a partial function over the async_get_data method
+    ctx = FlyteContextManager.current_context()
+    fd_3._downloader = partial(ctx.file_access.async_get_data, fd_3.path, ctx.file_access.get_random_local_directory())
+    _verify_download(fd_3)
