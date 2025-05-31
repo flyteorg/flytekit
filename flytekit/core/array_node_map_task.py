@@ -13,6 +13,7 @@ from flytekit.configuration import SerializationSettings
 from flytekit.core import tracker
 from flytekit.core.array_node import array_node
 from flytekit.core.base_task import PythonTask, TaskResolverMixin
+from flytekit.core.container_task import ContainerTask
 from flytekit.core.context_manager import ExecutionState, FlyteContext, FlyteContextManager
 from flytekit.core.interface import transform_interface_to_list_interface
 from flytekit.core.launch_plan import LaunchPlan
@@ -36,7 +37,7 @@ class ArrayNodeMapTask(PythonTask):
     def __init__(
         self,
         # TODO: add support for other Flyte entities
-        python_function_task: Union[PythonFunctionTask, PythonInstanceTask, functools.partial],
+        python_function_task: Union[PythonFunctionTask, PythonInstanceTask, ContainerTask, functools.partial],
         concurrency: Optional[int] = None,
         min_successes: Optional[int] = None,
         min_success_ratio: Optional[float] = None,
@@ -66,10 +67,10 @@ class ArrayNodeMapTask(PythonTask):
                 isinstance(actual_task, PythonFunctionTask)
                 and actual_task.execution_mode == PythonFunctionTask.ExecutionBehavior.DEFAULT
             )
-            or isinstance(actual_task, PythonInstanceTask)
+            or isinstance(actual_task, (PythonInstanceTask, ContainerTask))
         ):
             raise ValueError(
-                "Only PythonFunctionTask with default execution mode (not @dynamic or @eager) and PythonInstanceTask are supported in map tasks."
+                "Only PythonFunctionTask with default execution mode (not @dynamic or @eager), PythonInstanceTask, and ContainerTask are supported in map tasks."
             )
 
         n_outputs = len(actual_task.python_interface.outputs)
@@ -101,6 +102,9 @@ class ArrayNodeMapTask(PythonTask):
         if isinstance(actual_task, PythonInstanceTask):
             mod = actual_task.task_type
             f = actual_task.lhs
+        elif isinstance(actual_task, ContainerTask):
+            mod = actual_task.task_type
+            f = actual_task.name
         else:
             _, mod, f, _ = tracker.extract_task_module(cast(PythonFunctionTask, actual_task).task_function)
         sorted_bounded_inputs = ",".join(sorted(self._bound_inputs))
@@ -205,14 +209,20 @@ class ArrayNodeMapTask(PythonTask):
         return self.python_function_task.get_config(settings)
 
     def get_container(self, settings: SerializationSettings) -> Container:
+        if isinstance(self._run_task, ContainerTask):
+            return self.python_function_task.get_container(settings)
         with self.prepare_target():
             return self.python_function_task.get_container(settings)
 
     def get_k8s_pod(self, settings: SerializationSettings) -> K8sPod:
+        if isinstance(self._run_task, ContainerTask):
+            return self.python_function_task.get_k8s_pod(settings)
         with self.prepare_target():
             return self.python_function_task.get_k8s_pod(settings)
 
     def get_sql(self, settings: SerializationSettings) -> Sql:
+        if isinstance(self._run_task, ContainerTask):
+            return self.python_function_task.get_sql(settings)
         with self.prepare_target():
             return self.python_function_task.get_sql(settings)
 
@@ -261,9 +271,10 @@ class ArrayNodeMapTask(PythonTask):
         return super().__call__(*args, **kwargs)
 
     def _literal_map_to_python_input(
-        self, literal_map: _literal_models.LiteralMap, ctx: FlyteContext
+        self, literal_map: _literal_models.LiteralMap, ctx: Optional[FlyteContext] = None
     ) -> Dict[str, Any]:
-        ctx = FlyteContextManager.current_context()
+        if ctx is None:
+            ctx = FlyteContextManager.current_context()
         inputs_interface = self.python_interface.inputs
         inputs_map = literal_map
         # If we run locally, we will need to process all of the inputs. If we are running in a remote task execution
@@ -381,7 +392,7 @@ class ArrayNodeMapTask(PythonTask):
 
 
 def map_task(
-    target: Union[LaunchPlan, PythonFunctionTask, "FlyteLaunchPlan"],
+    target: Union[LaunchPlan, PythonFunctionTask, ContainerTask, "FlyteLaunchPlan"],
     concurrency: Optional[int] = None,
     min_successes: Optional[int] = None,
     min_success_ratio: float = 1.0,
@@ -418,7 +429,7 @@ def map_task(
 
 
 def array_node_map_task(
-    task_function: PythonFunctionTask,
+    task_function: Union[PythonFunctionTask, ContainerTask],
     concurrency: Optional[int] = None,
     # TODO why no min_successes?
     min_success_ratio: float = 1.0,
