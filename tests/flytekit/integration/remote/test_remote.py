@@ -1175,7 +1175,7 @@ def test_register_wf_twice(register):
     assert out.returncode == 0
 
 
-def test_register_wf_with_default_resources_override(register):
+def test_register_wf_with_resource_requests_override(register):
     # Save the version here to retrieve the created task later
     version = str(uuid.uuid4())
     # Register the workflow with overridden default resources
@@ -1186,8 +1186,8 @@ def test_register_wf_with_default_resources_override(register):
             "-c",
             CONFIG,
             "register",
-            "--default-resources",
-            "cpu=1300m;mem=1100Mi",
+            "--resource-requests",
+            "cpu=1300m,mem=1100Mi",
             "--image",
             IMAGE,
             "--project",
@@ -1220,7 +1220,7 @@ def test_register_wf_with_default_resources_override(register):
     )
 
 
-def test_run_wf_with_default_resources_override(register):
+def test_run_wf_with_resource_requests_override(register):
     # Save the execution id here to retrieve the created execution later
     prefix = random.choice(string.ascii_lowercase)
     short_random_part = uuid.uuid4().hex[:8]
@@ -1234,8 +1234,8 @@ def test_run_wf_with_default_resources_override(register):
             CONFIG,
             "run",
             "--remote",
-            "--default-resources",
-            "cpu=500m;mem=1Gi",
+            "--resource-requests",
+            "cpu=500m,mem=1Gi",
             "--project",
             PROJECT,
             "--domain",

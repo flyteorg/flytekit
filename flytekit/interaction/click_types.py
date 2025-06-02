@@ -23,7 +23,7 @@ from pytimeparse import parse
 from flytekit import BlobType, FlyteContext, Literal, LiteralType, StructuredDataset
 from flytekit.core.artifact import ArtifactQuery
 from flytekit.core.data_persistence import FileAccessProvider
-from flytekit.core.resources import Resources, ResourceSpec
+from flytekit.core.resources import Resources
 from flytekit.core.type_engine import TypeEngine
 from flytekit.models.types import SimpleType
 from flytekit.remote.remote_fs import FlytePathResolver
@@ -85,38 +85,31 @@ def labels_callback(_: typing.Any, param: str, values: typing.List[str]) -> typi
     return result
 
 
-def resource_spec_callback(_: typing.Any, param: str, value: typing.Optional[str]) -> typing.Optional[ResourceSpec]:
+def resource_callback(_: typing.Any, param: str, value: typing.Optional[str]) -> typing.Optional[Resources]:
     """
-    Callback for click to parse a resource spec.
+    Callback for click to parse a resource from a comma-separated string of the form 'cpu=1,mem=2Gi' for example
     """
     if not value:
         return None
 
-    def _extract_pair(s: str) -> typing.Optional[typing.Tuple[str, str]]:
-        """Can extract the pair of values "0.5" and "1" from the string '(0.5,1)'"""
-        vals = s.strip("() ").split(",")
-        if len(vals) != 2:
-            return None
-        return vals[0].strip(), vals[1].strip()
-
-    items = value.split(";")
+    items = value.split(",")
     _allowed_keys = Resources.__annotations__.keys()
     result = {}
     for item in items:
         kv_split = item.split("=")
         if len(kv_split) != 2:
             raise click.BadParameter(
-                f"Expected semicolon separated key-value pairs of the form 'key1=value1;key2=value2;...', got '{item}'"
+                f"Expected comma separated key-value pairs of the form 'key1=value1,key2=value2,...', got '{item}'"
             )
         k = kv_split[0].strip()
         v = kv_split[1].strip()
         if k not in _allowed_keys:
-            raise click.BadParameter(f"Expected key to be one of {list(_allowed_keys)}, got '{k}'")
+            raise click.BadParameter(f"Expected key to be one of {list(_allowed_keys)}, but got '{k}'")
         if k in result:
-            raise click.BadParameter(f"Expected unique keys {list(_allowed_keys)}, got '{k}' multiple times")
-        result[k.strip()] = _extract_pair(v) or v
+            raise click.BadParameter(f"Expected unique keys {list(_allowed_keys)}, but got '{k}' multiple times")
+        result[k] = v
 
-    return ResourceSpec.from_multiple_resource(Resources(**result))
+    return Resources(**result)
 
 
 class DirParamType(click.ParamType):
