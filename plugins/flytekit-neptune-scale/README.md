@@ -34,9 +34,9 @@ plugins:
       - neptune-scale-experiment:
           displayName: Neptune Experiment
           templateUris:
-            - "https://scale.neptune.ai/{{`{{ .taskConfig.project }}`}}/runs/details?viewId=standard-view&runIdentificationKey={{`{{ .taskConfig.id }}`}}&type=experiment"
+            - "https://scale.neptune.ai/{{ .taskConfig.project }}/runs/details?viewId=standard-view&runIdentificationKey={{ .taskConfig.id }}&type=experiment"
       - neptune-scale-run:
           displayName: Neptune
           templateUris:
-            - "https://scale.neptune.ai/{{`{{ .taskConfig.project }}`}}/-/run/?customId={{`{{ .hostname }}`}}"
+            - "https://scale.neptune.ai/{{ .taskConfig.project }}/-/run/?customId={{ .hostname }}"
 ```

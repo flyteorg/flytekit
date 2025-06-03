@@ -19,8 +19,8 @@ plugins:
     dynamic-log-links:
       - comet-ml-execution-id:
           displayName: Comet
-          templateUris: "{{`{{ .taskConfig.host }}`}}/{{`{{ .taskConfig.workspace }}`}}/{{`{{ .taskConfig.project_name }}`}}/{{`{{ .hostname | replace '-' '' }}`}}{{`{{ .taskConfig.link_suffix }}`}}"
+          templateUris: "{{ .taskConfig.host }}/{{ .taskConfig.workspace }}/{{ .taskConfig.project_name }}/{{ .hostname | replace '-' '' }}{{ .taskConfig.link_suffix }}"
       - comet-ml-custom-id:
           displayName: Comet
-          templateUris: "{{`{{ .taskConfig.host }}`}}/{{`{{ .taskConfig.workspace }}`}}/{{`{{ .taskConfig.project_name }}`}}/{{`{{ .taskConfig.experiment_key }}`}}"
+          templateUris: "{{ .taskConfig.host }}/{{ .taskConfig.workspace }}/{{ .taskConfig.project_name }}/{{ .taskConfig.experiment_key }}"
 ```

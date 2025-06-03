@@ -83,9 +83,9 @@ plugins:
       - wandb-execution-id:
           displayName: Weights & Biases
           templateUris:
-            - "{{`{{ .taskConfig.host }}`}}/{{`{{ .taskConfig.entity }}`}}/{{`{{ .taskConfig.project }}`}}/runs/{{`{{ .hostname }}`}}"
+            - "{{ .taskConfig.host }}/{{ .taskConfig.entity }}/{{ .taskConfig.project }}/runs/{{ .hostname }}"
       - wandb-custom-id:
           displayName: Weights & Biases
           templateUris:
-            - "{{`{{ .taskConfig.host }}`}}/{{`{{ .taskConfig.entity }}`}}/{{`{{ .taskConfig.project }}`}}/runs/{{`{{ .taskConfig.id }}`}}"
+            - "{{ .taskConfig.host }}/{{ .taskConfig.entity }}/{{ .taskConfig.project }}/runs/{{ .taskConfig.id }}"
 ```
