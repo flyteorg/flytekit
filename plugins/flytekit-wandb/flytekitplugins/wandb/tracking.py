@@ -7,7 +7,6 @@ from flytekit.core.context_manager import FlyteContextManager
 from flytekit.core.utils import ClassDecorator
 
 WANDB_EXECUTION_TYPE_VALUE = "wandb-execution-id"
-WANDB_CUSTOM_TYPE_VALUE = "wandb-custom-id"
 
 
 class wandb_init(ClassDecorator):
@@ -72,11 +71,8 @@ class wandb_init(ClassDecorator):
         ctx = FlyteContextManager.current_context()
         is_local_execution = ctx.execution_state.is_local_execution()
 
-        if is_local_execution:
-            # For location execution, always use the id. If `self.id` is `None`, wandb
-            # will generate it's own id.
-            wand_id = self.id
-        else:
+        id = self.id
+        if not is_local_execution:
             if isinstance(self.secret, Secret):
                 # Set secret for remote execution
                 secrets = ctx.user_space_params.secrets
@@ -87,14 +83,18 @@ class wandb_init(ClassDecorator):
 
             wandb.login(key=wandb_api_key, host=self.api_host)
 
-            if self.id is None:
-                # The HOSTNAME is set to {.executionName}-{.nodeID}-{.taskRetryAttempt}
+            if id is None:
+                # The HOSTNAME is set to {.executionName}-{.nodeID}-{.taskRetryAttempt}[-{replica-type}-{replica-index}]
                 # If HOSTNAME is not defined, use the execution name as a fallback
-                wand_id = os.environ.get("HOSTNAME", ctx.user_space_params.execution_id.name)
-            else:
-                wand_id = self.id
+                id = os.environ.get("HOSTNAME", ctx.user_space_params.execution_id.name)
 
-        run = wandb.init(project=self.project, entity=self.entity, id=wand_id, **self.init_kwargs)
+        run = wandb.init(
+            project=self.project,
+            entity=self.entity,
+            id=id,
+            **self.init_kwargs,
+        )
+        self.final_id = run.id
 
         # If FLYTE_EXECUTION_URL is defined, inject it into wandb to link back to the execution.
         execution_url = os.getenv("FLYTE_EXECUTION_URL")
@@ -115,11 +115,6 @@ class wandb_init(ClassDecorator):
             self.WANDB_HOST_KEY: self.host,
         }
 
-        if self.id is None:
-            wandb_value = WANDB_EXECUTION_TYPE_VALUE
-        else:
-            wandb_value = WANDB_CUSTOM_TYPE_VALUE
-            extra_config[self.WANDB_ID_KEY] = self.id
-
-        extra_config[self.LINK_TYPE_KEY] = wandb_value
+        extra_config[self.WANDB_ID_KEY] = self.final_id
+        extra_config[self.LINK_TYPE_KEY] = WANDB_EXECUTION_TYPE_VALUE
         return extra_config

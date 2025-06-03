@@ -36,4 +36,7 @@ setup(
         "Topic :: Software Development :: Libraries",
         "Topic :: Software Development :: Libraries :: Python Modules",
     ],
+    extras_require={
+        "scale": ["neptune[scale]>=3.4.11"],
+    },
 )

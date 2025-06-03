@@ -82,8 +82,5 @@ plugins:
     dynamic-log-links:
       - wandb-execution-id:
           displayName: Weights & Biases
-          templateUris: '{{ .taskConfig.host }}/{{ .taskConfig.entity }}/{{ .taskConfig.project }}/runs/{{ .executionName }}-{{ .nodeId }}-{{ .taskRetryAttempt }}'
-      - wandb-custom-id:
-          displayName: Weights & Biases
           templateUris: '{{ .taskConfig.host }}/{{ .taskConfig.entity }}/{{ .taskConfig.project }}/runs/{{ .taskConfig.id }}'
 ```
