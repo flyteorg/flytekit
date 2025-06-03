@@ -22,6 +22,8 @@ Exception that can be raised to ignore task outputs.
 
 """
 
+from __future__ import annotations
+
 import asyncio
 import collections
 import datetime
@@ -131,6 +133,7 @@ class TaskMetadata(object):
         pod_template_name (Optional[str]): The name of an existing PodTemplate resource in the cluster which will be used for this task.
         generates_deck (bool): Indicates whether the task will generate a Deck URI.
         is_eager (bool): Indicates whether the task should be treated as eager.
+        execution_mode(Optional[Any]): Indicates whether the task should be treated as dynamic workflow.
     """
 
     cache: bool = False
@@ -144,6 +147,9 @@ class TaskMetadata(object):
     pod_template_name: Optional[str] = None
     generates_deck: bool = False
     is_eager: bool = False
+    execution_mode: Optional[Any] = (
+        None  # set type as Any due to circular import, the actual type will be PythonFunctionTask.ExecutionBehavior once class init
+    )
 
     def __post_init__(self):
         if self.timeout:
@@ -159,6 +165,10 @@ class TaskMetadata(object):
             raise ValueError(
                 f"Cache ignore input vars are specified ``cache_ignore_input_vars={self.cache_ignore_input_vars}`` but ``cache`` is not enabled."
             )
+        if self.execution_mode is None:
+            from flytekit.core.python_function_task import PythonFunctionTask
+
+            self.execution_mode = PythonFunctionTask.ExecutionBehavior.DEFAULT
 
     @property
     def retry_strategy(self) -> _literal_models.RetryStrategy:
@@ -183,6 +193,7 @@ class TaskMetadata(object):
             cache_serializable=self.cache_serialize,
             generates_deck=self.generates_deck,
             pod_template_name=self.pod_template_name,
+            execution_mode=self.execution_mode,
             cache_ignore_input_vars=self.cache_ignore_input_vars,
             is_eager=self.is_eager,
         )
