@@ -141,7 +141,7 @@ the root of your project, it finds the first folder that does not have a ``__ini
     type=str,
     callback=resource_callback,
     help="Override default task resource requests for tasks that have no statically defined resource requests in their task decorator. "
-    """Example usage: --resource-requests 'cpu=1,mem=2Gi,gpu=1'""",
+    "Example usage: --resource-requests 'cpu=1,mem=2Gi,gpu=1'",
 )
 @click.option(
     "--resource-limits",
@@ -149,7 +149,7 @@ the root of your project, it finds the first folder that does not have a ``__ini
     type=str,
     callback=resource_callback,
     help="Override default task resource limits for tasks that have no statically defined resource limits in their task decorator. "
-    """Example usage: --resource-limits 'cpu=1,mem=2Gi,gpu=1'""",
+    "Example usage: --resource-limits 'cpu=1,mem=2Gi,gpu=1'",
 )
 @click.option(
     "--skip-errors",
