@@ -1,22 +1,22 @@
 from unittest.mock import patch, Mock
 
 from flytekit import Secret, task, current_context
-from flytekitplugins.neptune_scale import neptune_run
-from flytekitplugins.neptune_scale.tracking import _neptune_run_class
+from flytekitplugins.neptune import neptune_scale_run
+from flytekitplugins.neptune.scale_tracking import _neptune_scale_run_class
 
 neptune_api_token = Secret(key="neptune_api_token", group="neptune_group")
 
 
 def test_get_extra_config():
 
-    @neptune_run(project="flytekit/project", secret=neptune_api_token, run_id="my-task")
+    @neptune_scale_run(project="flytekit/project", secret=neptune_api_token, run_id="my-task")
     def my_task() -> bool: ...
 
     config = my_task.get_extra_config()
     assert config[my_task.NEPTUNE_PROJECT] == "flytekit/project"
     assert config[my_task.NEPTUNE_ID] == "my-task"
 
-    @neptune_run(
+    @neptune_scale_run(
         project="flytekit/project",
         secret=neptune_api_token,
         experiment_name="my-experiment",
@@ -27,7 +27,7 @@ def test_get_extra_config():
     assert config[my_task.NEPTUNE_PROJECT] == "flytekit/project"
     assert config[my_task.NEPTUNE_ID] == "my-experiment"
 
-    @neptune_run(project="flytekit/project", secret=neptune_api_token)
+    @neptune_scale_run(project="flytekit/project", secret=neptune_api_token)
     def my_task() -> bool: ...
 
     config = my_task.get_extra_config()
@@ -35,7 +35,7 @@ def test_get_extra_config():
 
 
 @task
-@neptune_run(project="flytekit/project", secret=neptune_api_token)
+@neptune_scale_run(project="flytekit/project", secret=neptune_api_token)
 def neptune_task() -> bool:
     ctx = current_context()
     return ctx.neptune_run is not None
@@ -62,8 +62,8 @@ class RunObjectMock(dict):
         pass
 
 
-@patch.object(_neptune_run_class, "_get_secret")
-@patch.object(_neptune_run_class, "_is_local_execution")
+@patch.object(_neptune_scale_run_class, "_get_secret")
+@patch.object(_neptune_scale_run_class, "_is_local_execution")
 @patch("flytekitplugins.neptune_scale.tracking.neptune_scale")
 def test_remote_project_and_init_run_kwargs(
     neptune_scale_mock,
@@ -99,7 +99,7 @@ def test_get_secret_callable():
     def get_secret():
         return "abc-123"
 
-    @neptune_run(project="flytekit/project", secret=get_secret)
+    @neptune_scale_run(project="flytekit/project", secret=get_secret)
     def my_task():
         pass
 
@@ -110,7 +110,7 @@ def test_get_secret_callable():
 def test_get_secret_object():
     secret_obj = Secret(key="my_key", group="my_group")
 
-    @neptune_run(project="flytekit/project", secret=secret_obj)
+    @neptune_scale_run(project="flytekit/project", secret=secret_obj)
     def my_task():
         pass
 

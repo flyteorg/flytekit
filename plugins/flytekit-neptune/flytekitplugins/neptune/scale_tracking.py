@@ -3,6 +3,7 @@ from functools import partial
 from typing import Callable, Optional, Union
 
 import neptune_scale
+
 from flytekit import Secret
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
 from flytekit.core.utils import ClassDecorator
@@ -11,7 +12,7 @@ NEPTUNE_RUN_VALUE = "neptune-scale-run"
 NEPTUNE_EXPERIMENT_VALUE = "neptune-scale-experiment"
 
 
-def neptune_run(
+def neptune_scale_run(
     project: str,
     secret: Union[Secret, Callable],
     run_id: Optional[str] = None,
@@ -33,7 +34,7 @@ def neptune_run(
         Callable[..., _neptune_run_class]: A callable that returns a wrapped Neptune Scale run instance.
     """
     return partial(
-        _neptune_run_class,
+        _neptune_scale_run_class,
         project=project,
         secret=secret,
         run_id=run_id,
@@ -42,7 +43,7 @@ def neptune_run(
     )
 
 
-class _neptune_run_class(ClassDecorator):
+class _neptune_scale_run_class(ClassDecorator):
     NEPTUNE_ID = "id"
     NEPTUNE_PROJECT = "project"
 
