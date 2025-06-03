@@ -9,6 +9,7 @@ from flytekit.core.context_manager import FlyteContextManager
 from flytekit.core.utils import ClassDecorator
 
 COMET_ML_EXECUTION_TYPE_VALUE = "comet-ml-execution-id"
+COMET_ML_CUSTOM_TYPE_VALUE = "comet-ml-custom-id"
 
 
 def _generate_suffix_with_length_10(project_name: str, workspace: str) -> str:
@@ -149,7 +150,6 @@ class _comet_ml_login_class(ClassDecorator):
         else:
             comet_ml.init(**login_kwargs)
 
-        self.final_experiment_key = experiment_key or os.getenv("COMET_EXPERIMENT_KEY")
         return self.task_function(*args, **kwargs)
 
     def get_extra_config(self):
@@ -159,9 +159,13 @@ class _comet_ml_login_class(ClassDecorator):
             self.COMET_ML_HOST_KEY: self.host,
         }
 
-        extra_config[self.COMET_ML_EXPERIMENT_KEY_KEY] = self.final_experiment_key
-        extra_config[self.COMET_ML_URL_SUFFIX_KEY] = _generate_suffix_with_length_10(
-            self.project_name, self.workspace
-        )  # to not break backward compatibility.
-        extra_config[self.LINK_TYPE_KEY] = COMET_ML_EXECUTION_TYPE_VALUE
+        if self.experiment_key is None:
+            comet_ml_value = COMET_ML_EXECUTION_TYPE_VALUE
+            suffix = _generate_suffix_with_length_10(self.project_name, self.workspace)
+            extra_config[self.COMET_ML_URL_SUFFIX_KEY] = suffix
+        else:
+            comet_ml_value = COMET_ML_CUSTOM_TYPE_VALUE
+            extra_config[self.COMET_ML_EXPERIMENT_KEY_KEY] = self.experiment_key
+
+        extra_config[self.LINK_TYPE_KEY] = comet_ml_value
         return extra_config

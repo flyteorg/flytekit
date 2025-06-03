@@ -82,5 +82,10 @@ plugins:
     dynamic-log-links:
       - wandb-execution-id:
           displayName: Weights & Biases
-          templateUris: '{{ .taskConfig.host }}/{{ .taskConfig.entity }}/{{ .taskConfig.project }}/runs/{{ .taskConfig.id }}'
+          templateUris:
+            - "{{`{{ .taskConfig.host }}`}}/{{`{{ .taskConfig.entity }}`}}/{{`{{ .taskConfig.project }}`}}/runs/{{`{{ .hostname }}`}}"
+      - wandb-custom-id:
+          displayName: Weights & Biases
+          templateUris:
+            - "{{`{{ .taskConfig.host }}`}}/{{`{{ .taskConfig.entity }}`}}/{{`{{ .taskConfig.project }}`}}/runs/{{`{{ .taskConfig.id }}`}}"
 ```

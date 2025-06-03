@@ -7,6 +7,7 @@ from flytekit.core.context_manager import FlyteContextManager
 from flytekit.core.utils import ClassDecorator
 
 WANDB_EXECUTION_TYPE_VALUE = "wandb-execution-id"
+WANDB_CUSTOM_TYPE_VALUE = "wandb-custom-id"
 
 
 class wandb_init(ClassDecorator):
@@ -94,7 +95,6 @@ class wandb_init(ClassDecorator):
             id=id,
             **self.init_kwargs,
         )
-        self.final_id = run.id
 
         # If FLYTE_EXECUTION_URL is defined, inject it into wandb to link back to the execution.
         execution_url = os.getenv("FLYTE_EXECUTION_URL")
@@ -115,6 +115,11 @@ class wandb_init(ClassDecorator):
             self.WANDB_HOST_KEY: self.host,
         }
 
-        extra_config[self.WANDB_ID_KEY] = self.final_id
-        extra_config[self.LINK_TYPE_KEY] = WANDB_EXECUTION_TYPE_VALUE
+        if self.id is None:
+            wandb_value = WANDB_EXECUTION_TYPE_VALUE
+        else:
+            wandb_value = WANDB_CUSTOM_TYPE_VALUE
+            extra_config[self.WANDB_ID_KEY] = self.id
+
+        extra_config[self.LINK_TYPE_KEY] = wandb_value
         return extra_config

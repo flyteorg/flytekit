@@ -1,28 +1,24 @@
 from setuptools import setup
 
-PLUGIN_NAME = "neptune"
+PLUGIN_NAME = "neptune-scale"
+MODULE_NAME = "neptune_scale"
 
 microlib_name = f"flytekitplugins-{PLUGIN_NAME}"
 
-plugin_requires = ["flytekit>=1.13.3", "neptune>=1.10.4"]
+plugin_requires = ["flytekit>=1.16.0", "neptune-scale>=0.13.0"]
 
 __version__ = "0.0.0+develop"
 
-print(
-    "\n[DEPRECATION WARNING] The `flytekitplugins-neptune` plugin is deprecated. "
-    "Please install `flytekitplugins-neptune-scale` instead.\n"
-)
-
 setup(
-    title="Neptune",
-    title_expanded="Flytekit Neptune Plugin",
+    title="Neptune Scale",
+    title_expanded="Flytekit Neptune Scale Plugin",
     name=microlib_name,
     version=__version__,
     author="flyteorg",
     author_email="admin@flyte.org",
-    description="This package enables seamless use of Neptune within Flyte",
+    description="This package enables seamless use of Neptune Scale within Flyte",
     namespace_packages=["flytekitplugins"],
-    packages=[f"flytekitplugins.{PLUGIN_NAME}"],
+    packages=[f"flytekitplugins.{MODULE_NAME}"],
     install_requires=plugin_requires,
     license="apache2",
     python_requires=">=3.9",

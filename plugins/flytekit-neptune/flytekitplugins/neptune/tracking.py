@@ -1,5 +1,3 @@
-# Deprecated: Use flytekitplugins.neptune.scale_tracking instead
-
 import os
 from functools import partial
 from typing import Callable, Union

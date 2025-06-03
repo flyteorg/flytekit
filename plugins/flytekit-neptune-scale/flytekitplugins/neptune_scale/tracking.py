@@ -2,22 +2,22 @@ import os
 from functools import partial
 from typing import Callable, Optional, Union
 
-from neptune_scale import Run
-
+import neptune_scale
 from flytekit import Secret
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
 from flytekit.core.utils import ClassDecorator
 
-NEPTUNE_RUN_VALUE = "neptune-scale-run-id"
+NEPTUNE_RUN_VALUE = "neptune-scale-run"
+NEPTUNE_EXPERIMENT_VALUE = "neptune-scale-experiment"
 
 
-def neptune_scale_init_run(
+def neptune_run(
     project: str,
     secret: Union[Secret, Callable],
     run_id: Optional[str] = None,
-    host: str = "https://scale.neptune.ai",
+    experiment_name: Optional[str] = None,
     **init_run_kwargs: dict,
-) -> "Callable[..., _neptune_scale_init_run_class]":
+) -> "Callable[..., _neptune_run_class]":
     """Neptune plugin.
 
     Args:
@@ -26,24 +26,25 @@ def neptune_scale_init_run(
         secret (Union[Secret, Callable]): Secret with your `NEPTUNE_API_KEY` or a callable that returns the API key.
             The callable takes no arguments and returns a string. (Required)
         run_id (Optional[str]): A unique id for this Neptune run. If not provided, Neptune will generate its own id.
-        host (str): URL to Neptune. Defaults to "https://app.neptune.ai".
+        experiment_name (Optional[str]): If provided, the run will be logged as an experiment with this name.
         **init_run_kwargs (dict): Additional keyword arguments to pass to the Neptune Run constructor.
 
     Returns:
-        Callable[..., _neptune_scale_init_run_class]: A callable that returns a wrapped Neptune Scale run instance.
+        Callable[..., _neptune_run_class]: A callable that returns a wrapped Neptune Scale run instance.
     """
     return partial(
-        _neptune_scale_init_run_class,
+        _neptune_run_class,
         project=project,
         secret=secret,
         run_id=run_id,
-        host=host,
+        experiment_name=experiment_name,
         **init_run_kwargs,
     )
 
 
-class _neptune_scale_init_run_class(ClassDecorator):
-    NEPTUNE_RUN_URL = "run_url"
+class _neptune_run_class(ClassDecorator):
+    NEPTUNE_ID = "id"
+    NEPTUNE_PROJECT = "project"
 
     def __init__(
         self,
@@ -51,13 +52,13 @@ class _neptune_scale_init_run_class(ClassDecorator):
         project: str,
         secret: Union[Secret, Callable],
         run_id: Optional[str] = None,
-        host: str = "https://scale.neptune.ai",
+        experiment_name: Optional[str] = None,
         **init_run_kwargs: dict,
     ):
         self.project = project
         self.secret = secret
         self.run_id = run_id
-        self.host = host
+        self.experiment_name = experiment_name
         self.init_run_kwargs = init_run_kwargs
 
         super().__init__(
@@ -65,7 +66,7 @@ class _neptune_scale_init_run_class(ClassDecorator):
             project=project,
             secret=secret,
             run_id=run_id,
-            host=host,
+            experiment_name=experiment_name,
             **init_run_kwargs,
         )
 
@@ -85,9 +86,7 @@ class _neptune_scale_init_run_class(ClassDecorator):
         is_local_execution = self._is_local_execution(ctx)
         init_run_kwargs = {"project": self.project, **self.init_run_kwargs}
 
-        self.final_run_id = None
         metadata = {}
-
         run_id = self.run_id
 
         if not is_local_execution:
@@ -116,11 +115,9 @@ class _neptune_scale_init_run_class(ClassDecorator):
                 ),
             }
 
-        run = Run(run_id=run_id, **init_run_kwargs)
+        run = neptune_scale.Run(run_id=run_id, experiment_name=self.experiment_name, **init_run_kwargs)
         if metadata:
             run.log_configs(metadata)
-
-        self.run_url = run.get_experiment_url() if run._experiment_name else run.get_run_url()
 
         new_user_params = ctx.user_space_params.builder().add_attr("NEPTUNE_RUN", run).build()
         with FlyteContextManager.with_context(
@@ -131,7 +128,15 @@ class _neptune_scale_init_run_class(ClassDecorator):
             return output
 
     def get_extra_config(self):
-        return {
-            self.LINK_TYPE_KEY: NEPTUNE_RUN_VALUE,
-            self.NEPTUNE_RUN_URL: self.run_url,
-        }
+        extra_config = {self.NEPTUNE_PROJECT: self.project}
+
+        if self.experiment_name:
+            link_type = NEPTUNE_EXPERIMENT_VALUE
+            extra_config[self.NEPTUNE_ID] = self.experiment_name
+        else:
+            if self.run_id:
+                extra_config[self.NEPTUNE_ID] = self.run_id
+            link_type = NEPTUNE_RUN_VALUE
+
+        extra_config[self.LINK_TYPE_KEY] = link_type
+        return extra_config
