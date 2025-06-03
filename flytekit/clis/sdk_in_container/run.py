@@ -218,7 +218,7 @@ class RunLevelParams(PyFlyteParams):
             type=str,
             callback=resource_callback,
             help="This overrides default task resource requests for tasks that have no statically defined resource requests in their task decorator. "
-            """Example usage: --resource-requests 'cpu=1,mem=2Gi,gpu=1'""",
+            "Example usage: --resource-requests 'cpu=1,mem=2Gi,gpu=1'",
         )
     )
     resource_limits: typing.Optional[Resources] = make_click_option_field(
@@ -229,7 +229,7 @@ class RunLevelParams(PyFlyteParams):
             type=str,
             callback=resource_callback,
             help="This overrides default task resource limits for tasks that have no statically defined resource limits in their task decorator. "
-            """Example usage: --resource-limits 'cpu=1,mem=2Gi,gpu=1'""",
+            "Example usage: --resource-limits 'cpu=1,mem=2Gi,gpu=1'",
         )
     )
     tags: typing.List[str] = make_click_option_field(
