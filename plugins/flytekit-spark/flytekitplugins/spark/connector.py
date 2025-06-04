@@ -40,7 +40,7 @@ def _get_databricks_job_spec(task_template: TaskTemplate) -> dict:
         if not new_cluster.get("docker_image"):
             new_cluster["docker_image"] = {"url": container.image}
         if not new_cluster.get("spark_conf"):
-            new_cluster["spark_conf"] = custom["sparkConf"]
+            new_cluster["spark_conf"] = custom.get("sparkConf", {})
         if not new_cluster.get("spark_env_vars"):
             new_cluster["spark_env_vars"] = {k: v for k, v in envs.items()}
         else:
