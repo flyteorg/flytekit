@@ -41,7 +41,7 @@ def neptune_task() -> bool:
     return ctx.neptune_run is not None
 
 
-@patch("flytekitplugins.neptune_scale.tracking.neptune_scale")
+@patch("flytekitplugins.neptune.scale_tracking.neptune_scale")
 def test_local_project_and_init_run_kwargs(neptune_scale_mock):
     neptune_exists = neptune_task()
     assert neptune_exists
@@ -64,7 +64,7 @@ class RunObjectMock(dict):
 
 @patch.object(_neptune_scale_run_class, "_get_secret")
 @patch.object(_neptune_scale_run_class, "_is_local_execution")
-@patch("flytekitplugins.neptune_scale.tracking.neptune_scale")
+@patch("flytekitplugins.neptune.scale_tracking.neptune_scale")
 def test_remote_project_and_init_run_kwargs(
     neptune_scale_mock,
     mock_is_local_execution,
