@@ -18,8 +18,8 @@ def neptune_scale_run(
     run_id: Optional[str] = None,
     experiment_name: Optional[str] = None,
     **init_run_kwargs: dict,
-) -> "Callable[..., _neptune_run_class]":
-    """Neptune plugin.
+) -> "Callable[..., _neptune_scale_run_class]":
+    """Neptune Scale Plugin.
 
     Args:
         project (str): Name of the project where the run should go, in the form `workspace-name/project_name`.
@@ -31,7 +31,7 @@ def neptune_scale_run(
         **init_run_kwargs (dict): Additional keyword arguments to pass to the Neptune Run constructor.
 
     Returns:
-        Callable[..., _neptune_run_class]: A callable that returns a wrapped Neptune Scale run instance.
+        Callable[..., _neptune_scale_run_class]: A callable that returns a wrapped Neptune Scale run instance.
     """
     return partial(
         _neptune_scale_run_class,
