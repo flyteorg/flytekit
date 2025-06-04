@@ -316,7 +316,7 @@ def download_distribution(additional_distribution: str, destination: str):
     if tarfile_name.endswith(".tar.gz"):
         # This will overwrite the existing user flyte workflow code in the current working code dir.
         result = subprocess.run(
-            ["tar", "-xvf", os.path.join(destination, tarfile_name), "-C", destination],
+            ["tar", "-xvf", "--overwrite", os.path.join(destination, tarfile_name), "-C", destination],
             stdout=subprocess.PIPE,
         )
         result.check_returncode()
