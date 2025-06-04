@@ -4,7 +4,7 @@ PLUGIN_NAME = "neptune"
 
 microlib_name = f"flytekitplugins-{PLUGIN_NAME}"
 
-plugin_requires = ["flytekit>=1.13.3", "neptune-scale>=0.13.0", "neptune>=1.10.4"]
+plugin_requires = ["flytekit>=1.16.0", "neptune-scale>=0.13.0"]
 
 __version__ = "0.0.0+develop"
 
@@ -35,4 +35,5 @@ setup(
         "Topic :: Software Development :: Libraries",
         "Topic :: Software Development :: Libraries :: Python Modules",
     ],
+    extras_require={"legacy": ["neptune>=1.10.4"]},
 )

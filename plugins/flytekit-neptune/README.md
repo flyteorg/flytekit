@@ -44,7 +44,7 @@ plugins:
             - "https://scale.neptune.ai/{{ .taskConfig.project }}/-/run/?customId={{ .hostname }}"
 ```
 
-To use Neptune 2.x (the older version), use the `neptune_init_run` decorator.
+To use Neptune 2.x (the older version), install `flytekitplugins-neptune[legacy]`.
 
 ```python
 from flytekit import Secret, current_context, task
