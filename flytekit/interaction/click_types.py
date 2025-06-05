@@ -87,7 +87,7 @@ def labels_callback(_: typing.Any, param: str, values: typing.List[str]) -> typi
 
 def resource_callback(_: typing.Any, param: str, value: typing.Optional[str]) -> typing.Optional[Resources]:
     """
-    Callback for click to parse a resource from a comma-separated string of the form 'cpu=1,mem=2Gi' for example
+    Click callback to parse resource strings like 'cpu=1,mem=2Gi' into a Resources object
     """
     if not value:
         return None

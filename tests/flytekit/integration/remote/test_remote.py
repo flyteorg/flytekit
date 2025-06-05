@@ -1260,6 +1260,10 @@ def test_register_wf_twice(register):
 def test_register_wf_with_resource_requests_override(register):
     # Save the version here to retrieve the created task later
     version = str(uuid.uuid4())
+
+    cpu = "1300m"
+    mem = "1100Mi"
+
     # Register the workflow with overridden default resources
     out = subprocess.run(
         [
@@ -1269,7 +1273,7 @@ def test_register_wf_with_resource_requests_override(register):
             CONFIG,
             "register",
             "--resource-requests",
-            "cpu=1300m,mem=1100Mi",
+            f"cpu={cpu},mem={mem}",
             "--image",
             IMAGE,
             "--project",
@@ -1291,11 +1295,11 @@ def test_register_wf_with_resource_requests_override(register):
         requests=[
             task_models.Resources.ResourceEntry(
                 name=task_models.Resources.ResourceName.CPU,
-                value="1300m",
+                value=cpu,
             ),
             task_models.Resources.ResourceEntry(
                 name=task_models.Resources.ResourceName.MEMORY,
-                value="1100Mi",
+                value=mem,
             ),
         ],
         limits=[],
@@ -1307,6 +1311,10 @@ def test_run_wf_with_resource_requests_override(register):
     prefix = random.choice(string.ascii_lowercase)
     short_random_part = uuid.uuid4().hex[:8]
     execution_id = f"{prefix}{short_random_part}"
+
+    cpu = "500m"
+    mem = "1Gi"
+
     # Register the workflow with overridden default resources
     out = subprocess.run(
         [
@@ -1317,7 +1325,7 @@ def test_run_wf_with_resource_requests_override(register):
             "run",
             "--remote",
             "--resource-requests",
-            "cpu=500m,mem=1Gi",
+            f"cpu={cpu},mem={mem}",
             "--project",
             PROJECT,
             "--domain",
@@ -1341,11 +1349,11 @@ def test_run_wf_with_resource_requests_override(register):
         requests=[
             task_models.Resources.ResourceEntry(
                 name=task_models.Resources.ResourceName.CPU,
-                value="500m",
+                value=cpu,
             ),
             task_models.Resources.ResourceEntry(
                 name=task_models.Resources.ResourceName.MEMORY,
-                value="1Gi",
+                value=mem,
             ),
         ],
         limits=[],

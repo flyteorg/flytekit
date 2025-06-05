@@ -1175,19 +1175,22 @@ def test_both_positional_and_keyword_args_task_raises_error():
 def test_default_resources_override_resourceless_tasks():
     """Tests that default resources specified in serialization settings affect tasks where no resources are specified."""
 
+    cpu = "2"
+    mem = "4Gi"
+
     _settings = dataclasses.replace(
         serialization_settings,
-        default_resources=ResourceSpec(requests=Resources(cpu="2", mem="4Gi"), limits=Resources(cpu="2", mem="4Gi"))
+        default_resources=ResourceSpec(requests=Resources(cpu=cpu, mem=mem), limits=Resources(cpu=cpu, mem=mem))
     )
 
     expected_default_resources = task_models.Resources(
         requests=[
-            task_models.Resources.ResourceEntry(name=task_models.Resources.ResourceName.CPU, value="2"),
-            task_models.Resources.ResourceEntry(name=task_models.Resources.ResourceName.MEMORY, value="4Gi"),
+            task_models.Resources.ResourceEntry(name=task_models.Resources.ResourceName.CPU, value=cpu),
+            task_models.Resources.ResourceEntry(name=task_models.Resources.ResourceName.MEMORY, value=mem),
         ],
         limits=[
-            task_models.Resources.ResourceEntry(name=task_models.Resources.ResourceName.CPU, value="2"),
-            task_models.Resources.ResourceEntry(name=task_models.Resources.ResourceName.MEMORY, value="4Gi"),
+            task_models.Resources.ResourceEntry(name=task_models.Resources.ResourceName.CPU, value=cpu),
+            task_models.Resources.ResourceEntry(name=task_models.Resources.ResourceName.MEMORY, value=mem),
         ],
     )
 
@@ -1226,20 +1229,25 @@ def test_default_resources_do_not_overriden_tasks_with_explicit_resources():
         default_resources=ResourceSpec(requests=Resources(cpu="2", mem="4Gi"), limits=Resources(cpu="2", mem="4Gi"))
     )
 
-    @task(requests=Resources(cpu="1", mem="2Gi"))
+    # These cpu/mem values are static i.e. used in task decorators - should not be overridden by
+    # resources from serialization settings
+    cpu_static = "1"
+    mem_static = "2Gi"
+
+    @task(requests=Resources(cpu=cpu_static, mem=mem_static))
     def t1(a: int) -> int:
         return a
 
     t1_spec = get_serializable(OrderedDict(), _settings, t1)
     assert t1_spec.template.container.resources == task_models.Resources(
         requests=[
-            task_models.Resources.ResourceEntry(name=task_models.Resources.ResourceName.CPU, value="1"),
-            task_models.Resources.ResourceEntry(name=task_models.Resources.ResourceName.MEMORY, value="2Gi"),
+            task_models.Resources.ResourceEntry(name=task_models.Resources.ResourceName.CPU, value=cpu_static),
+            task_models.Resources.ResourceEntry(name=task_models.Resources.ResourceName.MEMORY, value=mem_static),
         ],
         limits=[]
     )
 
-    @dynamic(limits=Resources(cpu="1", mem="2Gi"))
+    @dynamic(limits=Resources(cpu=cpu_static, mem=mem_static))
     def t1_dynamic(a: int) -> int:
         return a
 
@@ -1247,20 +1255,20 @@ def test_default_resources_do_not_overriden_tasks_with_explicit_resources():
     assert t1_dynamic_spec.template.container.resources == task_models.Resources(
         requests=[],
         limits=[
-            task_models.Resources.ResourceEntry(name=task_models.Resources.ResourceName.CPU, value="1"),
-            task_models.Resources.ResourceEntry(name=task_models.Resources.ResourceName.MEMORY, value="2Gi"),
+            task_models.Resources.ResourceEntry(name=task_models.Resources.ResourceName.CPU, value=cpu_static),
+            task_models.Resources.ResourceEntry(name=task_models.Resources.ResourceName.MEMORY, value=mem_static),
         ]
     )
 
-    @eager(requests=Resources(cpu="1", mem="4Gi"))
+    @eager(requests=Resources(cpu=cpu_static, mem=mem_static))
     async def t1_eager(a: int) -> int:
         return a
 
     t1_eager_spec = get_serializable(OrderedDict(), _settings, t1_eager)
     assert t1_eager_spec.template.container.resources == task_models.Resources(
         requests=[
-            task_models.Resources.ResourceEntry(name=task_models.Resources.ResourceName.CPU, value="1"),
-            task_models.Resources.ResourceEntry(name=task_models.Resources.ResourceName.MEMORY, value="4Gi"),
+            task_models.Resources.ResourceEntry(name=task_models.Resources.ResourceName.CPU, value=cpu_static),
+            task_models.Resources.ResourceEntry(name=task_models.Resources.ResourceName.MEMORY, value=mem_static),
         ],
         limits=[]
     )
