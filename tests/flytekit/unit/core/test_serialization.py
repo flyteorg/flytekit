@@ -1,6 +1,7 @@
 import re
 import os
 import typing
+import dataclasses
 from collections import OrderedDict
 
 import mock
@@ -11,7 +12,10 @@ from flytekit import ContainerTask, ImageSpec, kwtypes
 from flytekit.configuration import Image, ImageConfig, SerializationSettings
 from flytekit.core.condition import conditional
 from flytekit.core.python_auto_container import get_registerable_container_image
-from flytekit.core.task import task
+from flytekit.core.resources import Resources, ResourceSpec
+from flytekit.core.dynamic_workflow_task import dynamic
+from flytekit.core.array_node_map_task import map_task
+from flytekit.core.task import eager, task
 from flytekit.core.workflow import workflow
 from flytekit.exceptions.user import FlyteAssertion, FlyteMissingTypeException
 from flytekit.image_spec.image_spec import ImageBuildEngine
@@ -28,6 +32,7 @@ from flytekit.models.literals import (
     Void,
 )
 from flytekit.models.types import LiteralType, SimpleType, TypeStructure, UnionType
+from flytekit.models import task as task_models
 from flytekit.tools.translator import get_serializable
 from flytekit.types.error.error import FlyteError
 
@@ -1165,3 +1170,105 @@ def test_both_positional_and_keyword_args_task_raises_error():
 
     with pytest.raises(AssertionError, match="Got multiple values for argument"):
         t1(1, a=2)
+
+
+def test_default_resources_override_resourceless_tasks():
+    """Tests that default resources specified in serialization settings affect tasks where no resources are specified."""
+
+    cpu = "2"
+    mem = "4Gi"
+
+    _settings = dataclasses.replace(
+        serialization_settings,
+        default_resources=ResourceSpec(requests=Resources(cpu=cpu, mem=mem), limits=Resources(cpu=cpu, mem=mem))
+    )
+
+    expected_default_resources = task_models.Resources(
+        requests=[
+            task_models.Resources.ResourceEntry(name=task_models.Resources.ResourceName.CPU, value=cpu),
+            task_models.Resources.ResourceEntry(name=task_models.Resources.ResourceName.MEMORY, value=mem),
+        ],
+        limits=[
+            task_models.Resources.ResourceEntry(name=task_models.Resources.ResourceName.CPU, value=cpu),
+            task_models.Resources.ResourceEntry(name=task_models.Resources.ResourceName.MEMORY, value=mem),
+        ],
+    )
+
+
+    # We test against the 4 fundamental constructs of tasks: @task, @dynamic, @eager, and map_task
+
+    @task
+    def t1(a: int) -> int:
+        return a
+    t1_spec = get_serializable(OrderedDict(), _settings, t1)
+    assert t1_spec.template.container.resources == expected_default_resources
+
+    @dynamic
+    def t1_dynamic(a: int) -> int:
+        return a
+    t1_dynamic_spec = get_serializable(OrderedDict(), _settings, t1_dynamic)
+    assert t1_dynamic_spec.template.container.resources == expected_default_resources
+
+    @eager
+    async def t1_eager(a: int) -> int:
+        return a
+
+    t1_eager_spec = get_serializable(OrderedDict(), _settings, t1_eager)
+    assert t1_eager_spec.template.container.resources == expected_default_resources
+
+    t1_map_task = map_task(t1)
+    t1_map_task_spec = get_serializable(OrderedDict(), _settings, t1_map_task)
+    assert t1_map_task_spec.template.container.resources == expected_default_resources
+
+
+def test_default_resources_do_not_overriden_tasks_with_explicit_resources():
+    """Tests that default resources specified in serialization settings do not override resources specified in task decorators."""
+
+    _settings = dataclasses.replace(
+        serialization_settings,
+        default_resources=ResourceSpec(requests=Resources(cpu="2", mem="4Gi"), limits=Resources(cpu="2", mem="4Gi"))
+    )
+
+    # These cpu/mem values are static i.e. used in task decorators - should not be overridden by
+    # resources from serialization settings
+    cpu_static = "1"
+    mem_static = "2Gi"
+
+    @task(requests=Resources(cpu=cpu_static, mem=mem_static))
+    def t1(a: int) -> int:
+        return a
+
+    t1_spec = get_serializable(OrderedDict(), _settings, t1)
+    assert t1_spec.template.container.resources == task_models.Resources(
+        requests=[
+            task_models.Resources.ResourceEntry(name=task_models.Resources.ResourceName.CPU, value=cpu_static),
+            task_models.Resources.ResourceEntry(name=task_models.Resources.ResourceName.MEMORY, value=mem_static),
+        ],
+        limits=[]
+    )
+
+    @dynamic(limits=Resources(cpu=cpu_static, mem=mem_static))
+    def t1_dynamic(a: int) -> int:
+        return a
+
+    t1_dynamic_spec = get_serializable(OrderedDict(), _settings, t1_dynamic)
+    assert t1_dynamic_spec.template.container.resources == task_models.Resources(
+        requests=[],
+        limits=[
+            task_models.Resources.ResourceEntry(name=task_models.Resources.ResourceName.CPU, value=cpu_static),
+            task_models.Resources.ResourceEntry(name=task_models.Resources.ResourceName.MEMORY, value=mem_static),
+        ]
+    )
+
+    @eager(requests=Resources(cpu=cpu_static, mem=mem_static))
+    async def t1_eager(a: int) -> int:
+        return a
+
+    t1_eager_spec = get_serializable(OrderedDict(), _settings, t1_eager)
+    assert t1_eager_spec.template.container.resources == task_models.Resources(
+        requests=[
+            task_models.Resources.ResourceEntry(name=task_models.Resources.ResourceName.CPU, value=cpu_static),
+            task_models.Resources.ResourceEntry(name=task_models.Resources.ResourceName.MEMORY, value=mem_static),
+        ],
+        limits=[]
+    )

@@ -16,6 +16,8 @@ from urllib.parse import urlparse
 import uuid
 import pytest
 from unittest import mock
+import random
+import string
 from dataclasses import asdict, dataclass
 
 from flytekit import LaunchPlan, kwtypes, WorkflowExecutionPhase, task, workflow
@@ -23,6 +25,7 @@ from flytekit.configuration import Config, ImageConfig, SerializationSettings
 from flytekit.core.launch_plan import reference_launch_plan
 from flytekit.core.task import reference_task
 from flytekit.core.workflow import reference_workflow
+from flytekit.models import task as task_models
 from flytekit.exceptions.user import FlyteAssertion, FlyteEntityNotExistException
 from flytekit.extras.sqlite3.task import SQLite3Config, SQLite3Task
 from flytekit.remote.remote import FlyteRemote
@@ -1252,3 +1255,106 @@ def test_register_wf_twice(register):
         ]
     )
     assert out.returncode == 0
+
+
+def test_register_wf_with_resource_requests_override(register):
+    # Save the version here to retrieve the created task later
+    version = str(uuid.uuid4())
+
+    cpu = "1300m"
+    mem = "1100Mi"
+
+    # Register the workflow with overridden default resources
+    out = subprocess.run(
+        [
+            "pyflyte",
+            "--verbose",
+            "-c",
+            CONFIG,
+            "register",
+            "--resource-requests",
+            f"cpu={cpu},mem={mem}",
+            "--image",
+            IMAGE,
+            "--project",
+            PROJECT,
+            "--domain",
+            DOMAIN,
+            "--version",
+            version,
+            MODULE_PATH / "hello_world.py",
+        ]
+    )
+    assert out.returncode == 0
+
+    # Retrieve the created task
+    remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
+    task = remote.fetch_task(name="basic.hello_world.say_hello", version=version)
+    assert task.template.container is not None
+    assert task.template.container.resources == task_models.Resources(
+        requests=[
+            task_models.Resources.ResourceEntry(
+                name=task_models.Resources.ResourceName.CPU,
+                value=cpu,
+            ),
+            task_models.Resources.ResourceEntry(
+                name=task_models.Resources.ResourceName.MEMORY,
+                value=mem,
+            ),
+        ],
+        limits=[],
+    )
+
+
+def test_run_wf_with_resource_requests_override(register):
+    # Save the execution id here to retrieve the created execution later
+    prefix = random.choice(string.ascii_lowercase)
+    short_random_part = uuid.uuid4().hex[:8]
+    execution_id = f"{prefix}{short_random_part}"
+
+    cpu = "500m"
+    mem = "1Gi"
+
+    # Register the workflow with overridden default resources
+    out = subprocess.run(
+        [
+            "pyflyte",
+            "--verbose",
+            "-c",
+            CONFIG,
+            "run",
+            "--remote",
+            "--resource-requests",
+            f"cpu={cpu},mem={mem}",
+            "--project",
+            PROJECT,
+            "--domain",
+            DOMAIN,
+            "--name",
+            execution_id,
+            MODULE_PATH / "hello_world.py",
+            "my_wf"
+        ]
+    )
+    assert out.returncode == 0
+
+    # Retrieve the created task
+    remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
+    execution = remote.fetch_execution(name=execution_id)
+    execution = remote.wait(execution=execution)
+    version = execution.spec.launch_plan.version
+    task = remote.fetch_task(name="basic.hello_world.say_hello", version=version)
+    assert task.template.container is not None
+    assert task.template.container.resources == task_models.Resources(
+        requests=[
+            task_models.Resources.ResourceEntry(
+                name=task_models.Resources.ResourceName.CPU,
+                value=cpu,
+            ),
+            task_models.Resources.ResourceEntry(
+                name=task_models.Resources.ResourceName.MEMORY,
+                value=mem,
+            ),
+        ],
+        limits=[],
+    )
