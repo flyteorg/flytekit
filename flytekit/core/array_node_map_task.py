@@ -196,6 +196,10 @@ class ArrayNodeMapTask(PythonTask):
         """
         Alters the underlying run_task command to modify it for map task execution and then resets it after.
         """
+        if isinstance(self._run_task, ContainerTask):
+            yield
+            return
+
         self.python_function_task.set_command_fn(self.get_command)
         try:
             yield
@@ -209,20 +213,14 @@ class ArrayNodeMapTask(PythonTask):
         return self.python_function_task.get_config(settings)
 
     def get_container(self, settings: SerializationSettings) -> Container:
-        if isinstance(self._run_task, ContainerTask):
-            return self.python_function_task.get_container(settings)
         with self.prepare_target():
             return self.python_function_task.get_container(settings)
 
     def get_k8s_pod(self, settings: SerializationSettings) -> K8sPod:
-        if isinstance(self._run_task, ContainerTask):
-            return self.python_function_task.get_k8s_pod(settings)
         with self.prepare_target():
             return self.python_function_task.get_k8s_pod(settings)
 
     def get_sql(self, settings: SerializationSettings) -> Sql:
-        if isinstance(self._run_task, ContainerTask):
-            return self.python_function_task.get_sql(settings)
         with self.prepare_target():
             return self.python_function_task.get_sql(settings)
 
