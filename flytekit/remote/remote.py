@@ -2967,6 +2967,12 @@ class FlyteRemote(object):
         """
         self.client.update_launch_plan(id=ident, state=LaunchPlanState.ACTIVE)
 
+    def deactivate_launchplan(self, ident: Identifier):
+        """
+        Given a launchplan, deactivate it, all previous versions are deactivated.
+        """
+        self.client.update_launch_plan(id=ident, state=LaunchPlanState.INACTIVE)
+
     def download(
         self, data: typing.Union[LiteralsResolver, Literal, LiteralMap], download_to: str, recursive: bool = True
     ):

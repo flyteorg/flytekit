@@ -9,6 +9,7 @@ plugin_requires = [
     "apache-airflow-providers-google<12.0.0",
     "flytekit>1.10.7",
     "flyteidl>1.10.7",
+    "sqlalchemy-spanner<1.12.0",
 ]
 
 __version__ = "0.0.0+develop"
