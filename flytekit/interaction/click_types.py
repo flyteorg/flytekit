@@ -23,6 +23,7 @@ from pytimeparse import parse
 from flytekit import BlobType, FlyteContext, Literal, LiteralType, StructuredDataset
 from flytekit.core.artifact import ArtifactQuery
 from flytekit.core.data_persistence import FileAccessProvider
+from flytekit.core.resources import Resources
 from flytekit.core.type_engine import TypeEngine
 from flytekit.models.types import SimpleType
 from flytekit.remote.remote_fs import FlytePathResolver
@@ -82,6 +83,33 @@ def labels_callback(_: typing.Any, param: str, values: typing.List[str]) -> typi
             k, v = v.split("=", 1)
             result[k.strip()] = v.strip()
     return result
+
+
+def resource_callback(_: typing.Any, param: str, value: typing.Optional[str]) -> typing.Optional[Resources]:
+    """
+    Click callback to parse resource strings like 'cpu=1,mem=2Gi' into a Resources object
+    """
+    if not value:
+        return None
+
+    items = value.split(",")
+    _allowed_keys = Resources.__annotations__.keys()
+    result = {}
+    for item in items:
+        kv_split = item.split("=")
+        if len(kv_split) != 2:
+            raise click.BadParameter(
+                f"Expected comma separated key-value pairs of the form 'key1=value1,key2=value2,...', got '{item}'"
+            )
+        k = kv_split[0].strip()
+        v = kv_split[1].strip()
+        if k not in _allowed_keys:
+            raise click.BadParameter(f"Expected key to be one of {list(_allowed_keys)}, but got '{k}'")
+        if k in result:
+            raise click.BadParameter(f"Expected unique keys {list(_allowed_keys)}, but got '{k}' multiple times")
+        result[k] = v
+
+    return Resources(**result)
 
 
 class DirParamType(click.ParamType):
