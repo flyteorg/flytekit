@@ -50,7 +50,7 @@ autoflake
 
 pillow
 numpy
-pandas
+pandas!=2.3.0
 pyarrow
 scikit-learn
 types-requests
