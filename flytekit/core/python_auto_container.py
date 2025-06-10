@@ -100,6 +100,11 @@ class PythonAutoContainerTask(PythonTask[T], ABC, metaclass=FlyteTrackedABC):
         kwargs["metadata"] = kwargs["metadata"] if "metadata" in kwargs else TaskMetadata()
         kwargs["metadata"].pod_template_name = pod_template_name
 
+        if kwargs.get("labels") is not None:
+            kwargs["metadata"].labels = kwargs["labels"]
+        if kwargs.get("annotations") is not None:
+            kwargs["metadata"].annotations = kwargs["annotations"]
+
         self._container_image = container_image
         # TODO(katrogan): Implement resource overrides
 
