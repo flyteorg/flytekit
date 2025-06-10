@@ -2610,6 +2610,14 @@ class FlyteRemote(object):
             execution._interface = launched_exec._flyte_workflow.interface
             return execution
 
+        # Handle the case where it's a branch node
+        if execution._node.branch_node is not None:
+            logger.info(
+                "Skipping branch node execution for now - branch nodes will "
+                "not have inputs and outputs filled in"
+            )
+            return execution
+
         # If a node ran a static subworkflow or a dynamic subworkflow then the parent flag will be set.
         if execution.metadata.is_parent_node:
             # We'll need to query child node executions regardless since this is a parent node
@@ -2649,14 +2657,6 @@ class FlyteRemote(object):
                     for cne in child_node_executions
                 ]
                 execution._interface = sub_flyte_workflow.interface
-
-            # Handle the case where it's a branch node
-            elif execution._node.branch_node is not None:
-                logger.info(
-                    "Skipping branch node execution for now - branch nodes will "
-                    "not have inputs and outputs filled in"
-                )
-                return execution
             else:
                 logger.error(f"NE {execution} undeterminable, {type(execution._node)}, {execution._node}")
                 raise ValueError(f"Node execution undeterminable, entity has type {type(execution._node)}")
