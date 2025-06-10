@@ -1,3 +1,5 @@
+import math
+import functools
 import botocore.session
 import shutil
 from contextlib import ExitStack, contextmanager
@@ -20,7 +22,7 @@ import random
 import string
 from dataclasses import asdict, dataclass
 
-from flytekit import LaunchPlan, kwtypes, WorkflowExecutionPhase, task, workflow
+from flytekit import LaunchPlan, kwtypes, WorkflowExecutionPhase, task, workflow, ContainerTask, map_task
 from flytekit.configuration import Config, ImageConfig, SerializationSettings
 from flytekit.core.launch_plan import reference_launch_plan
 from flytekit.core.task import reference_task
@@ -1358,3 +1360,46 @@ def test_run_wf_with_resource_requests_override(register):
         ],
         limits=[],
     )
+
+
+def test_container_task_map_execution():
+    # NOTE: We only take one output "area" even if this calculate-ellipse-area.py
+    # produce two output. This is because that map task can only return one value.
+    calculate_ellipse_area_python_template_style = ContainerTask(
+        name="calculate_ellipse_area_python_template_style",
+        input_data_dir="/var/inputs",
+        output_data_dir="/var/outputs",
+        inputs=kwtypes(a=float, b=float),
+        outputs=kwtypes(area=float),
+        image="ghcr.io/flyteorg/rawcontainers-python:v2",
+        command=[
+            "python",
+            "calculate-ellipse-area.py",
+            "{{.inputs.a}}",
+            "{{.inputs.b}}",
+            "/var/outputs",
+        ],
+    )
+
+    @workflow
+    def wf(a: list[float], b: float) -> list[float]:
+        partial_task = functools.partial(
+            calculate_ellipse_area_python_template_style, b=b
+        )
+        res = map_task(partial_task)(a=a)
+        return res
+
+    def calculate_area(a, b):
+        return math.pi * a * b
+
+    expected_area = [
+        calculate_area(a, b) for a, b in [(3.0, 4.0), (4.0, 4.0), (5.0, 4.0)]
+    ]
+
+
+    remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
+    execution = remote.execute(wf, inputs={"a": [3.0, 4.0, 5.0], "b": 4.0}, wait=True, version=VERSION)
+    execution = remote.wait(execution=execution, timeout=datetime.timedelta(minutes=2))
+    assert execution.error is None, f"Execution failed with error: {execution.error}"
+
+    assert execution.outputs["o0"] == expected_area
