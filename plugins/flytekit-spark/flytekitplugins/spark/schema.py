@@ -83,6 +83,79 @@ class SparkDataFrameTransformer(TypeTransformer[pyspark.sql.DataFrame]):
         r = SparkDataFrameSchemaReader(from_path=lv.scalar.schema.uri, cols=None, fmt=SchemaFormat.PARQUET)
         return r.all()
 
+classic_ps_dataframe = lazy_module("pyspark.sql.classic.dataframe")
+ClassicDataFrame = classic_ps_dataframe.DataFrame
+
+class ClassicSparkDataFrameSchemaReader(SchemaReader[ClassicDataFrame]):
+    """
+    Implements how Classic SparkDataFrame should be read using the ``open`` method of FlyteSchema
+    """
+
+    def __init__(self, from_path: str, cols: typing.Optional[typing.Dict[str, type]], fmt: SchemaFormat):
+        super().__init__(from_path, cols, fmt)
+
+    def iter(self, **kwargs) -> typing.Generator[T, None, None]:
+        raise NotImplementedError("Classic Spark DataFrame reader cannot iterate over individual chunks")
+
+    def all(self, **kwargs) -> ClassicDataFrame:
+        if self._fmt == SchemaFormat.PARQUET:
+            ctx = FlyteContext.current_context().user_space_params
+            return ctx.spark_session.read.parquet(self.from_path)
+        raise AssertionError("Only Parquet type files are supported for classic spark dataframe currently")
+
+class ClassicSparkDataFrameSchemaWriter(SchemaWriter[ClassicDataFrame]):
+    """
+    Implements how Classic SparkDataFrame should be written using ``open`` method of FlyteSchema
+    """
+
+    def __init__(self, to_path: str, cols: typing.Optional[typing.Dict[str, type]], fmt: SchemaFormat):
+        super().__init__(to_path, cols, fmt)
+
+    def write(self, *dfs: ClassicDataFrame, **kwargs):
+        if dfs is None or len(dfs) == 0:
+            return
+        if len(dfs) > 1:
+            raise AssertionError("Only a single Classic Spark.DataFrame can be written per variable currently")
+        if self._fmt == SchemaFormat.PARQUET:
+            dfs[0].write.mode("overwrite").parquet(self.to_path)
+            return
+        raise AssertionError("Only Parquet type files are supported for classic spark dataframe currently")
+
+class ClassicSparkDataFrameTransformer(TypeTransformer[ClassicDataFrame]):
+    """
+    Transforms Classic Spark DataFrame's to and from a Schema (typed/untyped)
+    """
+
+    def __init__(self):
+        super().__init__("classic-spark-df-transformer", t=ClassicDataFrame)
+
+    @staticmethod
+    def _get_schema_type() -> SchemaType:
+        return SchemaType(columns=[])
+
+    def get_literal_type(self, t: Type[ClassicDataFrame]) -> LiteralType:
+        return LiteralType(schema=self._get_schema_type())
+
+    def to_literal(
+        self,
+        ctx: FlyteContext,
+        python_val: ClassicDataFrame,
+        python_type: Type[ClassicDataFrame],
+        expected: LiteralType,
+    ) -> Literal:
+        remote_path = ctx.file_access.join(
+            ctx.file_access.raw_output_prefix,
+            ctx.file_access.get_random_string(),
+        )
+        w = ClassicSparkDataFrameSchemaWriter(to_path=remote_path, cols=None, fmt=SchemaFormat.PARQUET)
+        w.write(python_val)
+        return Literal(scalar=Scalar(schema=Schema(remote_path, self._get_schema_type())))
+
+    def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[ClassicDataFrame]) -> T:
+        if not (lv and lv.scalar and lv.scalar.schema):
+            return ClassicDataFrame()
+        r = ClassicSparkDataFrameSchemaReader(from_path=lv.scalar.schema.uri, cols=None, fmt=SchemaFormat.PARQUET)
+        return r.all()
 
 # %%
 # Registers a handle for Spark DataFrame + Flyte Schema type transition
@@ -97,6 +170,15 @@ SchemaEngine.register_handler(
     )
 )
 
+SchemaEngine.register_handler(
+    SchemaHandler(
+        "pyspark.sql.classic.DataFrame-Schema",
+        ClassicDataFrame,
+        ClassicSparkDataFrameSchemaReader,
+        ClassicSparkDataFrameSchemaWriter,
+        handles_remote_io=True,
+    )
+)
 # %%
 # This makes pyspark.DataFrame as a supported output/input type with flytekit.
 TypeEngine.register(SparkDataFrameTransformer())
