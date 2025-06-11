@@ -558,8 +558,17 @@ class FlyteLiteralConverter(object):
         if isinstance(value, ArtifactQuery):
             return value
         try:
+            # Handle datetime.date conversion for union types (e.g., Optional[datetime.date])
+            target_type = self._python_type
+            if hasattr(self._python_type, "__origin__") and self._python_type.__origin__ is typing.Union:
+                # For union types like Optional[datetime.date], extract the non-None type
+                union_args = typing.get_args(self._python_type)
+                non_none_types = [arg for arg in union_args if arg is not type(None)]
+                if len(non_none_types) == 1:
+                    target_type = non_none_types[0]
+
             # If the expected Python type is datetime.date, adjust the value to date
-            if self._python_type is datetime.date:
+            if target_type is datetime.date:
                 # Click produces datetime, so converting to date to avoid type mismatch error
                 value = value.date()
             # If the input matches the default value in the launch plan, serialization can be skipped.
