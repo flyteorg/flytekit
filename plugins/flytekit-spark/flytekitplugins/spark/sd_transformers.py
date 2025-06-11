@@ -72,3 +72,49 @@ class ParquetToSparkDecodingHandler(StructuredDatasetDecoder):
 StructuredDatasetTransformerEngine.register(SparkToParquetEncodingHandler())
 StructuredDatasetTransformerEngine.register(ParquetToSparkDecodingHandler())
 StructuredDatasetTransformerEngine.register_renderer(DataFrame, SparkDataFrameRenderer())
+
+classic_ps_dataframe = lazy_module("pyspark.sql.classic.dataframe")
+ClassicDataFrame = classic_ps_dataframe.DataFrame
+
+class ClassicSparkToParquetEncodingHandler(StructuredDatasetEncoder):
+    def __init__(self):
+        super().__init__(ClassicDataFrame, None, PARQUET)
+
+    def encode(
+        self,
+        ctx: FlyteContext,
+        structured_dataset: StructuredDataset,
+        structured_dataset_type: StructuredDatasetType,
+    ) -> literals.StructuredDataset:
+        path = typing.cast(str, structured_dataset.uri)
+        if not path:
+            path = ctx.file_access.join(
+                ctx.file_access.raw_output_prefix,
+                ctx.file_access.get_random_string(),
+            )
+        df = typing.cast(ClassicDataFrame, structured_dataset.dataframe)
+        ss = pyspark.sql.SparkSession.builder.getOrCreate()
+        ss.conf.set("mapreduce.fileoutputcommitter.marksuccessfuljobs", "false")
+        df.write.mode("overwrite").parquet(path=path)
+        return literals.StructuredDataset(uri=path, metadata=StructuredDatasetMetadata(structured_dataset_type))
+
+class ParquetToClassicSparkDecodingHandler(StructuredDatasetDecoder):
+    def __init__(self):
+        super().__init__(ClassicDataFrame, None, PARQUET)
+
+    def decode(
+        self,
+        ctx: FlyteContext,
+        flyte_value: literals.StructuredDataset,
+        current_task_metadata: StructuredDatasetMetadata,
+    ) -> ClassicDataFrame:
+        user_ctx = FlyteContext.current_context().user_space_params
+        if current_task_metadata.structured_dataset_type and current_task_metadata.structured_dataset_type.columns:
+            columns = [c.name for c in current_task_metadata.structured_dataset_type.columns]
+            return user_ctx.spark_session.read.parquet(flyte_value.uri).select(*columns)
+        return user_ctx.spark_session.read.parquet(flyte_value.uri)
+
+# Register the handlers
+StructuredDatasetTransformerEngine.register(ClassicSparkToParquetEncodingHandler())
+StructuredDatasetTransformerEngine.register(ParquetToClassicSparkDecodingHandler())
+StructuredDatasetTransformerEngine.register_renderer(ClassicDataFrame, SparkDataFrameRenderer())
