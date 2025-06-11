@@ -186,7 +186,18 @@ def test_launch_plan_with_fixed_input():
     assert len(task_spec.template.nodes) == 1
     assert len(task_spec.template.nodes[0].inputs) == 2
 
-def test_task_with_pod_template_override():
+@pytest.mark.parametrize(
+    "fast_registration_enabled",
+    [
+        pytest.param(
+            True, id="fast registration enabled"
+        ),
+        pytest.param(
+            False, id="fast registration disabled"
+        ),
+    ],
+)
+def test_task_with_pod_template_override(fast_registration_enabled: bool):
 
     custom_pod_template = PodTemplate(pod_spec=V1PodSpec(
         containers=[
@@ -207,7 +218,13 @@ def test_task_with_pod_template_override():
     def wf():
         t("Hello World").with_overrides(pod_template=custom_pod_template)
 
-    task_spec = get_serializable(OrderedDict(), serialization_settings, wf)
+    settings = (
+        serialization_settings.new_builder()
+        .with_fast_serialization_settings(FastSerializationSettings(enabled=fast_registration_enabled))
+        .build()
+    )
+
+    task_spec = get_serializable(OrderedDict(), settings, wf)
     assert len(task_spec.template.nodes) == 1
     node = task_spec.template.nodes[0]
     assert node.metadata.name == "t"
