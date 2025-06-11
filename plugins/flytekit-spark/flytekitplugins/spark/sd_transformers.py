@@ -76,6 +76,7 @@ StructuredDatasetTransformerEngine.register_renderer(DataFrame, SparkDataFrameRe
 classic_ps_dataframe = lazy_module("pyspark.sql.classic.dataframe")
 ClassicDataFrame = classic_ps_dataframe.DataFrame
 
+
 class ClassicSparkToParquetEncodingHandler(StructuredDatasetEncoder):
     def __init__(self):
         super().__init__(ClassicDataFrame, None, PARQUET)
@@ -98,6 +99,7 @@ class ClassicSparkToParquetEncodingHandler(StructuredDatasetEncoder):
         df.write.mode("overwrite").parquet(path=path)
         return literals.StructuredDataset(uri=path, metadata=StructuredDatasetMetadata(structured_dataset_type))
 
+
 class ParquetToClassicSparkDecodingHandler(StructuredDatasetDecoder):
     def __init__(self):
         super().__init__(ClassicDataFrame, None, PARQUET)
@@ -113,6 +115,7 @@ class ParquetToClassicSparkDecodingHandler(StructuredDatasetDecoder):
             columns = [c.name for c in current_task_metadata.structured_dataset_type.columns]
             return user_ctx.spark_session.read.parquet(flyte_value.uri).select(*columns)
         return user_ctx.spark_session.read.parquet(flyte_value.uri)
+
 
 # Register the handlers
 StructuredDatasetTransformerEngine.register(ClassicSparkToParquetEncodingHandler())
