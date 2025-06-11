@@ -16,13 +16,16 @@ from urllib.parse import urlparse
 import uuid
 import pytest
 from unittest import mock
-from dataclasses import dataclass
+import random
+import string
+from dataclasses import asdict, dataclass
 
 from flytekit import LaunchPlan, kwtypes, WorkflowExecutionPhase, task, workflow
 from flytekit.configuration import Config, ImageConfig, SerializationSettings
 from flytekit.core.launch_plan import reference_launch_plan
 from flytekit.core.task import reference_task
 from flytekit.core.workflow import reference_workflow
+from flytekit.models import task as task_models
 from flytekit.exceptions.user import FlyteAssertion, FlyteEntityNotExistException
 from flytekit.extras.sqlite3.task import SQLite3Config, SQLite3Task
 from flytekit.remote.remote import FlyteRemote
@@ -1148,6 +1151,88 @@ def test_execute_workflow_with_dataclass():
     )
     assert out.outputs["o0"] == ""
 
+def test_execute_wf_out_dataclass_with_optional():
+    """Test remote execution of a workflow outputting a dataclass where optional fields are present."""
+    from tests.flytekit.integration.remote.workflows.basic.dataclass_with_optional_wf import MyDataClassWithOptional, MyParentDataClass
+
+    remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
+
+    # Simple case where dataclasses are not nested
+    in_dataclass = MyDataClassWithOptional(foo={"a": 1.0, "b": 2.0}, bar={"c": 3.0, "d": 4.0})
+
+    execution_id = run(
+        "dataclass_with_optional_wf.py",
+        "wf",
+        "--in_dataclass",
+        json.dumps(asdict(in_dataclass)),
+    )
+
+    execution = remote.fetch_execution(name=execution_id, project=PROJECT, domain=DOMAIN)
+    execution = remote.wait(execution=execution, timeout=datetime.timedelta(minutes=10))
+
+    assert asdict(execution.outputs["o0"]) == {
+        "foo": {"a": 1.0, "b": 2.0},
+        "bar": {"c": 3.0, "d": 4.0},
+        "baz": None,
+        "qux": None,
+    }
+
+    # Case where dataclasses are nested (all fields are populated)
+    in_dataclass = MyParentDataClass(
+        child=MyDataClassWithOptional(foo={"a": 1.0, "b": 2.0}, bar={"c": 3.0, "d": 4.0}),
+        a={"a": 1.0, "b": 2.0},
+        b=MyDataClassWithOptional(foo={"a": 1.0, "b": 2.0}, bar={"c": 3.0, "d": 4.0}),
+    )
+
+    execution_id = run(
+        "dataclass_with_optional_wf.py",
+        "wf_nested_dc",
+        "--in_dataclass",
+        json.dumps(asdict(in_dataclass)),
+    )
+
+    execution = remote.fetch_execution(name=execution_id, project=PROJECT, domain=DOMAIN)
+    execution = remote.wait(execution=execution, timeout=datetime.timedelta(minutes=10))
+    assert asdict(execution.outputs["o0"]) == {
+        "child": {
+            "foo": {"a": 1.0, "b": 2.0},
+            "bar": {"c": 3.0, "d": 4.0},
+            "baz": None,
+            "qux": None,
+        },
+        "a": {"a": 1.0, "b": 2.0},
+        "b": {
+            "foo": {"a": 1.0, "b": 2.0},
+            "bar": {"c": 3.0, "d": 4.0},
+            "baz": None,
+            "qux": None,
+        }
+    }
+
+    # Case where dataclasses are nested (optionals are left as None)
+    in_dataclass = MyParentDataClass(
+        child=MyDataClassWithOptional(foo={"a": 1.0, "b": 2.0}, bar={"c": 3.0, "d": 4.0}),
+    )
+
+    execution_id = run(
+        "dataclass_with_optional_wf.py",
+        "wf_nested_dc",
+        "--in_dataclass",
+        json.dumps(asdict(in_dataclass)),
+    )
+
+    execution = remote.fetch_execution(name=execution_id, project=PROJECT, domain=DOMAIN)
+    execution = remote.wait(execution=execution, timeout=datetime.timedelta(minutes=10))
+    assert asdict(execution.outputs["o0"]) == {
+        "child": {
+            "foo": {"a": 1.0, "b": 2.0},
+            "bar": {"c": 3.0, "d": 4.0},
+            "baz": None,
+            "qux": None,
+        },
+        "a": None,
+        "b": None,
+    }
 
 def test_register_wf_twice(register):
     # Register the same workflow again should not raise an error
@@ -1170,3 +1255,106 @@ def test_register_wf_twice(register):
         ]
     )
     assert out.returncode == 0
+
+
+def test_register_wf_with_resource_requests_override(register):
+    # Save the version here to retrieve the created task later
+    version = str(uuid.uuid4())
+
+    cpu = "1300m"
+    mem = "1100Mi"
+
+    # Register the workflow with overridden default resources
+    out = subprocess.run(
+        [
+            "pyflyte",
+            "--verbose",
+            "-c",
+            CONFIG,
+            "register",
+            "--resource-requests",
+            f"cpu={cpu},mem={mem}",
+            "--image",
+            IMAGE,
+            "--project",
+            PROJECT,
+            "--domain",
+            DOMAIN,
+            "--version",
+            version,
+            MODULE_PATH / "hello_world.py",
+        ]
+    )
+    assert out.returncode == 0
+
+    # Retrieve the created task
+    remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
+    task = remote.fetch_task(name="basic.hello_world.say_hello", version=version)
+    assert task.template.container is not None
+    assert task.template.container.resources == task_models.Resources(
+        requests=[
+            task_models.Resources.ResourceEntry(
+                name=task_models.Resources.ResourceName.CPU,
+                value=cpu,
+            ),
+            task_models.Resources.ResourceEntry(
+                name=task_models.Resources.ResourceName.MEMORY,
+                value=mem,
+            ),
+        ],
+        limits=[],
+    )
+
+
+def test_run_wf_with_resource_requests_override(register):
+    # Save the execution id here to retrieve the created execution later
+    prefix = random.choice(string.ascii_lowercase)
+    short_random_part = uuid.uuid4().hex[:8]
+    execution_id = f"{prefix}{short_random_part}"
+
+    cpu = "500m"
+    mem = "1Gi"
+
+    # Register the workflow with overridden default resources
+    out = subprocess.run(
+        [
+            "pyflyte",
+            "--verbose",
+            "-c",
+            CONFIG,
+            "run",
+            "--remote",
+            "--resource-requests",
+            f"cpu={cpu},mem={mem}",
+            "--project",
+            PROJECT,
+            "--domain",
+            DOMAIN,
+            "--name",
+            execution_id,
+            MODULE_PATH / "hello_world.py",
+            "my_wf"
+        ]
+    )
+    assert out.returncode == 0
+
+    # Retrieve the created task
+    remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
+    execution = remote.fetch_execution(name=execution_id)
+    execution = remote.wait(execution=execution)
+    version = execution.spec.launch_plan.version
+    task = remote.fetch_task(name="basic.hello_world.say_hello", version=version)
+    assert task.template.container is not None
+    assert task.template.container.resources == task_models.Resources(
+        requests=[
+            task_models.Resources.ResourceEntry(
+                name=task_models.Resources.ResourceName.CPU,
+                value=cpu,
+            ),
+            task_models.Resources.ResourceEntry(
+                name=task_models.Resources.ResourceName.MEMORY,
+                value=mem,
+            ),
+        ],
+        limits=[],
+    )

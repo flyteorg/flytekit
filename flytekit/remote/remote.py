@@ -56,6 +56,7 @@ from flytekit.core.python_auto_container import (
 )
 from flytekit.core.python_function_task import PythonFunctionTask
 from flytekit.core.reference_entity import ReferenceEntity, ReferenceSpec
+from flytekit.core.resources import ResourceSpec
 from flytekit.core.task import ReferenceTask
 from flytekit.core.tracker import extract_task_module
 from flytekit.core.type_engine import LiteralsResolver, TypeEngine, strict_type_hint_matching
@@ -1326,6 +1327,7 @@ class FlyteRemote(object):
         source_path: typing.Optional[str] = None,
         module_name: typing.Optional[str] = None,
         envs: typing.Optional[typing.Dict[str, str]] = None,
+        default_resources: typing.Optional[ResourceSpec] = None,
         fast_package_options: typing.Optional[FastPackageOptions] = None,
     ) -> typing.Union[FlyteWorkflow, FlyteTask, FlyteLaunchPlan, ReferenceEntity]:
         """
@@ -1342,6 +1344,7 @@ class FlyteRemote(object):
         :param source_path: The root of the project path
         :param module_name: the name of the module
         :param envs: Environment variables to be passed to the serialization
+        :param default_resources: Default resources to be passed to the serialization. These override the resource spec for any tasks that have no statically defined resource requests and limits.
         :param fast_package_options: Options to customize copy_all behavior, ignored when copy_all is False.
         :return:
         """
@@ -1380,6 +1383,7 @@ class FlyteRemote(object):
             image_config=image_config,
             git_repo=_get_git_repo_url(source_path),
             env=envs,
+            default_resources=default_resources,
             fast_serialization_settings=FastSerializationSettings(
                 enabled=True,
                 destination_dir=destination_dir,
@@ -1502,7 +1506,7 @@ class FlyteRemote(object):
     def _execute(
         self,
         entity: typing.Union[FlyteTask, FlyteWorkflow, FlyteLaunchPlan],
-        inputs: typing.Dict[str, typing.Any],
+        inputs: typing.Optional[typing.Dict[str, typing.Any]] = None,
         project: str = None,
         domain: str = None,
         execution_name: typing.Optional[str] = None,
@@ -1537,6 +1541,9 @@ class FlyteRemote(object):
         :param execution_cluster_label: Specify label of cluster(s) on which newly created execution should be placed.
         :returns: :class:`~flytekit.remote.workflow_execution.FlyteWorkflowExecution`
         """
+        if inputs is None:
+            inputs = {}
+
         if execution_name is not None and execution_name_prefix is not None:
             raise ValueError("Only one of execution_name and execution_name_prefix can be set, but got both set")
         # todo: The prefix should be passed to the backend
@@ -1671,7 +1678,7 @@ class FlyteRemote(object):
         entity: typing.Union[
             FlyteTask, FlyteLaunchPlan, FlyteWorkflow, PythonTask, WorkflowBase, LaunchPlan, ReferenceEntity
         ],
-        inputs: typing.Dict[str, typing.Any],
+        inputs: typing.Optional[typing.Dict[str, typing.Any]] = None,
         project: str = None,
         domain: str = None,
         name: str = None,
@@ -1894,7 +1901,7 @@ class FlyteRemote(object):
     def execute_remote_task_lp(
         self,
         entity: typing.Union[FlyteTask, FlyteLaunchPlan],
-        inputs: typing.Dict[str, typing.Any],
+        inputs: typing.Optional[typing.Dict[str, typing.Any]] = None,
         project: str = None,
         domain: str = None,
         execution_name: typing.Optional[str] = None,
@@ -1934,7 +1941,7 @@ class FlyteRemote(object):
     def execute_remote_wf(
         self,
         entity: FlyteWorkflow,
-        inputs: typing.Dict[str, typing.Any],
+        inputs: typing.Optional[typing.Dict[str, typing.Any]] = None,
         project: str = None,
         domain: str = None,
         execution_name: typing.Optional[str] = None,
@@ -1977,7 +1984,7 @@ class FlyteRemote(object):
     def execute_reference_task(
         self,
         entity: ReferenceTask,
-        inputs: typing.Dict[str, typing.Any],
+        inputs: typing.Optional[typing.Dict[str, typing.Any]] = None,
         execution_name: typing.Optional[str] = None,
         execution_name_prefix: typing.Optional[str] = None,
         options: typing.Optional[Options] = None,
@@ -2026,7 +2033,7 @@ class FlyteRemote(object):
     def execute_reference_workflow(
         self,
         entity: ReferenceWorkflow,
-        inputs: typing.Dict[str, typing.Any],
+        inputs: typing.Optional[typing.Dict[str, typing.Any]] = None,
         execution_name: typing.Optional[str] = None,
         execution_name_prefix: typing.Optional[str] = None,
         options: typing.Optional[Options] = None,
@@ -2089,7 +2096,7 @@ class FlyteRemote(object):
     def execute_reference_launch_plan(
         self,
         entity: ReferenceLaunchPlan,
-        inputs: typing.Dict[str, typing.Any],
+        inputs: typing.Optional[typing.Dict[str, typing.Any]] = None,
         execution_name: typing.Optional[str] = None,
         execution_name_prefix: typing.Optional[str] = None,
         options: typing.Optional[Options] = None,
@@ -2141,7 +2148,7 @@ class FlyteRemote(object):
     def execute_local_task(
         self,
         entity: PythonTask,
-        inputs: typing.Dict[str, typing.Any],
+        inputs: typing.Optional[typing.Dict[str, typing.Any]] = None,
         project: str = None,
         domain: str = None,
         name: str = None,
@@ -2223,7 +2230,7 @@ class FlyteRemote(object):
     def execute_local_workflow(
         self,
         entity: WorkflowBase,
-        inputs: typing.Dict[str, typing.Any],
+        inputs: typing.Optional[typing.Dict[str, typing.Any]] = None,
         project: str = None,
         domain: str = None,
         name: str = None,
@@ -2333,7 +2340,8 @@ class FlyteRemote(object):
     def execute_local_launch_plan(
         self,
         entity: LaunchPlan,
-        inputs: typing.Dict[str, typing.Any],
+        inputs: typing.Optional[typing.Dict[str, typing.Any]] = None,
+        *,
         version: str,
         project: typing.Optional[str] = None,
         domain: typing.Optional[str] = None,
@@ -2962,6 +2970,12 @@ class FlyteRemote(object):
         Given a launchplan, activate it, all previous versions are deactivated.
         """
         self.client.update_launch_plan(id=ident, state=LaunchPlanState.ACTIVE)
+
+    def deactivate_launchplan(self, ident: Identifier):
+        """
+        Given a launchplan, deactivate it, all previous versions are deactivated.
+        """
+        self.client.update_launch_plan(id=ident, state=LaunchPlanState.INACTIVE)
 
     def download(
         self, data: typing.Union[LiteralsResolver, Literal, LiteralMap], download_to: str, recursive: bool = True

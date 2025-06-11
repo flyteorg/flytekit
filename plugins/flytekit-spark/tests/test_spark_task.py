@@ -10,7 +10,7 @@ from google.protobuf.json_format import MessageToDict
 from flytekit import PodTemplate
 from flytekit.core import context_manager
 from flytekitplugins.spark import Spark
-from flytekitplugins.spark.task import Databricks, new_spark_session
+from flytekitplugins.spark.task import Databricks, DatabricksV2, new_spark_session
 from pyspark.sql import SparkSession
 
 import flytekit
@@ -132,6 +132,46 @@ def test_spark_task(reset_spark_session):
     assert my_databricks.task_config.spark_conf == {"spark": "2"}
     assert my_databricks.task_config.databricks_conf == databricks_conf
     assert my_databricks.task_config.databricks_instance == databricks_instance
+    assert my_databricks(a=3) == 3
+
+
+@pytest.mark.parametrize("spark_conf", [None, {"spark": "2"}])
+def test_databricks_v2(reset_spark_session, spark_conf):
+    databricks_conf = {
+        "name": "flytekit databricks plugin example",
+        "new_cluster": {
+            "spark_version": "11.0.x-scala2.12",
+            "node_type_id": "r3.xlarge",
+            "aws_attributes": {"availability": "ON_DEMAND"},
+            "num_workers": 4,
+            "docker_image": {"url": "pingsutw/databricks:latest"},
+        },
+        "timeout_seconds": 3600,
+        "max_retries": 1,
+        "spark_python_task": {
+            "python_file": "dbfs:///FileStore/tables/entrypoint-1.py",
+            "parameters": "ls",
+        },
+    }
+
+    databricks_instance = "account.cloud.databricks.com"
+
+    @task(
+        task_config=DatabricksV2(
+            databricks_conf=databricks_conf,
+            databricks_instance=databricks_instance,
+            spark_conf=spark_conf,
+        )
+    )
+    def my_databricks(a: int) -> int:
+        session = flytekit.current_context().spark_session
+        assert session.sparkContext.appName == "FlyteSpark: ex:local:local:local"
+        return a
+
+    assert my_databricks.task_config is not None
+    assert my_databricks.task_config.databricks_conf == databricks_conf
+    assert my_databricks.task_config.databricks_instance == databricks_instance
+    assert my_databricks.task_config.spark_conf == (spark_conf or {})
     assert my_databricks(a=3) == 3
 
 

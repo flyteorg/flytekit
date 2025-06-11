@@ -15,6 +15,7 @@ import yaml
 
 from flytekit import FlyteContextManager
 from flytekit.core.artifact import Artifact
+from flytekit.core.resources import ResourceSpec, Resources
 from flytekit.core.type_engine import TypeEngine
 from flytekit.interaction.click_types import (
     DateTimeType,
@@ -28,6 +29,7 @@ from flytekit.interaction.click_types import (
     StructuredDatasetParamType,
     UnionParamType,
     key_value_callback,
+    resource_callback,
 )
 
 dummy_param = click.Option(["--dummy"], type=click.STRING, default="dummy")
@@ -234,6 +236,19 @@ def test_key_value_callback():
         key_value_callback(ctx, "a", ["a=b", "c=d", "e"])
     with pytest.raises(click.BadParameter):
         key_value_callback(ctx, "a", ["a=b", "c=d", "e=f", "g"])
+
+
+def test_resource_callback():
+    ctx = click.Context(click.Command("test_command"), obj={"remote": True})
+    assert resource_callback(ctx, "a", None) is None
+    assert resource_callback(ctx, "a", "cpu=1,mem=2Gi") == Resources(cpu="1", mem="2Gi")
+    assert resource_callback(ctx, "a", "cpu=1,mem=2Gi,gpu=1") == Resources(cpu="1", mem="2Gi", gpu="1")
+    with pytest.raises(click.BadParameter, match="Expected comma separated"):
+        resource_callback(ctx, "a", "cpu=1;mem=2Gi")
+    with pytest.raises(click.BadParameter, match="Expected key to be one of"):
+        resource_callback(ctx, "a", "cpu=1,a=b,mem=2Gi")
+    with pytest.raises(click.BadParameter, match="Expected unique keys"):
+        resource_callback(ctx, "a", "cpu=1,mem=2Gi,cpu=1")
 
 
 @pytest.mark.parametrize(
