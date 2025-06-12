@@ -9,6 +9,7 @@ from flytekit.core.context_manager import FlyteContext, FlyteContextManager
 from flytekit.core.utils import ClassDecorator
 
 NEPTUNE_RUN_VALUE = "neptune-scale-run"
+NEPTUNE_RUN_CUSTOM_VALUE = "neptune-scale-custom-id"
 
 
 def neptune_scale_run(
@@ -44,6 +45,7 @@ def neptune_scale_run(
 
 class _neptune_scale_run_class(ClassDecorator):
     NEPTUNE_PROJECT = "project"
+    NEPTUNE_RUN_ID = "id"
 
     def __init__(
         self,
@@ -127,5 +129,12 @@ class _neptune_scale_run_class(ClassDecorator):
 
     def get_extra_config(self):
         extra_config = {self.NEPTUNE_PROJECT: self.project}
-        extra_config[self.LINK_TYPE_KEY] = NEPTUNE_RUN_VALUE
+
+        if self.run_id is None:
+            link_type = NEPTUNE_RUN_VALUE
+        else:
+            extra_config[self.NEPTUNE_RUN_ID] = self.run_id
+            link_type = NEPTUNE_RUN_CUSTOM_VALUE
+
+        extra_config[self.LINK_TYPE_KEY] = link_type
         return extra_config

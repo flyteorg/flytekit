@@ -14,6 +14,7 @@ def test_get_extra_config():
 
     config = my_task.get_extra_config()
     assert config[my_task.NEPTUNE_PROJECT] == "flytekit/project"
+    assert config[my_task.NEPTUNE_RUN_ID] == "my-task"
 
     @neptune_scale_run(
         project="flytekit/project",
