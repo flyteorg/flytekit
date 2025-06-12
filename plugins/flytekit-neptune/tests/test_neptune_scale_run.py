@@ -14,7 +14,6 @@ def test_get_extra_config():
 
     config = my_task.get_extra_config()
     assert config[my_task.NEPTUNE_PROJECT] == "flytekit/project"
-    assert config[my_task.NEPTUNE_ID] == "my-task"
 
     @neptune_scale_run(
         project="flytekit/project",
@@ -25,13 +24,6 @@ def test_get_extra_config():
 
     config = my_task.get_extra_config()
     assert config[my_task.NEPTUNE_PROJECT] == "flytekit/project"
-    assert config[my_task.NEPTUNE_ID] == "my-experiment"
-
-    @neptune_scale_run(project="flytekit/project", secret=neptune_api_token)
-    def my_task() -> bool: ...
-
-    config = my_task.get_extra_config()
-    assert my_task.NEPTUNE_ID not in config
 
 
 @task
