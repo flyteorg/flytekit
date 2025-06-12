@@ -2613,8 +2613,7 @@ class FlyteRemote(object):
         # Handle the case where it's a branch node
         if execution._node.branch_node is not None:
             logger.info(
-                "Skipping branch node execution for now - branch nodes will "
-                "not have inputs and outputs filled in"
+                "Skipping branch node execution for now - branch nodes will " "not have inputs and outputs filled in"
             )
             return execution
 
