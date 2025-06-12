@@ -104,17 +104,16 @@ class _neptune_scale_run_class(ClassDecorator):
                 "flyte/domain": ctx.user_space_params.execution_id.domain,
                 "flyte/name": ctx.user_space_params.execution_id.name,
                 "flyte/raw_output_prefix": ctx.user_space_params.raw_output_prefix,
-                "flyte/output_metadata_prefix": ctx.user_space_params.output_metadata_prefix,
                 "flyte/working_directory": ctx.user_space_params.working_directory,
                 # Task specific metadata
                 "flyte/task/name": ctx.user_space_params.task_id.name,
                 "flyte/task/project": ctx.user_space_params.task_id.project,
                 "flyte/task/domain": ctx.user_space_params.task_id.domain,
                 "flyte/task/version": ctx.user_space_params.task_id.version,
-                "flyte/execution_url": (
-                    execution_url if (execution_url := os.getenv("FLYTE_EXECUTION_URL")) is not None else None
-                ),
             }
+
+            if execution_url := os.getenv("FLYTE_EXECUTION_URL"):
+                metadata["flyte/execution_url"] = execution_url
 
         run = neptune_scale.Run(run_id=run_id, experiment_name=self.experiment_name, **init_run_kwargs)
         if metadata:
