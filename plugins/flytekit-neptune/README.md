@@ -37,7 +37,7 @@ plugins:
           templateUris:
             - "https://scale.neptune.ai/{{ .taskConfig.project }}/runs/details?viewId=standard-view&runIdentificationKey={{ .taskConfig.id }}&type=experiment"
       - neptune-scale-run:
-          displayName: Neptune
+          displayName: Neptune Run
           templateUris:
             - "https://scale.neptune.ai/{{ .taskConfig.project }}/-/run/?customId={{ .podName }}"
       - neptune-scale-custom-id:
