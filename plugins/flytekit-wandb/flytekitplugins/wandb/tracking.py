@@ -72,11 +72,8 @@ class wandb_init(ClassDecorator):
         ctx = FlyteContextManager.current_context()
         is_local_execution = ctx.execution_state.is_local_execution()
 
-        if is_local_execution:
-            # For location execution, always use the id. If `self.id` is `None`, wandb
-            # will generate it's own id.
-            wand_id = self.id
-        else:
+        id = self.id
+        if not is_local_execution:
             if isinstance(self.secret, Secret):
                 # Set secret for remote execution
                 secrets = ctx.user_space_params.secrets
@@ -87,14 +84,17 @@ class wandb_init(ClassDecorator):
 
             wandb.login(key=wandb_api_key, host=self.api_host)
 
-            if self.id is None:
-                # The HOSTNAME is set to {.executionName}-{.nodeID}-{.taskRetryAttempt}
+            if id is None:
+                # The HOSTNAME is set to {.executionName}-{.nodeID}-{.taskRetryAttempt}[-{replica-type}-{replica-index}]
                 # If HOSTNAME is not defined, use the execution name as a fallback
-                wand_id = os.environ.get("HOSTNAME", ctx.user_space_params.execution_id.name)
-            else:
-                wand_id = self.id
+                id = os.environ.get("HOSTNAME", ctx.user_space_params.execution_id.name)
 
-        run = wandb.init(project=self.project, entity=self.entity, id=wand_id, **self.init_kwargs)
+        run = wandb.init(
+            project=self.project,
+            entity=self.entity,
+            id=id,
+            **self.init_kwargs,
+        )
 
         # If FLYTE_EXECUTION_URL is defined, inject it into wandb to link back to the execution.
         execution_url = os.getenv("FLYTE_EXECUTION_URL")
