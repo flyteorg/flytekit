@@ -1,7 +1,5 @@
 # Flytekit Neptune Plugin
 
-> This plugin is deprecated. Install `flytekitplugins-neptune-scale` instead.
-
 Neptune is the MLOps stack component for experiment tracking. It offers a single place to log, compare, store, and collaborate on experiments and models. This plugin integrates Flyte with Neptune by configuring links between the two platforms.
 
 To install the plugin, run:
@@ -41,7 +39,11 @@ plugins:
       - neptune-scale-run:
           displayName: Neptune
           templateUris:
-            - "https://scale.neptune.ai/{{ .taskConfig.project }}/-/run/?customId={{ .hostname }}"
+            - "https://scale.neptune.ai/{{ .taskConfig.project }}/-/run/?customId={{ .podName }}"
+      - neptune-scale-custom-id:
+          displayName: Neptune Run
+          templateUris:
+            - "https://scale.neptune.ai/{{`{{ .taskConfig.project }}`}}/-/run/?customId={{`{{ .taskConfig.id }}`}}"
 ```
 
 To use Neptune 2.x (the older version), install `flytekitplugins-neptune[legacy]`.
