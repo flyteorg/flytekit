@@ -40,6 +40,7 @@ from flytekit.configuration import Config, DataConfig, FastSerializationSettings
 from flytekit.configuration.file import ConfigFile
 from flytekit.constants import CopyFileDetection
 from flytekit.core import constants, utils
+from flytekit.core.array_node import ArrayNode
 from flytekit.core.array_node_map_task import ArrayNodeMapTask
 from flytekit.core.artifact import Artifact
 from flytekit.core.base_task import PythonTask
@@ -239,6 +240,10 @@ def _get_pickled_target_dict(
                 raise FlyteAssertion(
                     f"Eager tasks are not supported in interactive mode. {entity.name} is an eager task."
                 )
+
+        if isinstance(entity, ArrayNode):
+            # extract WorkflowBase from ArrayNode
+            entity = entity.target.workflow
 
         if isinstance(entity, PythonTask):
             if isinstance(entity, (PythonAutoContainerTask, ArrayNodeMapTask)):
@@ -1062,6 +1067,23 @@ class FlyteRemote(object):
                 domain=self.default_domain,
             )
 
+        if self.interactive_mode_enabled:
+            md5_bytes, pickled_target_dict = _get_pickled_target_dict(entity)
+            if version is None:
+                version = self._version_from_hash(
+                    md5_bytes,
+                    serialization_settings,
+                    entity.python_interface.default_inputs_as_kwargs,
+                    *FlyteRemote._get_image_names(entity),
+                    *FlyteRemote._get_pod_template_hash(entity),
+                )
+
+        if self.interactive_mode_enabled:
+            serialization_settings.fast_serialization_settings = self._pickle_and_upload_entity(
+                entity,
+                pickled_target_dict,
+            )
+
         ident = run_sync(self._serialize_and_register, entity=entity, settings=serialization_settings, version=version)
 
         ft = self.fetch_task(
@@ -1095,6 +1117,23 @@ class FlyteRemote(object):
                 image_config=ImageConfig.auto_default_image(),
                 project=self.default_project,
                 domain=self.default_domain,
+            )
+
+        if self.interactive_mode_enabled:
+            md5_bytes, pickled_target_dict = _get_pickled_target_dict(entity)
+            if version is None:
+                version = self._version_from_hash(
+                    md5_bytes,
+                    serialization_settings,
+                    entity.python_interface.default_inputs_as_kwargs,
+                    *FlyteRemote._get_image_names(entity),
+                    *FlyteRemote._get_pod_template_hash(entity),
+                )
+
+        if self.interactive_mode_enabled:
+            serialization_settings.fast_serialization_settings = self._pickle_and_upload_entity(
+                entity,
+                pickled_target_dict,
             )
 
         version, _ = self._resolve_version(version, entity, serialization_settings)
@@ -1469,31 +1508,26 @@ class FlyteRemote(object):
 
         version, _ = self._resolve_version(version, entity, serialization_settings)
 
-        if self._wf_exists(
+        if not self._wf_exists(
             name=entity.workflow.name,
             version=version,
             project=serialization_settings.project,
             domain=serialization_settings.domain,
         ):
-            # Underlying workflow, exists, only register the launch plan itself
-            launch_plan_model = get_serializable(
-                OrderedDict(), settings=serialization_settings, entity=entity, options=options
+            # If workflow doesn't exist, register it first
+            self.register_workflow(
+                entity.workflow, serialization_settings, version, default_launch_plan=False, options=options
             )
-            ident = self.raw_register(
-                launch_plan_model, serialization_settings, version, create_default_launchplan=False
-            )
-            if ident is None:
-                raise ValueError("Failed to register launch plan, identifier returned was empty...")
-        else:
-            # Register the launch and everything under it
-            ident = run_sync(
-                self._serialize_and_register,
-                entity,
-                serialization_settings,
-                version,
-                options,
-                False,
-            )
+
+        # Underlying workflow, exists, only register the launch plan itself
+        launch_plan_model = get_serializable(
+            OrderedDict(), settings=serialization_settings, entity=entity, options=options
+        )
+        ident = self.raw_register(
+            launch_plan_model, serialization_settings, version, create_default_launchplan=False
+        )
+        if ident is None:
+            raise ValueError("Failed to register launch plan, identifier returned was empty...")
 
         flp = self.fetch_launch_plan(ident.project, ident.domain, ident.name, ident.version)
         flp.python_interface = entity.python_interface
@@ -2196,7 +2230,7 @@ class FlyteRemote(object):
             domain=domain or self._default_domain,
             version=version,
         )
-        version, pickled_target_dict = self._resolve_version(version, entity, ss)
+        version, _ = self._resolve_version(version, entity, ss)
 
         resolved_identifiers = self._resolve_identifier_kwargs(entity, project, domain, name, version)
         resolved_identifiers_dict = asdict(resolved_identifiers)
@@ -2204,9 +2238,6 @@ class FlyteRemote(object):
             flyte_task: FlyteTask = self.fetch_task(**resolved_identifiers_dict)
             flyte_task.python_interface = entity.python_interface
         except FlyteEntityNotExistException:
-            if self.interactive_mode_enabled:
-                ss.fast_serialization_settings = self._pickle_and_upload_entity(entity, pickled_target_dict)
-
             flyte_task: FlyteTask = self.register_task(entity, ss, version)
 
         return self.execute(
@@ -2280,16 +2311,8 @@ class FlyteRemote(object):
             domain=domain or self._default_domain,
             version=version,
         )
-        pickled_target_dict = None
         if version is None and self.interactive_mode_enabled:
-            md5_bytes, pickled_target_dict = _get_pickled_target_dict(entity)
-            version = self._version_from_hash(
-                md5_bytes,
-                ss,
-                entity.python_interface.default_inputs_as_kwargs,
-                *FlyteRemote._get_image_names(entity),
-                *FlyteRemote._get_pod_template_hash(entity),
-            )
+            version, _ = self._resolve_version(version, entity, ss)
 
         resolved_identifiers = self._resolve_identifier_kwargs(entity, project, domain, name, version)
         resolved_identifiers_dict = asdict(resolved_identifiers)
@@ -2300,9 +2323,12 @@ class FlyteRemote(object):
             self.fetch_workflow(**resolved_identifiers_dict)
         except FlyteEntityNotExistException:
             logger.info("Registering workflow because it wasn't found in Flyte Admin.")
-            if self.interactive_mode_enabled:
-                ss.fast_serialization_settings = self._pickle_and_upload_entity(entity, pickled_target_dict)
-            self.register_workflow(entity, ss, version=version, options=options)
+            self.register_workflow(
+                entity,
+                ss,
+                version=version,
+                options=options,
+            )
 
         try:
             flyte_lp = self.fetch_launch_plan(**resolved_identifiers_dict)
