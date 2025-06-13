@@ -1523,9 +1523,7 @@ class FlyteRemote(object):
         launch_plan_model = get_serializable(
             OrderedDict(), settings=serialization_settings, entity=entity, options=options
         )
-        ident = self.raw_register(
-            launch_plan_model, serialization_settings, version, create_default_launchplan=False
-        )
+        ident = self.raw_register(launch_plan_model, serialization_settings, version, create_default_launchplan=False)
         if ident is None:
             raise ValueError("Failed to register launch plan, identifier returned was empty...")
 
