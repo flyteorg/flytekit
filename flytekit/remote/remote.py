@@ -212,6 +212,7 @@ def _get_git_repo_url(source_path: str):
         return ""
 
 
+@functools.lru_cache
 def _get_pickled_target_dict(
     root_entity: typing.Union[WorkflowBase, PythonTask],
 ) -> typing.Tuple[bytes, PickledEntity]:
@@ -241,9 +242,9 @@ def _get_pickled_target_dict(
                     f"Eager tasks are not supported in interactive mode. {entity.name} is an eager task."
                 )
 
-        if isinstance(entity, ArrayNode):
-            # extract WorkflowBase from ArrayNode
-            entity = entity.target.workflow
+        # if isinstance(entity, ArrayNode):
+        #     # extract WorkflowBase from ArrayNode
+        #     entity = entity.target.workflow
 
         if isinstance(entity, PythonTask):
             if isinstance(entity, (PythonAutoContainerTask, ArrayNodeMapTask)):
@@ -1078,7 +1079,6 @@ class FlyteRemote(object):
                     *FlyteRemote._get_pod_template_hash(entity),
                 )
 
-        if self.interactive_mode_enabled:
             serialization_settings.fast_serialization_settings = self._pickle_and_upload_entity(
                 entity,
                 pickled_target_dict,
@@ -1130,7 +1130,6 @@ class FlyteRemote(object):
                     *FlyteRemote._get_pod_template_hash(entity),
                 )
 
-        if self.interactive_mode_enabled:
             serialization_settings.fast_serialization_settings = self._pickle_and_upload_entity(
                 entity,
                 pickled_target_dict,
