@@ -1506,7 +1506,7 @@ class FlyteRemote(object):
     def _execute(
         self,
         entity: typing.Union[FlyteTask, FlyteWorkflow, FlyteLaunchPlan],
-        inputs: typing.Dict[str, typing.Any],
+        inputs: typing.Optional[typing.Dict[str, typing.Any]] = None,
         project: str = None,
         domain: str = None,
         execution_name: typing.Optional[str] = None,
@@ -1541,6 +1541,9 @@ class FlyteRemote(object):
         :param execution_cluster_label: Specify label of cluster(s) on which newly created execution should be placed.
         :returns: :class:`~flytekit.remote.workflow_execution.FlyteWorkflowExecution`
         """
+        if inputs is None:
+            inputs = {}
+
         if execution_name is not None and execution_name_prefix is not None:
             raise ValueError("Only one of execution_name and execution_name_prefix can be set, but got both set")
         # todo: The prefix should be passed to the backend
@@ -1675,7 +1678,7 @@ class FlyteRemote(object):
         entity: typing.Union[
             FlyteTask, FlyteLaunchPlan, FlyteWorkflow, PythonTask, WorkflowBase, LaunchPlan, ReferenceEntity
         ],
-        inputs: typing.Dict[str, typing.Any],
+        inputs: typing.Optional[typing.Dict[str, typing.Any]] = None,
         project: str = None,
         domain: str = None,
         name: str = None,
@@ -1898,7 +1901,7 @@ class FlyteRemote(object):
     def execute_remote_task_lp(
         self,
         entity: typing.Union[FlyteTask, FlyteLaunchPlan],
-        inputs: typing.Dict[str, typing.Any],
+        inputs: typing.Optional[typing.Dict[str, typing.Any]] = None,
         project: str = None,
         domain: str = None,
         execution_name: typing.Optional[str] = None,
@@ -1938,7 +1941,7 @@ class FlyteRemote(object):
     def execute_remote_wf(
         self,
         entity: FlyteWorkflow,
-        inputs: typing.Dict[str, typing.Any],
+        inputs: typing.Optional[typing.Dict[str, typing.Any]] = None,
         project: str = None,
         domain: str = None,
         execution_name: typing.Optional[str] = None,
@@ -1981,7 +1984,7 @@ class FlyteRemote(object):
     def execute_reference_task(
         self,
         entity: ReferenceTask,
-        inputs: typing.Dict[str, typing.Any],
+        inputs: typing.Optional[typing.Dict[str, typing.Any]] = None,
         execution_name: typing.Optional[str] = None,
         execution_name_prefix: typing.Optional[str] = None,
         options: typing.Optional[Options] = None,
@@ -2030,7 +2033,7 @@ class FlyteRemote(object):
     def execute_reference_workflow(
         self,
         entity: ReferenceWorkflow,
-        inputs: typing.Dict[str, typing.Any],
+        inputs: typing.Optional[typing.Dict[str, typing.Any]] = None,
         execution_name: typing.Optional[str] = None,
         execution_name_prefix: typing.Optional[str] = None,
         options: typing.Optional[Options] = None,
@@ -2093,7 +2096,7 @@ class FlyteRemote(object):
     def execute_reference_launch_plan(
         self,
         entity: ReferenceLaunchPlan,
-        inputs: typing.Dict[str, typing.Any],
+        inputs: typing.Optional[typing.Dict[str, typing.Any]] = None,
         execution_name: typing.Optional[str] = None,
         execution_name_prefix: typing.Optional[str] = None,
         options: typing.Optional[Options] = None,
@@ -2145,7 +2148,7 @@ class FlyteRemote(object):
     def execute_local_task(
         self,
         entity: PythonTask,
-        inputs: typing.Dict[str, typing.Any],
+        inputs: typing.Optional[typing.Dict[str, typing.Any]] = None,
         project: str = None,
         domain: str = None,
         name: str = None,
@@ -2227,7 +2230,7 @@ class FlyteRemote(object):
     def execute_local_workflow(
         self,
         entity: WorkflowBase,
-        inputs: typing.Dict[str, typing.Any],
+        inputs: typing.Optional[typing.Dict[str, typing.Any]] = None,
         project: str = None,
         domain: str = None,
         name: str = None,
@@ -2337,7 +2340,8 @@ class FlyteRemote(object):
     def execute_local_launch_plan(
         self,
         entity: LaunchPlan,
-        inputs: typing.Dict[str, typing.Any],
+        inputs: typing.Optional[typing.Dict[str, typing.Any]] = None,
+        *,
         version: str,
         project: typing.Optional[str] = None,
         domain: typing.Optional[str] = None,
