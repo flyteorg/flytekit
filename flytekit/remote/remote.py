@@ -242,9 +242,9 @@ def _get_pickled_target_dict(
                     f"Eager tasks are not supported in interactive mode. {entity.name} is an eager task."
                 )
 
-        # if isinstance(entity, ArrayNode):
-        #     # extract WorkflowBase from ArrayNode
-        #     entity = entity.target.workflow
+        if isinstance(entity, ArrayNode):
+            # extract WorkflowBase from ArrayNode
+            entity = entity.target.workflow
 
         if isinstance(entity, PythonTask):
             if isinstance(entity, (PythonAutoContainerTask, ArrayNodeMapTask)):
