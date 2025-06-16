@@ -25,10 +25,12 @@ def _generate_experiment_key(hostname: str, project_name: str, workspace: str) -
     1. Is alphanumeric
     2. 32 <= len(experiment_key) <= 50
     """
-    # In Flyte, then hostname is set to {.executionName}-{.nodeID}-{.taskRetryAttempt}, where
+    # In Flyte, hostname is set to {.executionName}-{.nodeID}-{.taskRetryAttempt}[-{replica-type}-{replica-index}], where
     # - len(executionName) == 20
     # - 2 <= len(nodeId) <= 8
     # - 1 <= len(taskRetryAttempt)) <= 2 (In practice, retries does not go above 99)
+    # - replica-type == "worker"
+    # - len(replica-index) == 1
     # Removing the `-` because it is not alphanumeric, the 23 <= len(hostname) <= 30
     # On the low end we need to add 10 characters to stay in the range acceptable to comet_ml
     hostname = hostname.replace("-", "")
@@ -114,35 +116,32 @@ class _comet_ml_login_class(ClassDecorator):
         ctx = FlyteContextManager.current_context()
         is_local_execution = ctx.execution_state.is_local_execution()
 
-        default_kwargs = self.login_kwargs
         login_kwargs = {
             "project_name": self.project_name,
             "workspace": self.workspace,
-            **default_kwargs,
+            **self.login_kwargs,
         }
 
+        experiment_key = self.experiment_key
+
         if is_local_execution:
-            # For local execution, always use the experiment_key. If `self.experiment_key` is `None`, comet_ml
-            # will generate it's own key
-            if self.experiment_key is not None:
-                login_kwargs["experiment_key"] = self.experiment_key
+            # For local execution, always use the experiment_key. If `experiment_key` is `None`, comet_ml
+            # will generate its own key
+            if experiment_key:
+                login_kwargs["experiment_key"] = experiment_key
         else:
-            # Get api key for remote execution
+            # Get API key for remote execution
             if isinstance(self.secret, Secret):
                 secrets = ctx.user_space_params.secrets
-                comet_ml_api_key = secrets.get(key=self.secret.key, group=self.secret.group)
+                login_kwargs["api_key"] = secrets.get(key=self.secret.key, group=self.secret.group)
             else:
-                comet_ml_api_key = self.secret()
+                login_kwargs["api_key"] = self.secret()
 
-            login_kwargs["api_key"] = comet_ml_api_key
-
-            if self.experiment_key is None:
-                # The HOSTNAME is set to {.executionName}-{.nodeID}-{.taskRetryAttempt}
+            if not experiment_key:
+                # The HOSTNAME is set to {.executionName}-{.nodeID}-{.taskRetryAttempt}[-{replica-type}-{replica-index}]
                 # If HOSTNAME is not defined, use the execution name as a fallback
                 hostname = os.environ.get("HOSTNAME", ctx.user_space_params.execution_id.name)
                 experiment_key = _generate_experiment_key(hostname, self.project_name, self.workspace)
-            else:
-                experiment_key = self.experiment_key
 
             login_kwargs["experiment_key"] = experiment_key
 
@@ -151,8 +150,7 @@ class _comet_ml_login_class(ClassDecorator):
         else:
             comet_ml.init(**login_kwargs)
 
-        output = self.task_function(*args, **kwargs)
-        return output
+        return self.task_function(*args, **kwargs)
 
     def get_extra_config(self):
         extra_config = {

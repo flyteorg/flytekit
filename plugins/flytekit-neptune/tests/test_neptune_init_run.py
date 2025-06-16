@@ -1,7 +1,6 @@
 from unittest.mock import patch, Mock
 
 from flytekit import Secret, task, current_context
-from flytekit.core.context_manager import FlyteContextManager
 from flytekitplugins.neptune import neptune_init_run
 from flytekitplugins.neptune.tracking import _neptune_init_run_class
 
