@@ -84,7 +84,6 @@ class NIM(ModelInferenceTemplate):
             V1Container,
             V1EmptyDirVolumeSource,
             V1EnvVar,
-            V1LocalObjectReference,
             V1ResourceRequirements,
             V1SecurityContext,
             V1Volume,
@@ -97,7 +96,7 @@ class NIM(ModelInferenceTemplate):
                 empty_dir=V1EmptyDirVolumeSource(medium="Memory", size_limit=self._shm_size),
             )
         ]
-        self.pod_template.pod_spec.image_pull_secrets = [V1LocalObjectReference(name=self._secrets.ngc_image_secret)]
+        # self.pod_template.pod_spec.image_pull_secrets = [V1LocalObjectReference(name=self._secrets.ngc_image_secret)]
 
         model_server_container = self.pod_template.pod_spec.init_containers[0]
 
