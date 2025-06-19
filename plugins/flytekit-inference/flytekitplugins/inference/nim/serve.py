@@ -15,9 +15,9 @@ class NIMSecrets:
     :param hf_token_key: The key name for the HuggingFace token.
     """
 
-    ngc_image_secret: str  # kubernetes secret
     ngc_secret_key: str
     secrets_prefix: str  # _UNION_ or _FSEC_
+    ngc_image_secret: Optional[str] = None  # image pull kubernetes secret
     ngc_secret_group: Optional[str] = None
     hf_token_group: Optional[str] = None
     hf_token_key: Optional[str] = None
@@ -55,8 +55,6 @@ class NIM(ModelInferenceTemplate):
         :param lora_adapter_mem: The amount of memory requested for the init container that downloads LoRA adapters.
         :param secrets: Instance of NIMSecrets for managing secrets.
         """
-        if secrets.ngc_image_secret is None:
-            raise ValueError("NGC image pull secret must be provided.")
         if secrets.ngc_secret_key is None:
             raise ValueError("NGC secret key must be provided.")
         if secrets.secrets_prefix is None:
@@ -84,6 +82,7 @@ class NIM(ModelInferenceTemplate):
             V1Container,
             V1EmptyDirVolumeSource,
             V1EnvVar,
+            V1LocalObjectReference,
             V1ResourceRequirements,
             V1SecurityContext,
             V1Volume,
@@ -96,7 +95,11 @@ class NIM(ModelInferenceTemplate):
                 empty_dir=V1EmptyDirVolumeSource(medium="Memory", size_limit=self._shm_size),
             )
         ]
-        # self.pod_template.pod_spec.image_pull_secrets = [V1LocalObjectReference(name=self._secrets.ngc_image_secret)]
+
+        if self._secrets.ngc_image_secret:
+            self.pod_template.pod_spec.image_pull_secrets = [
+                V1LocalObjectReference(name=self._secrets.ngc_image_secret)
+            ]
 
         model_server_container = self.pod_template.pod_spec.init_containers[0]
 
