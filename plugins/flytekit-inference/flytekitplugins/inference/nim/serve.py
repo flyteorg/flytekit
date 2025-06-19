@@ -7,9 +7,9 @@ from ..sidecar_template import ModelInferenceTemplate
 @dataclass
 class NIMSecrets:
     """
-    :param ngc_image_secret: The name of the Kubernetes secret containing the NGC image pull credentials.
     :param ngc_secret_key: The key name for the NGC API key.
     :param secrets_prefix: The secrets prefix that Flyte appends to all mounted secrets.
+    :param ngc_image_secret: The name of the Kubernetes secret containing the NGC image pull credentials.
     :param ngc_secret_group: The group name for the NGC API key.
     :param hf_token_group: The group name for the HuggingFace token.
     :param hf_token_key: The key name for the HuggingFace token.
