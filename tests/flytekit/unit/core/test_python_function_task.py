@@ -11,6 +11,7 @@ from flytekit.core.python_function_task import PythonFunctionTask
 from flytekit.core.tracker import isnested, istestfunction
 from flytekit.image_spec.image_spec import ImageBuildEngine, ImageSpec
 from flytekit.tools.translator import get_serializable_task
+from flyteidl.core import tasks_pb2
 from tests.flytekit.unit.core import tasks
 
 
@@ -284,3 +285,18 @@ def test_default_inputs():
         return x
 
     assert foo3.python_interface.inputs_with_defaults == {"x": (int, None), "y": (str, None)}
+
+def test_execution_behavior_conversion():
+    """Test conversion between ExecutionBehavior and flyteidl ExecutionMode"""
+
+    # Test conversion for DEFAULT mode
+    assert (PythonFunctionTask.ExecutionBehavior.DEFAULT.to_flyte_idl() ==
+            tasks_pb2.TaskMetadata.ExecutionMode.DEFAULT)
+    assert (PythonFunctionTask.ExecutionBehavior.from_flyte_idl(tasks_pb2.TaskMetadata.ExecutionMode.DEFAULT) ==
+            PythonFunctionTask.ExecutionBehavior.DEFAULT)
+
+    # Test conversion for DYNAMIC mode
+    assert (PythonFunctionTask.ExecutionBehavior.DYNAMIC.to_flyte_idl() ==
+            tasks_pb2.TaskMetadata.ExecutionMode.DYNAMIC)
+    assert (PythonFunctionTask.ExecutionBehavior.from_flyte_idl(tasks_pb2.TaskMetadata.ExecutionMode.DYNAMIC) ==
+            PythonFunctionTask.ExecutionBehavior.DYNAMIC)
