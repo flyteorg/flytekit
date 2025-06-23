@@ -291,6 +291,7 @@ def test_eager_workflow_dispatch(mock_write_to_file, mock_put_data, mock_get_dat
     """Test that event loop is preserved after executing eager workflow via dispatch."""
 
     event_loop = asyncio.get_event_loop_policy().get_event_loop()
+
     @eager
     async def eager_wf():
         await asyncio.sleep(0.1)
