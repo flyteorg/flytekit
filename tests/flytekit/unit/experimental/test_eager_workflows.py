@@ -290,7 +290,11 @@ def test_eager_workflow_with_offloaded_types():
 def test_eager_workflow_dispatch(mock_write_to_file, mock_put_data, mock_get_data, mock_load_proto):
     """Test that event loop is preserved after executing eager workflow via dispatch."""
 
-    event_loop = asyncio.get_event_loop_policy().get_event_loop()
+    try:
+        event_loop = asyncio.get_running_loop()
+    except RuntimeError:
+        event_loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(event_loop)
 
     @eager
     async def eager_wf():
