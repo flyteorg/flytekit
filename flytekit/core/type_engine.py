@@ -654,22 +654,15 @@ class DataclassTransformer(TypeTransformer[object]):
 
         hints = typing.get_type_hints(t)
         # Get the type of each field from dataclass
-        missed_fields = []
         for field in t.__dataclass_fields__.values():  # type: ignore
             try:
                 name = field.name
                 python_type = hints.get(name, field.type)
                 literal_type[name] = TypeEngine.to_literal_type(python_type)
             except Exception as e:
-                missed_fields.append(field.name)
                 logger.debug(
                     f"Field {field.name} of type {field.type} cannot be converted to a literal type. Error: {e}"
                 )
-
-        if missed_fields:
-            logger.info(
-                f"Some fields of {t} could not be converted to Flyte types: {', '.join(missed_fields)}. Attribute access on these fields will not work."
-            )
 
         # This is for attribute access in FlytePropeller.
         ts = TypeStructure(tag="", dataclass_type=literal_type)
