@@ -730,7 +730,7 @@ class FlyteWorkflow(_hash_mixin.HashOnReferenceMixin, RemoteEntity, WorkflowSpec
         tasks: Optional[Dict[Identifier, FlyteTask]] = None,
         node_launch_plans: Optional[Dict[Identifier, launch_plan_models.LaunchPlanSpec]] = None,
     ) -> FlyteWorkflow:
-        base_model_non_system_nodes = cls.get_non_system_nodes(base_model.nodes)
+        base_model_non_system_nodes = cls.get_non_system_nodes(base_model.nodes + [base_model.failure_node])
 
         node_map = {}
         converted_sub_workflows = {}
