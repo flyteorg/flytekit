@@ -660,10 +660,8 @@ class DataclassTransformer(TypeTransformer[object]):
                 python_type = hints.get(name, field.type)
                 literal_type[name] = TypeEngine.to_literal_type(python_type)
             except Exception as e:
-                logger.warning(
-                    "Field {} of type {} cannot be converted to a literal type. Error: {}".format(
-                        field.name, field.type, e
-                    )
+                logger.debug(
+                    f"Field {field.name} of type {field.type} cannot be converted to a literal type. Error: {e}"
                 )
 
         # This is for attribute access in FlytePropeller.
