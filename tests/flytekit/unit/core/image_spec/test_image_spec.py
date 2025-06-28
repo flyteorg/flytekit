@@ -93,6 +93,29 @@ def test_image_spec(mock_image_spec_builder, monkeypatch):
     assert image_spec.commands == ["echo hello"]
 
 
+@pytest.mark.skipif(
+    os.environ.get("_FLYTEKIT_TEST_IMAGE_BUILD_ENGINE", "0") == "0",
+    reason="Set _FLYTEKIT_TEST_IMAGE_BUILD_ENGINE=1 to run this test",
+)
+def test_nested_build(monkeypatch):
+    monkeypatch.setenv("FLYTE_PUSH_IMAGE_SPEC", "0")
+    base_image = ImageSpec(
+        name="base",
+        packages=["torch"],
+        python_version="3.11"
+    )
+
+    image_spec = ImageSpec(
+        name="final",
+        packages=["pandas"],
+        python_version="3.11",
+        base_image=base_image,
+    )
+    assert image_spec._is_force_push is False
+
+    ImageBuildEngine.build(image_spec)
+
+
 def test_image_spec_engine_priority():
     new_image_name = "fqn.xyz/flytekit"
     mock_image_builder_10 = Mock()
