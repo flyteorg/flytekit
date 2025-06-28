@@ -86,9 +86,12 @@ RUN --mount=type=cache,sharing=locked,mode=0777,target=/opt/micromamba/pkgs,\
 id=micromamba \
     --mount=from=micromamba,source=/usr/bin/micromamba,target=/usr/bin/micromamba \
     micromamba config set use_lockfiles False && \
-    micromamba create -n runtime --root-prefix /opt/micromamba \
+    ( micromamba create -n runtime --root-prefix /opt/micromamba \
     -c conda-forge $CONDA_CHANNELS \
-    python=$PYTHON_VERSION $CONDA_PACKAGES
+    python=$PYTHON_VERSION $CONDA_PACKAGES \
+    || micromamba install -n runtime --root-prefix /opt/micromamba \
+    -c conda-forge $CONDA_CHANNELS \
+    python=$PYTHON_VERSION $CONDA_PACKAGES )
 """)
 
 DOCKER_FILE_TEMPLATE = Template("""\
@@ -98,6 +101,7 @@ FROM $MICROMAMBA_IMAGE as micromamba
 
 FROM $BASE_IMAGE
 
+WORKDIR /
 USER root
 $APT_INSTALL_COMMAND
 RUN --mount=from=micromamba,source=/etc/ssl/certs/ca-certificates.crt,target=/tmp/ca-certificates.crt \
@@ -105,7 +109,7 @@ RUN --mount=from=micromamba,source=/etc/ssl/certs/ca-certificates.crt,target=/tm
     mkdir -p /etc/ssl/certs/ && cp /tmp/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
 
 RUN id -u flytekit || useradd --create-home --shell /bin/bash flytekit
-RUN chown -R flytekit /root && chown -R flytekit /home
+RUN chown flytekit /root && chown -R flytekit /home
 
 $INSTALL_PYTHON_TEMPLATE
 
