@@ -14,8 +14,8 @@ extras = {
     "plotly": ["plotly"],
     "pygments": ["pygments"],
     "all": [
-        "pandas<=2.2.3; python_version==3.9",
-        "pandas; python_version>3.9",
+        "pandas<=2.2.3; python_version=='3.9'",
+        "pandas; python_version>'3.9'",
         "pillow",
         "ydata-profiling",
         "markdown",
