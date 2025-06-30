@@ -14,13 +14,12 @@ extras = {
     "plotly": ["plotly"],
     "pygments": ["pygments"],
     "all": [
-        "pandas<=2.2.3; python_version=='3.9'",
-        "pandas; python_version>'3.9'",
+        "pandas"
         "pillow",
         "ydata-profiling",
         "markdown",
         "plotly",
-        "pygments"
+        "pygments<=2.19.1"
     ],
 }
 
