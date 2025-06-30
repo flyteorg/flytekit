@@ -1446,6 +1446,7 @@ class FlyteRemote(object):
                 *FlyteRemote._get_pod_template_hash(entity),
             )
 
+        serialization_settings.version = version
         if isinstance(entity, PythonTask):
             return self.register_task(entity, serialization_settings, version)
         if isinstance(entity, WorkflowBase):
@@ -1506,19 +1507,6 @@ class FlyteRemote(object):
             )
 
         version, _ = self._resolve_version(version, entity, serialization_settings)
-
-        # If the launch plan already exists, we can just fetch it and return
-        try:
-            flp = self.fetch_launch_plan(
-                project=serialization_settings.project,
-                domain=serialization_settings.domain,
-                name=entity.name,
-                version=version,
-            )
-            flp.python_interface = entity.python_interface
-            return flp
-        except FlyteEntityNotExistException:
-            logger.debug("Launch plan does not exist, registering it now...")
 
         # If the workflow doesn't exist, register it first
         if not self._wf_exists(
