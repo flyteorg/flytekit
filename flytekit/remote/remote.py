@@ -1326,6 +1326,7 @@ class FlyteRemote(object):
                 md5_bytes, serialization_settings, default_inputs, *self._get_image_names(entity)
             )
 
+        serialization_settings.version = version
         if isinstance(entity, PythonTask):
             return self.register_task(entity, serialization_settings, version)
 
