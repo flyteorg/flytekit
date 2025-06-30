@@ -824,7 +824,6 @@ class DynamicEntityLaunchCommand(click.RichCommand):
         r = run_level_params.remote_instance()
         if self._launcher == self.LP_LAUNCHER:
             parts = self._entity_name.split(":")
-            print("here1")
             if len(parts) == 2:
                 entity = r.fetch_launch_plan(run_level_params.project, run_level_params.domain, parts[0], parts[1])
             else:
@@ -838,9 +837,7 @@ class DynamicEntityLaunchCommand(click.RichCommand):
                         )
                     )
                     entity = r.fetch_launch_plan(run_level_params.project, run_level_params.domain, self._entity_name)
-            print("here2")
         else:
-            print("here3")
             parts = self._entity_name.split(":")
             if len(parts) == 2:
                 entity = r.fetch_task(run_level_params.project, run_level_params.domain, parts[0], parts[1])
@@ -899,14 +896,12 @@ class DynamicEntityLaunchCommand(click.RichCommand):
         """
         run_level_params: RunLevelParams = ctx.obj
         r = run_level_params.remote_instance()
-        print("sdfsdfsdfsdf")
         entity = self._fetch_entity(ctx)
 
         param_defaults = {param.name: param.default for param in ctx.command.params}
 
         filtered_inputs = {k: param_defaults.get(k, v) if v is None else v for k, v in ctx.params.items()}
 
-        print("sadfdsf")
         run_remote(
             r,
             entity,

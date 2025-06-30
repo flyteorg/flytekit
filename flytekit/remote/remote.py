@@ -1507,16 +1507,12 @@ class FlyteRemote(object):
 
         version, _ = self._resolve_version(version, entity, serialization_settings)
 
-        launch_plan_model = get_serializable(
-            OrderedDict(), settings=serialization_settings, entity=entity, options=options
-        )
-
         # If the launch plan already exists, we can just fetch it and return
         try:
             flp = self.fetch_launch_plan(
                 project=serialization_settings.project,
                 domain=serialization_settings.domain,
-                name=launch_plan_model.id.name,
+                name=entity.name,
                 version=version,
             )
             flp.python_interface = entity.python_interface
@@ -1536,6 +1532,9 @@ class FlyteRemote(object):
             )
 
         # Underlying workflow, exists, only register the launch plan itself
+        launch_plan_model = get_serializable(
+            OrderedDict(), settings=serialization_settings, entity=entity, options=options
+        )
         ident = self.raw_register(launch_plan_model, serialization_settings, version, create_default_launchplan=False)
         if ident is None:
             raise ValueError("Failed to register launch plan, identifier returned was empty...")
