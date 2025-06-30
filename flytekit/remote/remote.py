@@ -1446,6 +1446,7 @@ class FlyteRemote(object):
                 *FlyteRemote._get_pod_template_hash(entity),
             )
 
+        serialization_settings.version = version
         if isinstance(entity, PythonTask):
             return self.register_task(entity, serialization_settings, version)
         if isinstance(entity, WorkflowBase):
