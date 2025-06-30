@@ -1514,7 +1514,7 @@ class FlyteRemote(object):
             project=serialization_settings.project,
             domain=serialization_settings.domain,
         ):
-            # If the workflow doesn't exist, register it
+            # If workflow doesn't exist, register it first
             self.register_workflow(
                 entity.workflow, serialization_settings, version, default_launch_plan=False, options=options
             )
