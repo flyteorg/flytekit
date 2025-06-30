@@ -20,7 +20,7 @@ extras = {
         "ydata-profiling",
         "markdown",
         "plotly",
-        "pygments"
+        "pygments",
     ],
 }
 
