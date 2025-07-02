@@ -1,5 +1,6 @@
 markdown
-pandas
+pandas<=2.2.3; python_version < '3.10'
+pandas>=1.0.0; python_version > '3.9'
 plotly
 pygments
 ydata-profiling
