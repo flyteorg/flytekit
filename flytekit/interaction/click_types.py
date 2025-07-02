@@ -264,6 +264,27 @@ class DateTimeType(click.DateTime):
         return self._datetime_from_format(value, param, ctx)
 
 
+class DateType(DateTimeType):
+    """
+    A specialized type for handling date types that extends DateTimeType but returns date objects.
+    """
+
+    def convert(
+        self, value: typing.Any, param: typing.Optional[click.Parameter], ctx: typing.Optional[click.Context]
+    ) -> typing.Any:
+        if isinstance(value, ArtifactQuery):
+            return value
+
+        # First convert using the parent DateTime logic
+        dt_value = super().convert(value, param, ctx)
+
+        # Then convert to date if it's a datetime object
+        if isinstance(dt_value, datetime.datetime):
+            return dt_value.date()
+
+        return dt_value
+
+
 class DurationParamType(click.ParamType):
     name = "[1:24 | :22 | 1 minute | 10 days | ...]"
 
@@ -519,8 +540,13 @@ def literal_type_to_click_type(lt: LiteralType, python_type: typing.Type) -> cli
         for i in range(len(lt.union_type.variants)):
             variant = lt.union_type.variants[i]
             variant_python_type = typing.get_args(python_type)[i]
-            ct = literal_type_to_click_type(variant, variant_python_type)
+            # Special handling for datetime.date in union types
+            if variant_python_type is datetime.date:
+                ct = DateType()
+            else:
+                ct = literal_type_to_click_type(variant, variant_python_type)
             cts.append(ct)
+
         return UnionParamType(cts)
 
     return click.UNPROCESSED
@@ -559,7 +585,7 @@ class FlyteLiteralConverter(object):
             return value
         try:
             # If the expected Python type is datetime.date, adjust the value to date
-            if self._python_type is datetime.date:
+            if self._python_type is datetime.date and isinstance(value, datetime.datetime):
                 # Click produces datetime, so converting to date to avoid type mismatch error
                 value = value.date()
             # If the input matches the default value in the launch plan, serialization can be skipped.
