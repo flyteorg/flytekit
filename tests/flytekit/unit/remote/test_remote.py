@@ -120,6 +120,7 @@ def test_remote_fetch_execution(remote):
     )
     mock_client = MagicMock()
     mock_client.get_execution.return_value = admin_workflow_execution
+    mock_client.get_workflow.return_value.closure.compiled_workflow.primary.template.failure_node = None
     remote._client = mock_client
     flyte_workflow_execution = remote.fetch_execution(name="n1")
     assert flyte_workflow_execution.id == admin_workflow_execution.id
@@ -562,6 +563,7 @@ def mock_flyte_remote_client():
     with patch("flytekit.remote.remote.FlyteRemote.client") as mock_flyte_remote_client:
         mock_flyte_remote_client.get_task.return_value.closure.compiled_task.template.sql = None
         mock_flyte_remote_client.get_task.return_value.closure.compiled_task.template.k8s_pod = None
+        mock_flyte_remote_client.get_workflow.return_value.closure.compiled_workflow.primary.template.failure_node = None
         yield mock_flyte_remote_client
 
 
