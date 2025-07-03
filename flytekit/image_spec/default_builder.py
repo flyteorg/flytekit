@@ -441,6 +441,7 @@ def create_docker_context(image_spec: ImageSpec, tmp_dir: Path):
         UV_IMAGE=uv_image,
         MICROMAMBA_IMAGE=micromamba_image,
     )
+    docker_content += "\nUSER root"
 
     dockerfile_path = tmp_dir / "Dockerfile"
     dockerfile_path.write_text(docker_content)
