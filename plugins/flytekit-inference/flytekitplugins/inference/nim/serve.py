@@ -33,6 +33,7 @@ class NIM(ModelInferenceTemplate):
         cpu: int = 1,
         gpu: int = 1,
         mem: str = "20Gi",
+        ephemeral_storage: str = "20Gi",
         shm_size: str = "16Gi",
         env: Optional[
             dict[str, str]
@@ -49,6 +50,7 @@ class NIM(ModelInferenceTemplate):
         :param cpu: The number of CPU cores requested for the model server container. Default is 1.
         :param gpu: The number of GPU cores requested for the model server container. Default is 1.
         :param mem: The amount of memory requested for the model server container. Default is "20Gi".
+        :param ephemeral_storage: The amount of ephemeral storage requested for the model server container. Default is "20Gi".
         :param shm_size: The size of the shared memory volume. Default is "16Gi".
         :param env: A dictionary of environment variables to be set in the model server container.
         :param hf_repo_ids: A list of Hugging Face repository IDs for LoRA adapters to be downloaded.
@@ -72,6 +74,7 @@ class NIM(ModelInferenceTemplate):
             cpu=cpu,
             gpu=gpu,
             mem=mem,
+            ephemeral_storage=ephemeral_storage,
             env=env,
         )
 
