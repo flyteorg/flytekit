@@ -1252,6 +1252,7 @@ class FlyteRemote(object):
         md5_bytes: bytes,
         serialization_settings: SerializationSettings,
         default_inputs: typing.Optional[Dict[str, typing.Any]] = None,
+        additional_context_bytes: typing.List[bytes] = [],
         *additional_context: str,
     ) -> str:
         """
@@ -1275,6 +1276,8 @@ class FlyteRemote(object):
 
         for s in additional_context:
             h.update(bytes(s, "utf-8"))
+        for b in additional_context_bytes:
+            h.update(b)
 
         if default_inputs:
             try:
@@ -1389,7 +1392,7 @@ class FlyteRemote(object):
                 serialization_settings,
                 default_inputs,
                 *self._get_image_names(entity),
-                *version_hash_additional_context,
+                additional_context_bytes = version_hash_additional_context,
             )
 
         if isinstance(entity, PythonTask):

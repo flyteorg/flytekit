@@ -61,7 +61,7 @@ class FlytekitPluginProtocol(Protocol):
         """Get default cache policies for tasks."""
 
     @staticmethod
-    def get_additional_context_for_version_hash(entity: Union[PythonAutoContainerTask, WorkflowBase]) -> List[str]:
+    def get_additional_context_for_version_hash(entity: Union[PythonAutoContainerTask, WorkflowBase]) -> List[bytes]:
         """Get additional context to be used for calculating the version hash."""
 
     def get_additional_info_for_execution(
@@ -125,7 +125,7 @@ class FlytekitPlugin:
         return []
 
     @staticmethod
-    def get_additional_context_for_version_hash(entity: Union[PythonAutoContainerTask, WorkflowBase]) -> List[str]:
+    def get_additional_context_for_version_hash(entity: Union[PythonAutoContainerTask, WorkflowBase]) -> List[bytes]:
         """Get additional context to be used for calculating the version hash."""
         return []
 
