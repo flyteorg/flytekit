@@ -1338,6 +1338,11 @@ class FlyteRemote(object):
             for n in entity.nodes:
                 image_names.extend(FlyteRemote._get_image_names(n.flyte_entity))
             return image_names
+        if isinstance(entity, LaunchPlan):
+            image_names = []
+            for n in entity.workflow.nodes:
+                image_names.extend(FlyteRemote._get_image_names(n.flyte_entity))
+            return image_names
         return []
 
     @staticmethod
@@ -1446,6 +1451,7 @@ class FlyteRemote(object):
                 *FlyteRemote._get_pod_template_hash(entity),
             )
 
+        serialization_settings.version = version
         if isinstance(entity, PythonTask):
             return self.register_task(entity, serialization_settings, version)
         if isinstance(entity, WorkflowBase):
