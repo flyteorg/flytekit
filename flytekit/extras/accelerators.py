@@ -136,11 +136,11 @@ V100 = GPUAccelerator("nvidia-tesla-v100")
 
 #: use this constant to specify that the task should run on an
 #: `NVIDIA H100 GPU https://www.nvidia.com/en-us/data-center/h100
-H100 = GPUAccelerator("nvidia-tesla-h100")
+H100 = GPUAccelerator("nvidia-h100")
 
 #: use this constant to specify that the task should run on an
 #: `NVIDIA H200 GPU https://www.nvidia.com/en-us/data-center/h200
-H200 = GPUAccelerator("nvidia-tesla-h200")
+H200 = GPUAccelerator("nvidia-h200")
 
 
 class MultiInstanceGPUAccelerator(BaseAccelerator):
