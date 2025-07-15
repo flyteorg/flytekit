@@ -2,14 +2,14 @@
 #    uv pip compile dev-requirements.in
 aiofiles==23.2.1
     # via gcloud-aio-storage
-aiohappyeyeballs==2.4.3
+aiohappyeyeballs==2.6.1
     # via aiohttp
-aiohttp==3.10.10
+aiohttp==3.12.14
     # via
     #   apache-airflow-providers-http
     #   gcloud-aio-auth
     #   gcsfs
-aiosignal==1.3.1
+aiosignal==1.4.0
     # via aiohttp
 alembic==1.13.3
     # via
@@ -740,7 +740,9 @@ pluggy==1.5.0
 prison==0.2.1
     # via flask-appbuilder
 propcache==0.2.0
-    # via yarl
+    # via
+    #   aiohttp
+    #   yarl
 proto-plus==1.24.0
     # via
     #   apache-airflow-providers-google
@@ -1023,6 +1025,7 @@ time-machine==2.16.0
     # via pendulum
 typing-extensions==4.12.2
     # via
+    #   aiosignal
     #   alembic
     #   anyio
     #   apache-beam
@@ -1066,7 +1069,7 @@ wtforms==3.1.2
     # via
     #   flask-appbuilder
     #   flask-wtf
-yarl==1.14.0
+yarl==1.18.3
     # via aiohttp
 zipp==3.21.0
     # via
