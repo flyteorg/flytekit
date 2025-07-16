@@ -1769,6 +1769,19 @@ def _type_essence(x: LiteralType) -> LiteralType:
 
 
 def _are_types_castable(upstream: LiteralType, downstream: LiteralType) -> bool:
+    if upstream.union_type is not None:
+        # for each upstream variant, there must be a compatible type downstream
+        for v in upstream.union_type.variants:
+            if not _are_types_castable(v, downstream):
+                return False
+        return True
+
+    if downstream.union_type is not None:
+        # there must be a compatible downstream type
+        for v in downstream.union_type.variants:
+            if _are_types_castable(upstream, v):
+                return True
+
     if upstream.collection_type is not None:
         if downstream.collection_type is None:
             return False
@@ -1813,19 +1826,6 @@ def _are_types_castable(upstream: LiteralType, downstream: LiteralType) -> bool:
                 return False
 
         return True
-
-    if upstream.union_type is not None:
-        # for each upstream variant, there must be a compatible type downstream
-        for v in upstream.union_type.variants:
-            if not _are_types_castable(v, downstream):
-                return False
-        return True
-
-    if downstream.union_type is not None:
-        # there must be a compatible downstream type
-        for v in downstream.union_type.variants:
-            if _are_types_castable(upstream, v):
-                return True
 
     if upstream.enum_type is not None:
         # enums are castable to string
@@ -2113,7 +2113,7 @@ class DictTransformer(AsyncTypeTransformer[dict]):
                     ),
                     metadata={"format": "pickle"},
                 )
-            raise TypeTransformerFailedError(f"Cannot convert `{v}` to Flyte Literal.\n" f"Error Message: {e}")
+            raise TypeTransformerFailedError(f"Cannot convert `{v}` to Flyte Literal.\nError Message: {e}")
 
     @staticmethod
     async def dict_to_binary_literal(
@@ -2139,7 +2139,7 @@ class DictTransformer(AsyncTypeTransformer[dict]):
                     ),
                     metadata={"format": "pickle"},
                 )
-            raise TypeTransformerFailedError(f"Cannot convert `{v}` to Flyte Literal.\n" f"Error Message: {e}")
+            raise TypeTransformerFailedError(f"Cannot convert `{v}` to Flyte Literal.\nError Message: {e}")
 
     @staticmethod
     def is_pickle(python_type: Type[dict]) -> bool:
