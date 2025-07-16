@@ -108,9 +108,6 @@ RUN --mount=from=micromamba,source=/etc/ssl/certs/ca-certificates.crt,target=/tm
     [ -f /etc/ssl/certs/ca-certificates.crt ] || \
     mkdir -p /etc/ssl/certs/ && cp /tmp/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
 
-RUN id -u flytekit || useradd --create-home --shell /bin/bash flytekit
-RUN chown flytekit /root && chown -R flytekit /home
-
 $INSTALL_PYTHON_TEMPLATE
 
 # Configure user space
@@ -136,6 +133,9 @@ $EXTRA_COPY_CMDS
 
 RUN --mount=type=cache,sharing=locked,mode=0777,target=/root/.cache/uv,id=uv \
     --mount=from=uv,source=/uv,target=/usr/bin/uv $RUN_COMMANDS
+
+RUN id -u flytekit || useradd --create-home --shell /bin/bash flytekit
+RUN chown -R flytekit /root && chown -R flytekit /home
 
 WORKDIR /root
 SHELL ["/bin/bash", "-c"]
