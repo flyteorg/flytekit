@@ -32,6 +32,7 @@ time_info_df = pd.DataFrame(
 
 
 def test_frame_profiling_renderer():
+    print(pd.__version__)
     renderer = FrameProfilingRenderer()
     assert "Pandas Profiling Report" in renderer.to_html(df).title()
 
