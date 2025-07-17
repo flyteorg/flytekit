@@ -22,7 +22,7 @@ ARG DOCKER_IMAGE
 # 4. Create a non-root user 'flytekit' and set appropriate permissions for directories.
 RUN apt-get update && apt-get install build-essential -y \
     && pip install uv \
-    && uv pip install --system --no-cache-dir -U flytekit==$VERSION \
+    && uv pip install --system --no-cache-dir --pre -U flytekit==$VERSION \
         kubernetes \
     && apt-get clean autoclean \
     && apt-get autoremove --yes \

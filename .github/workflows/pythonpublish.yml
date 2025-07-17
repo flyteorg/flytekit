@@ -3,6 +3,15 @@ name: Publish Python Packages and Official Images
 on:
   release:
     types: [published]
+  pull_request:
+    paths:
+      - '.github/workflows/pythonpublish.yml'
+      - 'Dockerfile'
+      - 'Dockerfile.connector'
+      - './plugins/flytekit-sqlalchemy/Dockerfile'
+      - './plugins/flytekit-openai/Dockerfile.batch'
+      - './plugins/flytekit-spark/Dockerfile'
+      - './plugins/flytekit-flyteinteractive/Dockerfile'
 
 jobs:
   deploy:
@@ -39,14 +48,18 @@ jobs:
           VERSION=$(echo $GITHUB_REF | sed 's|refs/tags/v||')
           VERSION=$VERSION make -C plugins update_all_versions
         shell: bash
-      - name: Build all Plugins and publish
+      - name: Build all plugins
+        run: |
+          make -C plugins build_all_plugins
+      - name: Publish all plugins
+        if: ${{ github.event_name == 'release' }}
         env:
           TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
           TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
         run: |
-          make -C plugins build_all_plugins
           make -C plugins publish_all_plugins
       - name: Sleep until pypi is available
+        if: ${{ github.event_name == 'release' }}
         id: pypiwait
         run: |
           # from 'refs/tags/v1.2.3 get 1.2.3' and make sure it's not an empty string
