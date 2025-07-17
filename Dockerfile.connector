@@ -8,7 +8,7 @@ ARG VERSION
 RUN apt-get update && apt-get install build-essential -y \
     && pip install uv
 
-RUN uv pip install --system --no-cache-dir -U flytekit[connector]==$VERSION \
+RUN uv pip install --system --no-cache-dir -U --pre flytekit[connector]==$VERSION \
   flytekitplugins-airflow==$VERSION \
   flytekitplugins-bigquery==$VERSION \
   flytekitplugins-k8sdataservice==$VERSION \
@@ -26,6 +26,6 @@ CMD ["pyflyte", "serve", "connector", "--port", "8000"]
 FROM connector-slim AS connector-all
 ARG VERSION
 
-RUN uv pip install --system --no-cache-dir -U \
+RUN uv pip install --system --pre --no-cache-dir -U \
   flytekitplugins-mmcloud==$VERSION \
   flytekitplugins-spark==$VERSION

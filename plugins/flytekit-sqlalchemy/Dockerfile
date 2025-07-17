@@ -9,7 +9,7 @@ ENV PYTHONPATH /root
 ARG VERSION
 
 RUN pip install uv --no-cache-dir \
-  && uv pip install --system --no-cache-dir -U \
+  && uv pip install --system --pre --no-cache-dir -U \
     sqlalchemy \
     psycopg2-binary \
     pymysql \
