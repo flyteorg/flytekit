@@ -662,6 +662,24 @@ class LocalConfig(object):
         kwargs = set_if_exists(kwargs, "cache_overwrite", _internal.Local.CACHE_OVERWRITE.read(config_file))
         return LocalConfig(**kwargs)
 
+@dataclass(init=True, repr=True, eq=True, frozen=True)
+class FieldConfig(object):
+    """
+    Any Project/Domain/Org configuration.
+    """
+
+    project: Optional[str] = None
+    domain: Optional[str] = None
+    org: Optional[str] = None
+
+    @classmethod
+    def auto(cls, config_file: typing.Union[str, ConfigFile] = None) -> FieldConfig:
+        config_file = get_config_file(config_file)
+        kwargs = {}
+        kwargs = set_if_exists(kwargs, "project", _internal.Local.USER_PROJECT.read(config_file))
+        kwargs = set_if_exists(kwargs, "domain", _internal.Local.USER_DOMAIN.read(config_file))
+        kwargs = set_if_exists(kwargs, "org", _internal.Local.USER_ORG.read(config_file))
+        return FieldConfig(**kwargs)
 
 @dataclass(init=True, repr=True, eq=True, frozen=True)
 class Config(object):
@@ -684,6 +702,7 @@ class Config(object):
     stats: StatsConfig = StatsConfig()
     data_config: DataConfig = DataConfig()
     local_sandbox_path: str = tempfile.mkdtemp(prefix="flyte")
+    field_config: FieldConfig = FieldConfig()
 
     def with_params(
         self,
@@ -692,6 +711,7 @@ class Config(object):
         stats: StatsConfig = None,
         data_config: DataConfig = None,
         local_sandbox_path: str = None,
+        field_config: FieldConfig = None,
     ) -> Config:
         return Config(
             platform=platform or self.platform,
@@ -699,6 +719,7 @@ class Config(object):
             stats=stats or self.stats,
             data_config=data_config or self.data_config,
             local_sandbox_path=local_sandbox_path or self.local_sandbox_path,
+            field_config=field_config or self.field_config,
         )
 
     @classmethod
@@ -720,6 +741,7 @@ class Config(object):
             secrets=SecretsConfig.auto(config_file),
             stats=StatsConfig.auto(config_file),
             data_config=DataConfig.auto(config_file),
+            field_config=FieldConfig.auto(config_file),
             **kwargs,
         )
 

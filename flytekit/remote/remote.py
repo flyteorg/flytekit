@@ -302,6 +302,10 @@ class FlyteRemote(object):
         # read config files, env vars, host, ssl options for admin client
         self._default_project = default_project
         self._default_domain = default_domain
+        if config.field_config.project is not None:
+            self._default_project = config.field_config.project
+        if config.field_config.domain is not None:
+            self._default_domain = config.field_config.domain
 
         fsspec.register_implementation("flyte", get_flyte_fs(remote=self), clobber=True)
 
@@ -1378,8 +1382,8 @@ class FlyteRemote(object):
                 )
 
         serialization_settings = SerializationSettings(
-            project=project or self.default_project,
-            domain=domain or self.default_domain,
+            project=self.default_project or project,
+            domain=self.default_domain or domain,
             image_config=image_config,
             git_repo=_get_git_repo_url(source_path),
             env=envs,
