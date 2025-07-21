@@ -131,6 +131,8 @@ class TaskMetadata(object):
         pod_template_name (Optional[str]): The name of an existing PodTemplate resource in the cluster which will be used for this task.
         generates_deck (bool): Indicates whether the task will generate a Deck URI.
         is_eager (bool): Indicates whether the task should be treated as eager.
+        labels (Optional[dict[str, str]]): Labels to be applied to the task resource.
+        annotations (Optional[dict[str, str]]): Annotations to be applied to the task resource.
     """
 
     cache: bool = False
@@ -144,6 +146,8 @@ class TaskMetadata(object):
     pod_template_name: Optional[str] = None
     generates_deck: bool = False
     is_eager: bool = False
+    labels: Optional[dict[str, str]] = None
+    annotations: Optional[dict[str, str]] = None
 
     def __post_init__(self):
         if self.timeout:
@@ -185,6 +189,10 @@ class TaskMetadata(object):
             pod_template_name=self.pod_template_name,
             cache_ignore_input_vars=self.cache_ignore_input_vars,
             is_eager=self.is_eager,
+            k8s_object_metadata=_task_model.K8sObjectMetadata(
+                labels=self.labels,
+                annotations=self.annotations,
+            ),
         )
 
 

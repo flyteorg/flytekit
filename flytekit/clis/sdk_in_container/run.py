@@ -160,7 +160,7 @@ class RunLevelParams(PyFlyteParams):
     )
     poll_interval: int = make_click_option_field(
         click.Option(
-            param_decls=["-i", "--poll-interval", "poll_interval"],
+            param_decls=["--poll-interval", "poll_interval"],
             required=False,
             type=int,
             default=None,

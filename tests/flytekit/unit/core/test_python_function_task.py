@@ -284,3 +284,17 @@ def test_default_inputs():
         return x
 
     assert foo3.python_interface.inputs_with_defaults == {"x": (int, None), "y": (str, None)}
+
+
+def test_k8s_metadata():
+    @task(
+        labels={"lkey": "lval"},
+        annotations={"akey": "aval"},
+    )
+    def func_with_k8s_meta(i: str):
+        ...
+
+    meta = func_with_k8s_meta.metadata
+
+    assert meta.labels == {"lkey": "lval"}
+    assert meta.annotations == {"akey": "aval"}
