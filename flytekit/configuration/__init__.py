@@ -662,6 +662,7 @@ class LocalConfig(object):
         kwargs = set_if_exists(kwargs, "cache_overwrite", _internal.Local.CACHE_OVERWRITE.read(config_file))
         return LocalConfig(**kwargs)
 
+
 @dataclass(init=True, repr=True, eq=True, frozen=True)
 class FieldConfig(object):
     """
@@ -681,6 +682,7 @@ class FieldConfig(object):
         kwargs = set_if_exists(kwargs, "org", _internal.Local.USER_ORG.read(config_file))
         return FieldConfig(**kwargs)
 
+
 @dataclass(init=True, repr=True, eq=True, frozen=True)
 class Config(object):
     """
@@ -691,10 +693,13 @@ class Config(object):
     2. Some parts are required for Serialization, for example Platform Config is not required
     3. Runtime of a task
 
-    Args:
-        entrypoint_settings: EntrypointSettings object for use with Spark tasks. If supplied, this will be
-          used when serializing Spark tasks, which need to know the path to the flytekit entrypoint.py file,
-          inside the container.
+    Attributes:
+        platform (PlatformConfig): Settings to connect to a Flyte backend.
+        secrets (SecretsConfig): Configuration for secrets management.
+        stats (StatsConfig): Configuration for statsd metrics.
+        data_config (DataConfig): Data storage configuration.
+        local_sandbox_path (str): Path for local sandbox runs.
+        field_config (FieldConfig): Project/Domain/Org configuration.
     """
 
     platform: PlatformConfig = PlatformConfig()

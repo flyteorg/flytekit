@@ -75,10 +75,27 @@ class Local(object):
     SECTION = "local"
     CACHE_ENABLED = ConfigEntry(LegacyConfigEntry(SECTION, "cache_enabled", bool))
     CACHE_OVERWRITE = ConfigEntry(LegacyConfigEntry(SECTION, "cache_overwrite", bool))
-    USER_PROJECT = ConfigEntry(LegacyConfigEntry(SECTION, "project",),YamlConfigEntry("task.project"))
-    USER_DOMAIN = ConfigEntry(LegacyConfigEntry(SECTION, "domain",),YamlConfigEntry("task.domain"))
-    USER_ORG = ConfigEntry(LegacyConfigEntry(SECTION, "org",),YamlConfigEntry("task.org"))
-
+    USER_PROJECT = ConfigEntry(
+        LegacyConfigEntry(
+            SECTION,
+            "project",
+        ),
+        YamlConfigEntry("task.project"),
+    )
+    USER_DOMAIN = ConfigEntry(
+        LegacyConfigEntry(
+            SECTION,
+            "domain",
+        ),
+        YamlConfigEntry("task.domain"),
+    )
+    USER_ORG = ConfigEntry(
+        LegacyConfigEntry(
+            SECTION,
+            "org",
+        ),
+        YamlConfigEntry("task.org"),
+    )
 
 
 class Credentials(object):
