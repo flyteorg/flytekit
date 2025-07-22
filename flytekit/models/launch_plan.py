@@ -9,6 +9,7 @@ from flytekit.models import literals as _literals
 from flytekit.models import schedule as _schedule
 from flytekit.models import security
 from flytekit.models.core import identifier as _identifier
+from flytekit.models.concurrency import ConcurrencyPolicy
 
 
 class LaunchPlanMetadata(_common.FlyteIdlEntity):
@@ -138,6 +139,7 @@ class LaunchPlanSpec(_common.FlyteIdlEntity):
         max_parallelism: typing.Optional[int] = None,
         security_context: typing.Optional[security.SecurityContext] = None,
         overwrite_cache: typing.Optional[bool] = None,
+        concurrency_policy: typing.Optional[ConcurrencyPolicy] = None,
     ):
         """
         The spec for a Launch Plan.
@@ -158,6 +160,8 @@ class LaunchPlanSpec(_common.FlyteIdlEntity):
             parallelism/concurrency of MapTasks is independent from this.
         :param security_context: This can be used to add security information to a LaunchPlan, which will be used by
                                  every execution
+        :param flytekit.models.concurrency.ConcurrencyPolicy concurrency_policy:
+            Concurrency settings to control the number of concurrent workflows in a given LaunchPlan
         """
         self._workflow_id = workflow_id
         self._entity_metadata = entity_metadata
@@ -170,6 +174,7 @@ class LaunchPlanSpec(_common.FlyteIdlEntity):
         self._max_parallelism = max_parallelism
         self._security_context = security_context
         self._overwrite_cache = overwrite_cache
+        self._concurrency_policy = concurrency_policy
 
     @property
     def workflow_id(self):
@@ -246,6 +251,14 @@ class LaunchPlanSpec(_common.FlyteIdlEntity):
     def overwrite_cache(self) -> typing.Optional[bool]:
         return self._overwrite_cache
 
+    @property
+    def concurrency_policy(self) -> typing.Optional[ConcurrencyPolicy]:
+        """
+        Concurrency settings for the launch plan.
+        :rtype: flytekit.models.concurrency.ConcurrencyPolicy
+        """
+        return self._concurrency_policy
+
     def to_flyte_idl(self):
         """
         :rtype: flyteidl.admin.launch_plan_pb2.LaunchPlanSpec
@@ -262,6 +275,7 @@ class LaunchPlanSpec(_common.FlyteIdlEntity):
             max_parallelism=self.max_parallelism,
             security_context=self.security_context.to_flyte_idl() if self.security_context else None,
             overwrite_cache=self.overwrite_cache if self.overwrite_cache else None,
+            concurrency_policy=self.concurrency_policy.to_flyte_idl() if self.concurrency_policy else None,
         )
 
     @classmethod
@@ -295,6 +309,8 @@ class LaunchPlanSpec(_common.FlyteIdlEntity):
             if pb2.security_context
             else None,
             overwrite_cache=pb2.overwrite_cache if pb2.overwrite_cache else None,
+            concurrency_policy=ConcurrencyPolicy.from_flyte_idl(pb2.concurrency_policy)
+            if pb2.HasField("concurrency_policy") else None,
         )
 
 
