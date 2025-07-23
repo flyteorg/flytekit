@@ -308,10 +308,10 @@ class FlyteRemote(object):
         # read config files, env vars, host, ssl options for admin client
         self._default_project = default_project
         self._default_domain = default_domain
-        if config.field_config.project is not None:
-            self._default_project = config.field_config.project
-        if config.field_config.domain is not None:
-            self._default_domain = config.field_config.domain
+        if config.task_config.project is not None:
+            self._default_project = config.task_config.project
+        if config.task_config.domain is not None:
+            self._default_domain = config.task_config.domain
 
         fsspec.register_implementation("flyte", get_flyte_fs(remote=self), clobber=True)
 
