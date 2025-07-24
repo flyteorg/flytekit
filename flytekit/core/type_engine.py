@@ -19,6 +19,7 @@ from collections import OrderedDict
 from functools import lru_cache, reduce
 from types import GenericAlias
 from typing import Any, Dict, List, NamedTuple, Optional, Type, cast
+from typing import Literal as TypingLiteral
 
 import msgpack
 from dataclasses_json import DataClassJsonMixin, dataclass_json
@@ -1087,6 +1088,85 @@ class EnumTransformer(TypeTransformer[enum.Enum]):
             raise TypeTransformerFailedError(f"Value {v} is not in Enum {t}")
 
 
+class LiteralTypeTransformer(TypeTransformer[TypingLiteral]):
+    def __init__(self):
+        super().__init__("LiteralTypeTransformer", TypingLiteral)
+
+    def get_literal_type(self, t: Type) -> LiteralType:
+        args = get_args(t)
+        if not args:
+            raise TypeTransformerFailedError("Literal must have at least one value")
+
+        base_type = type(args[0])
+        if not all(type(a) == base_type for a in args):
+            raise TypeTransformerFailedError("All values must be of the same type")
+
+        if base_type == str:
+            return LiteralType(simple=SimpleType.STRING)
+        elif base_type == int:
+            return LiteralType(simple=SimpleType.INTEGER)
+        elif base_type == float:
+            return LiteralType(simple=SimpleType.FLOAT)
+        elif base_type == bool:
+            return LiteralType(simple=SimpleType.BOOLEAN)
+        elif base_type == datetime.datetime:
+            return LiteralType(simple=SimpleType.DATETIME)
+        elif base_type == datetime.timedelta:
+            return LiteralType(simple=SimpleType.DURATION)
+        else:
+            raise TypeTransformerFailedError(f"Unsupported Literal base type: {base_type}")
+
+    def to_literal(self, ctx: FlyteContext, python_val: T, python_type: Type[T], expected: LiteralType) -> Literal:
+        if expected.simple == SimpleType.STRING:
+            return Literal(scalar=Scalar(primitive=Primitive(string_value=python_val)))
+        elif expected.simple == SimpleType.INTEGER:
+            return Literal(scalar=Scalar(primitive=Primitive(integer=python_val)))
+        elif expected.simple == SimpleType.FLOAT:
+            return Literal(scalar=Scalar(primitive=Primitive(float_value=python_val)))
+        elif expected.simple == SimpleType.BOOLEAN:
+            return Literal(scalar=Scalar(primitive=Primitive(boolean=python_val)))
+        elif expected.simple == SimpleType.DATETIME:
+            return Literal(scalar=Scalar(primitive=Primitive(datetime=python_val)))
+        elif expected.simple == SimpleType.DURATION:
+            return Literal(scalar=Scalar(primitive=Primitive(duration=python_val)))
+        else:
+            raise TypeError(f"Unsupported LiteralType for LiteralTypeTransformer: {expected.simple}")
+
+    def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T]) -> T:
+        if lv.scalar and lv.scalar.binary:
+            return self.from_binary_idl(lv.scalar.binary, expected_python_type)  # type: ignore
+        if lv.scalar.primitive.string_value is not None:
+            return lv.scalar.primitive.string_value
+        elif lv.scalar.primitive.integer is not None:
+            return lv.scalar.primitive.integer
+        elif lv.scalar.primitive.float_value is not None:
+            return lv.scalar.primitive.float_value
+        elif lv.scalar.primitive.boolean is not None:
+            return lv.scalar.primitive.boolean
+        elif lv.scalar.primitive.datetime is not None:
+            return lv.scalar.primitive.datetime
+        elif lv.scalar.primitive.duration is not None:
+            return lv.scalar.primitive.duration
+        else:
+            raise TypeTransformerFailedError("Unsupported Literal value")
+
+    def guess_python_type(self, literal_type: LiteralType):
+        if literal_type.simple == SimpleType.STRING:
+            return str
+        elif literal_type.simple == SimpleType.INTEGER:
+            return int
+        elif literal_type.simple == SimpleType.FLOAT:
+            return float
+        elif literal_type.simple == SimpleType.BOOLEAN:
+            return bool
+        elif literal_type.simple == SimpleType.DATETIME:
+            return datetime.datetime
+        elif literal_type.simple == SimpleType.DURATION:
+            return datetime.timedelta
+        else:
+            raise TypeTransformerFailedError(f"LiteralTypeTransformer cannot reverse {literal_type}")
+
+
 def _handle_json_schema_property(
     property_key: str,
     property_val: dict,
@@ -1173,6 +1253,7 @@ class TypeEngine(typing.Generic[T]):
     _RESTRICTED_TYPES: typing.List[type] = []
     _DATACLASS_TRANSFORMER: TypeTransformer = DataclassTransformer()  # type: ignore
     _ENUM_TRANSFORMER: TypeTransformer = EnumTransformer()  # type: ignore
+    _LITERAL_TYPE_TRANSFORMER: TypeTransformer = LiteralTypeTransformer()
     lazy_import_lock = threading.Lock()
 
     @classmethod
@@ -1222,6 +1303,9 @@ class TypeEngine(typing.Generic[T]):
             # Special case: prevent that for a type `FooEnum(str, Enum)`, the str transformer is used.
             return cls._ENUM_TRANSFORMER
 
+        if get_origin(python_type) == TypingLiteral:
+            return cls._LITERAL_TYPE_TRANSFORMER
+
         if hasattr(python_type, "__origin__"):
             # If the type is a generic type, we should check the origin type. But consider the case like Iterator[JSON]
             # or List[int] has been specifically registered; we should check for the entire type.
@@ -1253,6 +1337,7 @@ class TypeEngine(typing.Generic[T]):
         """
         Implements a recursive search for the transformer.
         """
+        logger.warning(f"get_transformer: {python_type}")
         v = cls._get_transformer(python_type)
         if v is not None:
             return v
@@ -2606,6 +2691,7 @@ def _register_default_type_transformers():
     TypeEngine.register(BinaryIOTransformer())
     TypeEngine.register(EnumTransformer())
     TypeEngine.register(ProtobufTransformer())
+    TypeEngine.register(LiteralTypeTransformer())
 
     # inner type is. Also unsupported are typing's Tuples. Even though you can look inside them, Flyte's type system
     # doesn't support these currently.
