@@ -434,6 +434,7 @@ class PlatformConfig(object):
         kwargs = set_if_exists(
             kwargs, "client_credentials_secret", _internal.Credentials.CLIENT_CREDENTIALS_SECRET.read(config_file)
         )
+        kwargs = set_if_exists(kwargs, "audience", _internal.Credentials.AUDIENCE.read(config_file))
 
         is_client_secret = False
         client_credentials_secret = read_file_if_exists(
