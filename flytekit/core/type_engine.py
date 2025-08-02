@@ -21,6 +21,7 @@ from types import GenericAlias
 from typing import Any, Dict, List, NamedTuple, Optional, Type, cast
 
 import msgpack
+from cachetools import LRUCache
 from dataclasses_json import DataClassJsonMixin, dataclass_json
 from flyteidl.core import literals_pb2
 from fsspec.asyn import _run_coros_in_chunks  # pylint: disable=W0212
@@ -1174,6 +1175,7 @@ class TypeEngine(typing.Generic[T]):
     _DATACLASS_TRANSFORMER: TypeTransformer = DataclassTransformer()  # type: ignore
     _ENUM_TRANSFORMER: TypeTransformer = EnumTransformer()  # type: ignore
     lazy_import_lock = threading.Lock()
+    _CACHE = LRUCache(maxsize=128)
 
     @classmethod
     def register(
@@ -1377,6 +1379,10 @@ class TypeEngine(typing.Generic[T]):
                 break
         return hsh
 
+    @lru_cache(typed=True)
+    def make_key(python_val: typing.Any, python_type: Type[T]) -> tuple:
+        return (repr(python_val), python_type.__name__)
+
     @classmethod
     def to_literal(
         cls, ctx: FlyteContext, python_val: typing.Any, python_type: Type[T], expected: LiteralType
@@ -1386,6 +1392,10 @@ class TypeEngine(typing.Generic[T]):
         to_literal function, and allowing this to_literal function, to then invoke yet another async function,
         namely an async transformer.
         """
+        key = cls.make_key(python_val, python_type)
+        if key in cls._CACHE:
+            return cls._CACHE[key]
+
         from flytekit.core.promise import Promise
 
         cls.to_literal_checks(python_val, python_type, expected)
@@ -1406,6 +1416,8 @@ class TypeEngine(typing.Generic[T]):
 
         modify_literal_uris(lv)
         lv.hash = cls.calculate_hash(python_val, python_type)
+
+        cls._CACHE[key] = lv
         return lv
 
     @classmethod
