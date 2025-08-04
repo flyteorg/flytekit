@@ -44,7 +44,7 @@ T = typing.TypeVar("T")
 
 
 @dataclass
-class FlyteFile(SerializableType, os.PathLike, typing.Generic[T], DataClassJSONMixin):
+class FlyteFile(SerializableType, os.PathLike, typing.Generic[T]):
     path: typing.Union[str, os.PathLike] = field(default=None, metadata=config(mm_field=fields.String()))  # type: ignore
     metadata: typing.Optional[dict[str, str]] = None
     """
@@ -165,6 +165,10 @@ class FlyteFile(SerializableType, os.PathLike, typing.Generic[T], DataClassJSONM
         if lv.metadata:
             out["metadata"] = lv.metadata
         return out
+
+    # def to_dict(self) -> typing.Dict[str, typing.Any]:
+    #     """Override mashumaro's to_dict to call _serialize for proper serialization."""
+    #     return self._serialize()
 
     @classmethod
     def _deserialize(cls, value) -> "FlyteFile":

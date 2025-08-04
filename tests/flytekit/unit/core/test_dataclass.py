@@ -1207,3 +1207,26 @@ def test_modify_literal_uris_call(mock_resolver):
 
     bm_revived = TypeEngine.to_python_value(ctx, lit, DC1)
     assert bm_revived.s.literal.uri == "/my/replaced/val"
+
+
+def test_dc_file_msat():
+    print(FlyteFile.__mro__)
+    print(hasattr(FlyteFile, "to_dict"))
+    print(FlyteFile.__dict__.get("to_dict"))
+
+    ff = FlyteFile("gs://foo/bar.txt")
+    ff_dict = ff.to_dict()
+    assert ff_dict
+    print(ff_dict)
+    # reconstructed_ff = FlyteFile.from_dict(ff_dict)
+    # # assert reconstructed_ff == ff
+    #
+    # @dataclass
+    # class Car(DataClassJSONMixin):
+    #     wheels: list[FlyteFile]
+    #
+    # c = Car(wheels=[FlyteFile("gs://foo/bar.txt")])
+    # cc_dict = c.to_dict()
+    # car_2 = Car.from_dict(cc_dict)
+    # assert car_2.wheels[0].remote_source == "gs://foo/bar.txt"
+    # print("hello")
