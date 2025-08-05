@@ -1337,6 +1337,7 @@ class TypeEngine(typing.Generic[T]):
         """
         Implements a recursive search for the transformer.
         """
+        logger.warning(f"get_transformer: {python_type}")
         v = cls._get_transformer(python_type)
         if v is not None:
             return v
