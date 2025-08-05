@@ -1102,67 +1102,65 @@ class LiteralTypeTransformer(TypeTransformer[TypingLiteral]):
             raise TypeTransformerFailedError("All values must be of the same type")
 
         if base_type == str:
-            return LiteralType(simple=SimpleType.STRING)
+            return StrTransformer.get_literal_type(args[0])
         elif base_type == int:
-            return LiteralType(simple=SimpleType.INTEGER)
+            return IntTransformer.get_literal_type(args[0])
         elif base_type == float:
-            return LiteralType(simple=SimpleType.FLOAT)
+            return FloatTransformer.get_literal_type(args[0])
         elif base_type == bool:
-            return LiteralType(simple=SimpleType.BOOLEAN)
+            return BoolTransformer.get_literal_type(args[0])
         elif base_type == datetime.datetime:
-            return LiteralType(simple=SimpleType.DATETIME)
+            return DatetimeTransformer.get_literal_type(args[0])
         elif base_type == datetime.timedelta:
-            return LiteralType(simple=SimpleType.DURATION)
+            return TimedeltaTransformer.get_literal_type(args[0])
         else:
             raise TypeTransformerFailedError(f"Unsupported Literal base type: {base_type}")
 
     def to_literal(self, ctx: FlyteContext, python_val: T, python_type: Type[T], expected: LiteralType) -> Literal:
         if expected.simple == SimpleType.STRING:
-            return Literal(scalar=Scalar(primitive=Primitive(string_value=python_val)))
+            return StrTransformer.to_literal(ctx, python_val, python_type, expected)
         elif expected.simple == SimpleType.INTEGER:
-            return Literal(scalar=Scalar(primitive=Primitive(integer=python_val)))
+            return IntTransformer.to_literal(ctx, python_val, python_type, expected)
         elif expected.simple == SimpleType.FLOAT:
-            return Literal(scalar=Scalar(primitive=Primitive(float_value=python_val)))
+            return FloatTransformer.to_literal(ctx, python_val, python_type, expected)
         elif expected.simple == SimpleType.BOOLEAN:
-            return Literal(scalar=Scalar(primitive=Primitive(boolean=python_val)))
+            return BoolTransformer.to_literal(ctx, python_val, python_type, expected)
         elif expected.simple == SimpleType.DATETIME:
-            return Literal(scalar=Scalar(primitive=Primitive(datetime=python_val)))
+            return DatetimeTransformer.to_literal(ctx, python_val, python_type, expected)
         elif expected.simple == SimpleType.DURATION:
-            return Literal(scalar=Scalar(primitive=Primitive(duration=python_val)))
+            return TimedeltaTransformer.to_literal(ctx, python_val, python_type, expected)
         else:
             raise TypeError(f"Unsupported LiteralType for LiteralTypeTransformer: {expected.simple}")
 
     def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T]) -> T:
-        if lv.scalar and lv.scalar.binary:
-            return self.from_binary_idl(lv.scalar.binary, expected_python_type)  # type: ignore
         if lv.scalar.primitive.string_value is not None:
-            return lv.scalar.primitive.string_value
+            return StrTransformer.to_python_value(ctx, lv, str)
         elif lv.scalar.primitive.integer is not None:
-            return lv.scalar.primitive.integer
+            return IntTransformer.to_python_value(ctx, lv, int)
         elif lv.scalar.primitive.float_value is not None:
-            return lv.scalar.primitive.float_value
+            return FloatTransformer.to_python_value(ctx, lv, float)
         elif lv.scalar.primitive.boolean is not None:
-            return lv.scalar.primitive.boolean
+            return BoolTransformer.to_python_value(ctx, lv, bool)
         elif lv.scalar.primitive.datetime is not None:
-            return lv.scalar.primitive.datetime
+            return DatetimeTransformer.to_python_value(ctx, lv, datetime.datetime)
         elif lv.scalar.primitive.duration is not None:
-            return lv.scalar.primitive.duration
+            return TimedeltaTransformer.to_python_value(ctx, lv, datetime.timedelta)
         else:
             raise TypeTransformerFailedError("Unsupported Literal value")
 
     def guess_python_type(self, literal_type: LiteralType):
         if literal_type.simple == SimpleType.STRING:
-            return str
+            return StrTransformer.guess_python_type(literal_type)
         elif literal_type.simple == SimpleType.INTEGER:
-            return int
+            return IntTransformer.guess_python_type(literal_type)
         elif literal_type.simple == SimpleType.FLOAT:
-            return float
+            return FloatTransformer.guess_python_type(literal_type)
         elif literal_type.simple == SimpleType.BOOLEAN:
-            return bool
+            return BoolTransformer.guess_python_type(literal_type)
         elif literal_type.simple == SimpleType.DATETIME:
-            return datetime.datetime
+            return DatetimeTransformer.guess_python_type(literal_type)
         elif literal_type.simple == SimpleType.DURATION:
-            return datetime.timedelta
+            return TimedeltaTransformer.guess_python_type(literal_type)
         else:
             raise TypeTransformerFailedError(f"LiteralTypeTransformer cannot reverse {literal_type}")
 
@@ -1337,7 +1335,6 @@ class TypeEngine(typing.Generic[T]):
         """
         Implements a recursive search for the transformer.
         """
-        logger.warning(f"get_transformer: {python_type}")
         v = cls._get_transformer(python_type)
         if v is not None:
             return v
