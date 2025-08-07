@@ -19,7 +19,6 @@ from collections import OrderedDict
 from functools import lru_cache, reduce
 from types import GenericAlias
 from typing import Any, Dict, List, NamedTuple, Optional, Type, cast
-from typing import Literal as TypingLiteral
 
 import msgpack
 from dataclasses_json import DataClassJsonMixin, dataclass_json
@@ -1088,9 +1087,9 @@ class EnumTransformer(TypeTransformer[enum.Enum]):
             raise TypeTransformerFailedError(f"Value {v} is not in Enum {t}")
 
 
-class LiteralTypeTransformer(TypeTransformer[TypingLiteral]):
+class LiteralTypeTransformer(TypeTransformer[object]):
     def __init__(self):
-        super().__init__("LiteralTypeTransformer", TypingLiteral)
+        super().__init__("LiteralTypeTransformer", object)
 
     def get_literal_type(self, t: Type) -> LiteralType:
         args = get_args(t)
@@ -1116,23 +1115,23 @@ class LiteralTypeTransformer(TypeTransformer[TypingLiteral]):
         else:
             raise TypeTransformerFailedError(f"Unsupported Literal base type: {base_type}")
 
-    def to_literal(self, ctx: FlyteContext, python_val: T, python_type: Type[T], expected: LiteralType) -> Literal:
-        if expected.simple == SimpleType.STRING:
-            return StrTransformer.to_literal(ctx, python_val, python_type, expected)
-        elif expected.simple == SimpleType.INTEGER:
-            return IntTransformer.to_literal(ctx, python_val, python_type, expected)
-        elif expected.simple == SimpleType.FLOAT:
-            return FloatTransformer.to_literal(ctx, python_val, python_type, expected)
-        elif expected.simple == SimpleType.BOOLEAN:
-            return BoolTransformer.to_literal(ctx, python_val, python_type, expected)
-        elif expected.simple == SimpleType.DATETIME:
-            return DatetimeTransformer.to_literal(ctx, python_val, python_type, expected)
-        elif expected.simple == SimpleType.DURATION:
-            return TimedeltaTransformer.to_literal(ctx, python_val, python_type, expected)
+    def to_literal(self, ctx: FlyteContext, python_val: T, python_type: Type, expected: LiteralType) -> Literal:
+        if expected.simple == SimpleType.STRING and isinstance(python_val, str):
+            return StrTransformer.to_literal(ctx, python_val, str, expected)
+        elif expected.simple == SimpleType.INTEGER and isinstance(python_val, int):
+            return IntTransformer.to_literal(ctx, python_val, int, expected)
+        elif expected.simple == SimpleType.FLOAT and isinstance(python_val, float):
+            return FloatTransformer.to_literal(ctx, python_val, float, expected)
+        elif expected.simple == SimpleType.BOOLEAN and isinstance(python_val, bool):
+            return BoolTransformer.to_literal(ctx, python_val, bool, expected)
+        elif expected.simple == SimpleType.DATETIME and isinstance(python_val, datetime.datetime):
+            return DatetimeTransformer.to_literal(ctx, python_val, datetime.datetime, expected)
+        elif expected.simple == SimpleType.DURATION and isinstance(python_val, datetime.timedelta):
+            return TimedeltaTransformer.to_literal(ctx, python_val, datetime.timedelta, expected)
         else:
             raise TypeError(f"Unsupported LiteralType for LiteralTypeTransformer: {expected.simple}")
 
-    def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T]) -> T:
+    def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type) -> object:
         if lv.scalar.primitive.string_value is not None:
             return StrTransformer.to_python_value(ctx, lv, str)
         elif lv.scalar.primitive.integer is not None:
@@ -1301,7 +1300,7 @@ class TypeEngine(typing.Generic[T]):
             # Special case: prevent that for a type `FooEnum(str, Enum)`, the str transformer is used.
             return cls._ENUM_TRANSFORMER
 
-        if get_origin(python_type) == TypingLiteral:
+        if get_origin(python_type) == typing.Literal:
             return cls._LITERAL_TYPE_TRANSFORMER
 
         if hasattr(python_type, "__origin__"):
@@ -2688,7 +2687,6 @@ def _register_default_type_transformers():
     TypeEngine.register(BinaryIOTransformer())
     TypeEngine.register(EnumTransformer())
     TypeEngine.register(ProtobufTransformer())
-    TypeEngine.register(LiteralTypeTransformer())
 
     # inner type is. Also unsupported are typing's Tuples. Even though you can look inside them, Flyte's type system
     # doesn't support these currently.
