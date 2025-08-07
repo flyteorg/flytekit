@@ -3888,8 +3888,8 @@ def test_type_engine_cache():
     # Verify different literals are different objects
     assert literal1 is not literal3
 
-    # Test cache with unhashable objects (should not cache)
-    python_val = {"a": [1, 2, 3]}  # dict with list is unhashable
+    # Test cache with unhashable objects
+    python_val = {"a": [1, 2, 3]}
     python_type = typing.Dict[str, typing.List[int]]
     expected = TypeEngine.to_literal_type(python_type)
 
@@ -3902,7 +3902,7 @@ def test_type_engine_cache():
     # Second call with same unhashable data
     literal5 = TypeEngine.to_literal(ctx, python_val, python_type, expected)
 
-    # Should be different objects since unhashable objects can't be cached
+    # Should be the same object since unhashable objects will fallback to cloudpickle to hash
     assert literal4 is literal5
 
     # Add many different values to test cache size limit
