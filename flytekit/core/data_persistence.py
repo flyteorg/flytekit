@@ -212,6 +212,7 @@ class FileAccessProvider(object):
             s3kwargs.update(kwargs)
             return fsspec.filesystem(protocol, **s3kwargs)  # type: ignore
         elif protocol == "gs":
+            print("skip_instance_cacheskip_instance_cacheskip_instance_cache", flush=True)
             kwargs["skip_instance_cache"] = True
             if anonymous:
                 kwargs["token"] = _ANON
