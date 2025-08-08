@@ -218,7 +218,10 @@ class FileAccessProvider(object):
 
             if anonymous:
                 kwargs["token"] = _ANON
-            return fsspec.filesystem(protocol, **kwargs)  # type: ignore
+            fs = fsspec.filesystem(protocol, **kwargs)
+            print(fs, flush=True)
+            print("kwargs", kwargs, flush=True)
+            return fs  # type: ignore
         elif protocol == "ftp":
             kwargs.update(fsspec.implementations.ftp.FTPFileSystem._get_kwargs_from_urls(path))
             return fsspec.filesystem(protocol, **kwargs)
