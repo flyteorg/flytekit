@@ -212,9 +212,9 @@ class FileAccessProvider(object):
             s3kwargs.update(kwargs)
             return fsspec.filesystem(protocol, **s3kwargs)  # type: ignore
         elif protocol == "gs":
+            kwargs["skip_instance_cache"] = True
             if anonymous:
                 kwargs["token"] = _ANON
-                kwargs["skip_instance_cache"] = True
             return fsspec.filesystem(protocol, **kwargs)  # type: ignore
         elif protocol == "ftp":
             kwargs.update(fsspec.implementations.ftp.FTPFileSystem._get_kwargs_from_urls(path))
