@@ -214,6 +214,7 @@ class FileAccessProvider(object):
         elif protocol == "gs":
             if anonymous:
                 kwargs["token"] = _ANON
+                kwargs["skip_instance_cache"] = True
             return fsspec.filesystem(protocol, **kwargs)  # type: ignore
         elif protocol == "ftp":
             kwargs.update(fsspec.implementations.ftp.FTPFileSystem._get_kwargs_from_urls(path))
