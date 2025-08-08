@@ -228,6 +228,7 @@ class FileAccessProvider(object):
         )
         kwargs.update(storage_options)
 
+        print("testtttttttttttttttttttttttt", flush=True)
         return fsspec.filesystem(protocol, **kwargs)
 
     async def get_async_filesystem_for_path(
