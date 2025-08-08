@@ -323,7 +323,7 @@ class FileAccessProvider(object):
                 )
             logger.info(f"Getting {from_path} to {to_path}")
             if isinstance(file_system, AsyncFileSystem):
-                kwargs["skip_instance_cache"] = True
+                kwargs["skip_instance_cache"] = "True"
                 dst = await file_system._get(from_path, to_path, recursive=recursive, **kwargs)  # pylint: disable=W0212
             else:
                 dst = file_system.get(from_path, to_path, recursive=recursive, **kwargs)
