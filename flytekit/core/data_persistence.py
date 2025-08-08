@@ -116,6 +116,7 @@ def get_additional_fsspec_call_kwargs(protocol: typing.Union[str, tuple], method
     if method_name == "put" and protocol in ["s3", "gs"]:
         kwargs["chunksize"] = _WRITE_SIZE_CHUNK_BYTES
 
+    kwargs["skip_instance_cache"] = True
     return kwargs
 
 
