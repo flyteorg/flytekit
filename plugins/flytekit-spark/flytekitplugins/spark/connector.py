@@ -1,3 +1,4 @@
+import asyncio
 import http
 import json
 import os
@@ -71,70 +72,35 @@ class DatabricksConnector(AsyncConnectorBase):
         self, task_template: TaskTemplate, inputs: Optional[LiteralMap] = None, **kwargs
     ) -> DatabricksJobMetadata:
         data = json.dumps(_get_databricks_job_spec(task_template))
-        databricks_instance = task_template.custom.get(
-            "databricksInstance", os.getenv(DEFAULT_DATABRICKS_INSTANCE_ENV_KEY)
-        )
+        # databricks_instance = task_template.custom.get(
+        #     "databricksInstance", os.getenv(DEFAULT_DATABRICKS_INSTANCE_ENV_KEY)
+        # )
+        #
+        # if not databricks_instance:
+        #     raise ValueError(
+        #         f"Missing databricks instance. Please set the value through the task config or set the {DEFAULT_DATABRICKS_INSTANCE_ENV_KEY} environment variable in the connector."
+        #     )
+        #
+        # databricks_url = f"https://{databricks_instance}{DATABRICKS_API_ENDPOINT}/runs/submit"
+        #
+        # async with aiohttp.ClientSession() as session:
+        #     async with session.post(databricks_url, headers=get_header(), data=data) as resp:
+        #         response = await resp.json()
+        #         if resp.status != http.HTTPStatus.OK:
+        #             raise RuntimeError(f"Failed to create databricks job with error: {response}")
 
-        if not databricks_instance:
-            raise ValueError(
-                f"Missing databricks instance. Please set the value through the task config or set the {DEFAULT_DATABRICKS_INSTANCE_ENV_KEY} environment variable in the connector."
-            )
-
-        databricks_url = f"https://{databricks_instance}{DATABRICKS_API_ENDPOINT}/runs/submit"
-
-        async with aiohttp.ClientSession() as session:
-            async with session.post(databricks_url, headers=get_header(), data=data) as resp:
-                response = await resp.json()
-                if resp.status != http.HTTPStatus.OK:
-                    raise RuntimeError(f"Failed to create databricks job with error: {response}")
-
-        return DatabricksJobMetadata(databricks_instance=databricks_instance, run_id=str(response["run_id"]))
+        return DatabricksJobMetadata(databricks_instance="databricks_instance", run_id="run_id")
 
     async def get(self, resource_meta: DatabricksJobMetadata, **kwargs) -> Resource:
+        print("get")
         databricks_instance = resource_meta.databricks_instance
-        databricks_url = (
-            f"https://{databricks_instance}{DATABRICKS_API_ENDPOINT}/runs/get?run_id={resource_meta.run_id}"
-        )
 
-        async with aiohttp.ClientSession() as session:
-            async with session.get(databricks_url, headers=get_header()) as resp:
-                if resp.status != http.HTTPStatus.OK:
-                    raise RuntimeError(f"Failed to get databricks job {resource_meta.run_id} with error: {resp.reason}")
-                response = await resp.json()
-
-        cur_phase = TaskExecution.UNDEFINED
-        message = ""
-        state = response.get("state")
-
-        # The databricks job's state is determined by life_cycle_state and result_state.
-        # https://docs.databricks.com/en/workflows/jobs/jobs-2.0-api.html#runresultstate
-        if state:
-            life_cycle_state = state.get("life_cycle_state")
-            if result_state_is_available(life_cycle_state):
-                result_state = state.get("result_state")
-                cur_phase = convert_to_flyte_phase(result_state)
-            else:
-                cur_phase = convert_to_flyte_phase(life_cycle_state)
-
-            message = state.get("state_message")
-
-        job_id = response.get("job_id")
-        databricks_console_url = f"https://{databricks_instance}/#job/{job_id}/run/{resource_meta.run_id}"
-        log_links = [TaskLog(uri=databricks_console_url, name="Databricks Console").to_flyte_idl()]
-
-        return Resource(phase=cur_phase, message=message, log_links=log_links)
+        return Resource(phase=TaskExecution.Phase.SUCCEEDED)
 
     async def delete(self, resource_meta: DatabricksJobMetadata, **kwargs):
-        databricks_url = f"https://{resource_meta.databricks_instance}{DATABRICKS_API_ENDPOINT}/runs/cancel"
-        data = json.dumps({"run_id": resource_meta.run_id})
 
-        async with aiohttp.ClientSession() as session:
-            async with session.post(databricks_url, headers=get_header(), data=data) as resp:
-                if resp.status != http.HTTPStatus.OK:
-                    raise RuntimeError(
-                        f"Failed to cancel databricks job {resource_meta.run_id} with error: {resp.reason}"
-                    )
-                await resp.json()
+        print("delete")
+        return
 
 
 class DatabricksConnectorV2(DatabricksConnector):
