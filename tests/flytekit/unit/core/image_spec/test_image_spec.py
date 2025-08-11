@@ -362,13 +362,13 @@ def test_with_builder_options():
 
 def test_noop_builder_updates_image_name_mapping():
     from flytekit.image_spec.noop_builder import NoOpBuilder
-    
+
     # Clear any existing mappings to ensure clean test state
     ImageBuildEngine._IMAGE_NAME_TO_REAL_NAME.clear()
-    
+
     # Register NoOpBuilder
     ImageBuildEngine.register("noop", NoOpBuilder())
-    
+
     # Create an image spec with NoOpBuilder
     expected_real_name = "localhost:30000/test_image:latest"
     image_spec = ImageSpec(
@@ -376,20 +376,20 @@ def test_noop_builder_updates_image_name_mapping():
         builder="noop",
         base_image=expected_real_name
     )
-    
+
     # Get the image name before building
     img_name = image_spec.image_name()
-    
+
     # Build the image
     ImageBuildEngine.build(image_spec)
-    
+
     # Verify that the mapping was created in _IMAGE_NAME_TO_REAL_NAME
     assert img_name in ImageBuildEngine._IMAGE_NAME_TO_REAL_NAME
-    
+
     # Verify the mapping value is correct
     actual_real_name = ImageBuildEngine._IMAGE_NAME_TO_REAL_NAME[img_name]
     assert actual_real_name == expected_real_name
-    
+
     # Clean up
     del ImageBuildEngine._REGISTRY["noop"]
     ImageBuildEngine._IMAGE_NAME_TO_REAL_NAME.clear()
