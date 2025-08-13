@@ -370,11 +370,11 @@ def test_noop_builder_updates_image_name_mapping():
     ImageBuildEngine.register("noop", NoOpBuilder())
 
     # Create an image spec with NoOpBuilder
-    expected_real_name = "localhost:30000/test_image:latest"
+    expected_image_name = "localhost:30000/test_image:latest"
     image_spec = ImageSpec(
         name="test_image",
         builder="noop",
-        base_image=expected_real_name
+        base_image=expected_image_name
     )
 
     # Get the image name before building
@@ -388,7 +388,7 @@ def test_noop_builder_updates_image_name_mapping():
 
     # Verify the mapping value is correct
     actual_real_name = ImageBuildEngine._IMAGE_NAME_TO_REAL_NAME[img_name]
-    assert actual_real_name == expected_real_name
+    assert actual_real_name == expected_image_name
 
     # Clean up
     del ImageBuildEngine._REGISTRY["noop"]
