@@ -246,27 +246,33 @@ def test_container_task_image_spec(mock_image_spec_builder):
 def test_container_task_timeout():
     ct_with_timeout = ContainerTask(
         name="timeout-test",
+        input_data_dir="/var/inputs",
+        output_data_dir="/var/outputs",
         image="busybox",
-        command=["sleep", "5"],
+        command=["sleep", "100"],
         timeout=1,
     )
+
+
 
     with pytest.raises((docker.errors.APIError, Exception)):
         ct_with_timeout.execute()
 
     ct_with_timedelta = ContainerTask(
         name="timedelta-timeout-test",
+        input_data_dir="/var/inputs",
+        output_data_dir="/var/outputs",
         image="busybox",
-        command=["sleep", "2"],
+        command=["sleep", "100"],
         timeout=timedelta(seconds=1),
     )
+    
 
     with pytest.raises((docker.errors.APIError, Exception)):
         ct_with_timedelta.execute()
 
 
 def test_container_task_timeout_k8s_serialization():
-    from datetime import timedelta
 
     ps = V1PodSpec(
         containers=[], tolerations=[V1Toleration(effect="NoSchedule", key="nvidia.com/gpu", operator="Exists")]
@@ -300,3 +306,18 @@ def test_container_task_timeout_k8s_serialization():
 
     k8s_pod_timedelta = ct_timedelta.get_k8s_pod(default_serialization_settings)
     assert k8s_pod_timedelta.pod_spec["activeDeadlineSeconds"] == 120
+
+def test_container_task_no_timeout():
+
+    ct = ContainerTask(
+        name="no-timeout-task",
+        input_data_dir="/var/inputs",
+        output_data_dir="/var/outputs",
+        image="busybox",
+        command=["sleep", "1"],  
+        timeout=500,
+    )
+    
+
+    
+    ct.execute()
