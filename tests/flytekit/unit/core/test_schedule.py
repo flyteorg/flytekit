@@ -157,7 +157,7 @@ def test_schedule_with_lp():
 
 def test_cron_invalid_date_combinations():
     """Test that CronSchedule rejects invalid date combinations like 31st of February."""
-    
+
     # Test invalid date combinations
     invalid_schedules = [
         "0 0 31 2 *",    # February 31st (does not exist)
@@ -165,11 +165,11 @@ def test_cron_invalid_date_combinations():
         "0 0 31 4 *",    # April 31st (does not exist)
         "0 0 31 6 *",    # June 31st (does not exist)
     ]
-    
+
     for invalid_schedule in invalid_schedules:
         with pytest.raises(ValueError, match="Schedule contains invalid date combinations"):
             CronSchedule(schedule=invalid_schedule)
-    
+
     # Test valid date combinations that should pass
     valid_schedules = [
         "0 0 28 2 *",    # February 28th (always valid)
@@ -178,7 +178,7 @@ def test_cron_invalid_date_combinations():
         "0 0 31 1 *",    # January 31st (valid)
         "0 0 31 3 *",    # March 31st (valid)
     ]
-    
+
     for valid_schedule in valid_schedules:
         # These should not raise any exceptions
         obj = CronSchedule(schedule=valid_schedule)

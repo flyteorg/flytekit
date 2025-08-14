@@ -154,8 +154,7 @@ class CronSchedule(_schedule_models.Schedule):
                 cron.get_next(datetime.datetime)
             except Exception as e:
                 raise ValueError(
-                    f"Schedule contains invalid date combinations."
-                    f"Provided schedule: {schedule}. Error: {str(e)}"
+                    f"Schedule contains invalid date combinations." f"Provided schedule: {schedule}. Error: {str(e)}"
                 )
 
     @staticmethod
