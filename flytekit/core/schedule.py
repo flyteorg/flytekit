@@ -142,11 +142,20 @@ class CronSchedule(_schedule_models.Schedule):
     def _validate_schedule(schedule: str):
         if schedule.lower() not in CronSchedule._VALID_CRON_ALIASES:
             try:
-                croniter.croniter(schedule)
+                cron = croniter.croniter(schedule)
             except Exception:
                 raise ValueError(
                     "Schedule is invalid. It must be set to either a cron alias or valid cron expression."
                     f" Provided schedule: {schedule}"
+                )
+            # Check if the cron expression can actually produce valid dates
+            try:
+                # Try to get the next occurrence to validate the schedule
+                cron.get_next(datetime.datetime)
+            except Exception as e:
+                raise ValueError(
+                    f"Schedule contains invalid date combinations."
+                    f"Provided schedule: {schedule}. Error: {str(e)}"
                 )
 
     @staticmethod
