@@ -62,7 +62,7 @@ class ContainerTask(PythonTask):
         pod_template_name: Optional[str] = None,
         local_logs: bool = False,
         resources: Optional[Resources] = None,
-        timeout: Optional[typing.Union[float, int, "datetime.timedelta"]] = None,
+        timeout: Optional["datetime.timedelta"] = None,
         **kwargs,
     ):
         sec_ctx = None
@@ -286,10 +286,7 @@ class ContainerTask(PythonTask):
         # Wait for the container to finish the task, with timeout if specified
         timeout_seconds = None
         if self._timeout is not None:
-            if isinstance(self._timeout, datetime.timedelta):
-                timeout_seconds = self._timeout.total_seconds()
-            else:
-                timeout_seconds = float(self._timeout)
+            timeout_seconds = self._timeout.total_seconds()
 
         if self.local_logs:
             for log in container.logs(stream=True):
@@ -341,12 +338,7 @@ class ContainerTask(PythonTask):
             return None
         pod_spec = _serialize_pod_spec(self.pod_template, self._get_container(settings), settings)
         if self._timeout is not None:
-            import datetime
-
-            if isinstance(self._timeout, datetime.timedelta):
-                timeout_seconds = int(self._timeout.total_seconds())
-            else:
-                timeout_seconds = int(float(self._timeout))
+            timeout_seconds = int(self._timeout.total_seconds())
             pod_spec["activeDeadlineSeconds"] = timeout_seconds
         return _task_model.K8sPod(
             pod_spec=pod_spec,

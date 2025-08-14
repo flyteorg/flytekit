@@ -244,29 +244,12 @@ def test_container_task_image_spec(mock_image_spec_builder):
     assert pod.pod_spec["containers"][1]["image"] == image_spec_2.image_name()
 
 def test_container_task_timeout():
-    ct_with_timeout = ContainerTask(
-        name="timeout-test",
-        input_data_dir="/var/inputs",
-        output_data_dir="/var/outputs",
-        image="busybox",
-        command=["sleep", "100"],
-        timeout=1,
-    )
-
-
-
-    with pytest.raises((docker.errors.APIError, Exception)):
-        ct_with_timeout.execute()
-
     ct_with_timedelta = ContainerTask(
         name="timedelta-timeout-test",
-        input_data_dir="/var/inputs",
-        output_data_dir="/var/outputs",
         image="busybox",
         command=["sleep", "100"],
         timeout=timedelta(seconds=1),
     )
-    
 
     with pytest.raises((docker.errors.APIError, Exception)):
         ct_with_timedelta.execute()
@@ -278,23 +261,12 @@ def test_container_task_timeout_k8s_serialization():
         containers=[], tolerations=[V1Toleration(effect="NoSchedule", key="nvidia.com/gpu", operator="Exists")]
     )
     pt = PodTemplate(pod_spec=ps, labels={"test": "timeout"})
-
-    ct_numeric = ContainerTask(
-        name="timeout-k8s-test",
-        image="busybox",
-        command=["echo", "hello"],
-        pod_template=pt,
-        timeout=60,
-    )
-
+    
     default_image = Image(name="default", fqn="docker.io/xyz", tag="some-git-hash")
     default_image_config = ImageConfig(default_image=default_image)
     default_serialization_settings = SerializationSettings(
         project="p", domain="d", version="v", image_config=default_image_config
     )
-
-    k8s_pod = ct_numeric.get_k8s_pod(default_serialization_settings)
-    assert k8s_pod.pod_spec["activeDeadlineSeconds"] == 60
 
     ct_timedelta = ContainerTask(
         name="timeout-k8s-timedelta-test",
@@ -308,16 +280,13 @@ def test_container_task_timeout_k8s_serialization():
     assert k8s_pod_timedelta.pod_spec["activeDeadlineSeconds"] == 120
 
 def test_container_task_no_timeout():
-
-    ct = ContainerTask(
+    ct_timedelta = ContainerTask(
         name="no-timeout-task",
         input_data_dir="/var/inputs",
         output_data_dir="/var/outputs",
         image="busybox",
         command=["sleep", "1"],  
-        timeout=500,
+        timeout=timedelta(seconds=500),
     )
     
-
-    
-    ct.execute()
+    ct_timedelta.execute()
