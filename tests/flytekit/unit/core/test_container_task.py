@@ -1,7 +1,11 @@
 import os
 import sys
+import time
+import docker
+
 from collections import OrderedDict
 from typing import Tuple
+from datetime import timedelta
 
 import pytest
 from kubernetes.client.models import (
@@ -238,3 +242,61 @@ def test_container_task_image_spec(mock_image_spec_builder):
     pod = ct.get_k8s_pod(default_serialization_settings)
     assert pod.pod_spec["containers"][0]["image"] == image_spec_1.image_name()
     assert pod.pod_spec["containers"][1]["image"] == image_spec_2.image_name()
+
+def test_container_task_timeout():
+    ct_with_timeout = ContainerTask(
+        name="timeout-test",
+        image="busybox",
+        command=["sleep", "5"],
+        timeout=1,
+    )
+
+    with pytest.raises((docker.errors.APIError, Exception)):
+        ct_with_timeout.execute()
+
+    ct_with_timedelta = ContainerTask(
+        name="timedelta-timeout-test",
+        image="busybox",
+        command=["sleep", "2"],
+        timeout=timedelta(seconds=1),
+    )
+
+    with pytest.raises((docker.errors.APIError, Exception)):
+        ct_with_timedelta.execute()
+
+
+def test_container_task_timeout_k8s_serialization():
+    from datetime import timedelta
+
+    ps = V1PodSpec(
+        containers=[], tolerations=[V1Toleration(effect="NoSchedule", key="nvidia.com/gpu", operator="Exists")]
+    )
+    pt = PodTemplate(pod_spec=ps, labels={"test": "timeout"})
+
+    ct_numeric = ContainerTask(
+        name="timeout-k8s-test",
+        image="busybox",
+        command=["echo", "hello"],
+        pod_template=pt,
+        timeout=60,
+    )
+
+    default_image = Image(name="default", fqn="docker.io/xyz", tag="some-git-hash")
+    default_image_config = ImageConfig(default_image=default_image)
+    default_serialization_settings = SerializationSettings(
+        project="p", domain="d", version="v", image_config=default_image_config
+    )
+
+    k8s_pod = ct_numeric.get_k8s_pod(default_serialization_settings)
+    assert k8s_pod.pod_spec["activeDeadlineSeconds"] == 60
+
+    ct_timedelta = ContainerTask(
+        name="timeout-k8s-timedelta-test",
+        image="busybox",
+        command=["echo", "hello"],
+        pod_template=pt,
+        timeout=timedelta(minutes=2),
+    )
+
+    k8s_pod_timedelta = ct_timedelta.get_k8s_pod(default_serialization_settings)
+    assert k8s_pod_timedelta.pod_spec["activeDeadlineSeconds"] == 120

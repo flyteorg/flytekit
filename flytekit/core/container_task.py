@@ -1,3 +1,4 @@
+import datetime
 import os
 import typing
 from enum import Enum
@@ -61,6 +62,7 @@ class ContainerTask(PythonTask):
         pod_template_name: Optional[str] = None,
         local_logs: bool = False,
         resources: Optional[Resources] = None,
+        timeout: Optional[typing.Union[float, int, "datetime.timedelta"]] = None,
         **kwargs,
     ):
         sec_ctx = None
@@ -103,6 +105,7 @@ class ContainerTask(PythonTask):
             )
         self.pod_template = pod_template
         self.local_logs = local_logs
+        self._timeout = timeout
 
     @property
     def resources(self) -> ResourceSpec:
@@ -279,14 +282,20 @@ class ContainerTask(PythonTask):
         container = client.containers.run(
             self._image, command=commands, remove=True, volumes=volume_bindings, detach=True
         )
-        # Wait for the container to finish the task
-        # TODO: Add a 'timeout' parameter to control the max wait time for the container to finish the task.
+
+        # Wait for the container to finish the task, with timeout if specified
+        timeout_seconds = None
+        if self._timeout is not None:
+            if isinstance(self._timeout, datetime.timedelta):
+                timeout_seconds = self._timeout.total_seconds()
+            else:
+                timeout_seconds = float(self._timeout)
 
         if self.local_logs:
             for log in container.logs(stream=True):
                 print(f"[Local Container] {log.strip()}")
 
-        container.wait()
+        container.wait(timeout=timeout_seconds)
 
         output_dict = self._get_output_dict(output_directory)
         outputs_literal_map = TypeEngine.dict_to_literal_map(ctx, output_dict)
@@ -330,8 +339,17 @@ class ContainerTask(PythonTask):
     def get_k8s_pod(self, settings: SerializationSettings) -> _task_model.K8sPod:
         if self.pod_template is None:
             return None
+        pod_spec = _serialize_pod_spec(self.pod_template, self._get_container(settings), settings)
+        if self._timeout is not None:
+            import datetime
+
+            if isinstance(self._timeout, datetime.timedelta):
+                timeout_seconds = int(self._timeout.total_seconds())
+            else:
+                timeout_seconds = int(float(self._timeout))
+            pod_spec["activeDeadlineSeconds"] = timeout_seconds
         return _task_model.K8sPod(
-            pod_spec=_serialize_pod_spec(self.pod_template, self._get_container(settings), settings),
+            pod_spec=pod_spec,
             metadata=_task_model.K8sObjectMetadata(
                 labels=self.pod_template.labels,
                 annotations=self.pod_template.annotations,
