@@ -261,7 +261,7 @@ def test_container_task_timeout_k8s_serialization():
         containers=[], tolerations=[V1Toleration(effect="NoSchedule", key="nvidia.com/gpu", operator="Exists")]
     )
     pt = PodTemplate(pod_spec=ps, labels={"test": "timeout"})
-    
+
     default_image = Image(name="default", fqn="docker.io/xyz", tag="some-git-hash")
     default_image_config = ImageConfig(default_image=default_image)
     default_serialization_settings = SerializationSettings(
@@ -285,8 +285,8 @@ def test_container_task_no_timeout():
         input_data_dir="/var/inputs",
         output_data_dir="/var/outputs",
         image="busybox",
-        command=["sleep", "1"],  
+        command=["sleep", "1"],
         timeout=timedelta(seconds=500),
     )
-    
+
     ct_timedelta.execute()
