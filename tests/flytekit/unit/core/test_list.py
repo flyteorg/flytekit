@@ -84,4 +84,7 @@ async def test_coroutine_batching_of_list_transformer():
         with pytest.raises(ValueError):
             TypeEngine.to_literal(ctx, python_val_2, typing.List[MyInt], lt)
 
+    with mock.patch("flytekit.core.type_engine._TYPE_ENGINE_COROS_BATCH_SIZE", 5):
+            TypeEngine.to_literal(ctx, python_val, typing.List[MyInt], lt)
+
     del TypeEngine._REGISTRY[MyInt]

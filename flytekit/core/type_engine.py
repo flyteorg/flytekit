@@ -1383,22 +1383,16 @@ class TypeEngine(typing.Generic[T]):
     def make_key(cls, python_val: typing.Any, python_type: Type[T]) -> Optional[tuple]:
         import cloudpickle
 
-        val_hash: typing.Any
-        type_hash: typing.Any
+        val_hash: int
+        type_hash: int
         try:
-            try:
-                val_hash = hash(python_val)
-            except Exception:
-                val_hash = hash(cloudpickle.dumps(python_val))
-
-            try:
-                type_hash = hash(python_type)
-            except Exception:
-                type_hash = hash(cloudpickle.dumps(python_type))
+            val_hash = hash(cloudpickle.dumps(python_val))
+            type_hash = hash(cloudpickle.dumps(python_type))
 
             return (val_hash, type_hash)
 
         except Exception:
+            logger.warning(f"Could not hash python_val: {python_val} or python_type: {python_type}")
             return None
 
     @classmethod
