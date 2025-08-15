@@ -585,8 +585,8 @@ def run_remote(
         execution = remote.execute(
             entity,
             inputs=inputs,
-            project=project or remote.default_project,
-            domain=domain or remote.default_domain,
+            project=project,
+            domain=domain,
             execution_name=run_level_params.name,
             options=options_from_run_params(run_level_params),
             type_hints=type_hints,
@@ -762,6 +762,7 @@ def run_command(ctx: click.Context, entity: typing.Union[PythonFunctionWorkflow,
                             fg="red",
                         )
                     )
+
             with context_manager.FlyteContextManager.with_context(remote.context.new_builder()):
                 show_files = run_level_params.verbose > 0
                 fast_package_options = FastPackageOptions(
