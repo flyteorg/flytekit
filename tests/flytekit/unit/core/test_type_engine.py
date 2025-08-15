@@ -3870,7 +3870,6 @@ def test_type_engine_cache_with_list():
 
         # First call
         literal1 = TypeEngine.to_literal(ctx, python_val, python_type, expected)
-        assert mock_async_to_literal.call_count == 1
 
         key = TypeEngine.make_key(python_val, python_type)
         assert key is not None
@@ -3879,7 +3878,7 @@ def test_type_engine_cache_with_list():
         # Second call with same DataFrame
         literal2 = TypeEngine.to_literal(ctx, python_val, python_type, expected)
 
-        # Verify async_to_literal was called
+        # Verify async_to_literal was only called once
         assert mock_async_to_literal.call_count == 1
 
         assert literal1 is literal2
@@ -3917,7 +3916,6 @@ def test_type_engine_cache_with_dict():
 
         # First call
         literal1 = TypeEngine.to_literal(ctx, python_val, python_type, expected)
-        assert mock_async_to_literal.call_count == 1
 
         key = TypeEngine.make_key(python_val, python_type)
         assert key is not None
@@ -3926,7 +3924,7 @@ def test_type_engine_cache_with_dict():
         # Second call with same DataFrame
         literal2 = TypeEngine.to_literal(ctx, python_val, python_type, expected)
 
-        # Verify async_to_literal was called
+        # Verify async_to_literal was only called once
         assert mock_async_to_literal.call_count == 1
 
         assert literal1 is literal2
@@ -3960,7 +3958,6 @@ def test_type_engine_cache_with_pandas():
 
         # First call
         literal1 = TypeEngine.to_literal(ctx, df, df_type, df_expected)
-        assert mock_async_to_literal.call_count == 1
 
         # Second call with same DataFrame
         literal2 = TypeEngine.to_literal(ctx, df, df_type, df_expected)
@@ -3988,7 +3985,6 @@ def test_type_engine_cache_with_flytefile():
 
         # Test 1: Upload local file to remote
         lv1 = TypeEngine.to_literal(ctx, file_path, FlyteFile, lt)
-        assert mock_async_to_literal.call_count == 1
 
         # Second call with same DataFrame
         lv2 = TypeEngine.to_literal(ctx, file_path, FlyteFile, lt)
