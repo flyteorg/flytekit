@@ -4,6 +4,7 @@ import dataclasses
 import hashlib
 import os
 import pathlib
+import platform
 import re
 import sys
 import typing
@@ -135,6 +136,9 @@ class ImageSpec:
         if self.builder is None and builder_registry:
             # Use the builder with the highest priority by default
             self.builder = max(builder_registry, key=lambda name: builder_registry[name][1])
+
+        if platform.machine() == "arm64":
+            self.platform = "linux/arm64"
 
         parameters_str_list = [
             "packages",
