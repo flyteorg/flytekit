@@ -669,8 +669,8 @@ class TaskConfig(object):
     Any Project/Domain/Org configuration.
     """
 
-    project: Optional[str] = None
-    domain: Optional[str] = None
+    project: Optional[str] = "flytesnacks"
+    domain: Optional[str] = "development"
     org: Optional[str] = None
 
     @classmethod
@@ -699,7 +699,6 @@ class Config(object):
         stats (StatsConfig): Configuration for statsd metrics.
         data_config (DataConfig): Data storage configuration.
         local_sandbox_path (str): Path for local sandbox runs.
-        task_config (TaskConfig): Project/Domain/Org configuration.
     """
 
     platform: PlatformConfig = PlatformConfig()
@@ -707,7 +706,6 @@ class Config(object):
     stats: StatsConfig = StatsConfig()
     data_config: DataConfig = DataConfig()
     local_sandbox_path: str = tempfile.mkdtemp(prefix="flyte")
-    task_config: TaskConfig = TaskConfig()
 
     def with_params(
         self,
@@ -716,7 +714,6 @@ class Config(object):
         stats: StatsConfig = None,
         data_config: DataConfig = None,
         local_sandbox_path: str = None,
-        task_config: TaskConfig = None,
     ) -> Config:
         return Config(
             platform=platform or self.platform,
@@ -724,7 +721,6 @@ class Config(object):
             stats=stats or self.stats,
             data_config=data_config or self.data_config,
             local_sandbox_path=local_sandbox_path or self.local_sandbox_path,
-            task_config=task_config or self.task_config,
         )
 
     @classmethod
@@ -746,7 +742,6 @@ class Config(object):
             secrets=SecretsConfig.auto(config_file),
             stats=StatsConfig.auto(config_file),
             data_config=DataConfig.auto(config_file),
-            task_config=TaskConfig.auto(config_file),
             **kwargs,
         )
 

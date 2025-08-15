@@ -585,8 +585,8 @@ def run_remote(
         execution = remote.execute(
             entity,
             inputs=inputs,
-            project=remote.default_project or project,
-            domain=remote.default_domain or domain,
+            project=project or remote.default_project,
+            domain=domain or remote.default_domain,
             execution_name=run_level_params.name,
             options=options_from_run_params(run_level_params),
             type_hints=type_hints,
