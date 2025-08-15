@@ -1421,8 +1421,8 @@ class FlyteRemote(object):
                 )
 
         serialization_settings = SerializationSettings(
-            project=self.default_project or project,
-            domain=self.default_domain or domain,
+            project=project or self.default_project,
+            domain=domain or self.default_domain,
             image_config=image_config,
             git_repo=_get_git_repo_url(source_path),
             env=envs,
