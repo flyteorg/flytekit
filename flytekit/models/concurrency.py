@@ -4,7 +4,7 @@ from flytekit.models import common as _common
 
 
 class ConcurrencyLimitBehavior(object):
-    SKIP = _launch_plan_idl.ConcurrencyLimitBehavior.SKIP
+    SKIP = _launch_plan_idl.ConcurrencyLimitBehavior.CONCURRENCY_LIMIT_BEHAVIOR_SKIP
 
     @classmethod
     def enum_to_string(cls, val):
