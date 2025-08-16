@@ -243,6 +243,10 @@ def test_container_task_image_spec(mock_image_spec_builder):
     assert pod.pod_spec["containers"][0]["image"] == image_spec_1.image_name()
     assert pod.pod_spec["containers"][1]["image"] == image_spec_2.image_name()
 
+@pytest.mark.skipif(
+    sys.platform in ["darwin", "win32"],
+    reason="Skip if running on windows or macos due to CI Docker environment setup failure",
+)
 def test_container_task_timeout():
     ct_with_timedelta = ContainerTask(
         name="timedelta-timeout-test",
@@ -254,7 +258,10 @@ def test_container_task_timeout():
     with pytest.raises((docker.errors.APIError, Exception)):
         ct_with_timedelta.execute()
 
-
+@pytest.mark.skipif(
+    sys.platform in ["darwin", "win32"],
+    reason="Skip if running on windows or macos due to CI Docker environment setup failure",
+)
 def test_container_task_timeout_k8s_serialization():
 
     ps = V1PodSpec(
@@ -279,7 +286,12 @@ def test_container_task_timeout_k8s_serialization():
     k8s_pod_timedelta = ct_timedelta.get_k8s_pod(default_serialization_settings)
     assert k8s_pod_timedelta.pod_spec["activeDeadlineSeconds"] == 120
 
-def test_container_task_no_timeout():
+
+@pytest.mark.skipif(
+    sys.platform in ["darwin", "win32"],
+    reason="Skip if running on windows or macos due to CI Docker environment setup failure",
+)
+def test_container_task_within_timeout():
     ct_timedelta = ContainerTask(
         name="no-timeout-task",
         input_data_dir="/var/inputs",
