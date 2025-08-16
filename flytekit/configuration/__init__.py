@@ -669,9 +669,9 @@ class TaskConfig(object):
     Any Project/Domain/Org configuration.
     """
 
-    project: Optional[str] = "flytesnacks"
-    domain: Optional[str] = "development"
-    org: Optional[str] = None
+    project: Optional[str] = field(default="flytesnacks")
+    domain: Optional[str] = field(default="development")
+    org: Optional[str] = field(default="None")
 
     @classmethod
     def auto(cls, config_file: typing.Union[str, ConfigFile] = None) -> TaskConfig:
