@@ -8,9 +8,9 @@ class NoOpBuilder(ImageSpecBuilder):
 
     def should_build(self, image_spec: ImageSpec) -> bool:
         """
-        The build_image function of NoOpBuilder uses the image_spec name as defined by the user without
-        checking whether the image exists in the Docker registry. Therefore, the should_build function
-        should always return True to trigger the build_image function.
+        The build_image function of NoOpBuilder does not actually build a Docker image.
+        Since no Docker build process occurs, we do not need to check for Docker daemon
+        or existing images. Therefore, should_build should always return True.
 
         Args:
             image_spec (ImageSpec): Image specification

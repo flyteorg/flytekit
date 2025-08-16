@@ -364,6 +364,7 @@ def test_noop_builder_updates_image_name_mapping():
     from flytekit.image_spec.noop_builder import NoOpBuilder
 
     # Clear any existing mappings to ensure clean test state
+    ImageBuildEngine._REGISTRY.pop("noop", None)
     ImageBuildEngine._IMAGE_NAME_TO_REAL_NAME.clear()
 
     # Register NoOpBuilder
@@ -391,5 +392,5 @@ def test_noop_builder_updates_image_name_mapping():
     assert actual_real_name == expected_image_name
 
     # Clean up
-    del ImageBuildEngine._REGISTRY["noop"]
+    ImageBuildEngine._REGISTRY.pop("noop", None)
     ImageBuildEngine._IMAGE_NAME_TO_REAL_NAME.clear()
