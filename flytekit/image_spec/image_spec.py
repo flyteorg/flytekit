@@ -95,7 +95,7 @@ class ImageSpec:
     cuda: Optional[str] = None
     cudnn: Optional[str] = None
     base_image: Optional[Union[str, "ImageSpec"]] = None
-    platform: str = "linux/amd64"
+    platform: str = None
     pip_index: Optional[str] = None
     pip_extra_index_url: Optional[List[str]] = None
     pip_secret_mounts: Optional[List[Tuple[str, str]]] = None
@@ -127,6 +127,17 @@ class ImageSpec:
                     f"- 'docker.io/username' (for docker hub)\n"
                 )
 
+        if self.platform is None:
+            if (
+                self.registry
+                and self.registry.lower().startswith("localhost:")
+                and platform.machine().lower() in ("arm64", "aarch64")
+            ):
+                # Only change platform to ARM64 if platform is not set and pushing to local registry on ARM64 machine
+                self.platform = "linux/arm64"
+            else:
+                self.platform = "linux/amd64"
+
         # If not set, help the user set this option as well, to support the older default behavior where existence
         # of the source root implied that copying of files was needed.
         if self.source_root is not None:
@@ -136,9 +147,6 @@ class ImageSpec:
         if self.builder is None and builder_registry:
             # Use the builder with the highest priority by default
             self.builder = max(builder_registry, key=lambda name: builder_registry[name][1])
-
-        if platform.machine() == "arm64":
-            self.platform = "linux/arm64"
 
         parameters_str_list = [
             "packages",
