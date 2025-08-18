@@ -95,7 +95,7 @@ class ImageSpec:
     cuda: Optional[str] = None
     cudnn: Optional[str] = None
     base_image: Optional[Union[str, "ImageSpec"]] = None
-    platform: str = None
+    platform: Optional[str] = None
     pip_index: Optional[str] = None
     pip_extra_index_url: Optional[List[str]] = None
     pip_secret_mounts: Optional[List[Tuple[str, str]]] = None
