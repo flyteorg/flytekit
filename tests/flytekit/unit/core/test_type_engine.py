@@ -3941,6 +3941,7 @@ def test_make_key_with_annotated_types():
     assert key_without_annotation is not None
     assert key != key_without_annotation
 
+@pytest.mark.skipif("pandas" not in sys.modules, reason="Pandas is not installed.")
 def test_type_engine_cache_with_pandas():
     import pandas as pd
     ctx = FlyteContext.current_context()
