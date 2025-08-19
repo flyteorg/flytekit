@@ -49,7 +49,7 @@ class ImageSpec:
         cuda (Optional[str]): Version of cuda to install.
         cudnn (Optional[str]): Version of cudnn to install.
         base_image (Optional[Union[str, 'ImageSpec']]): Base image of the image.
-        platform (str): Specify the target platforms for the build output (for example, windows/amd64 or linux/amd64,darwin/arm64).
+        platform (Optional[str]): Specify the target platforms for the build output (for example, windows/amd64 or linux/amd64,darwin/arm64).
         pip_index (Optional[str]): Specify the custom pip index url.
         pip_extra_index_url (Optional[List[str]]): Specify one or more pip index urls as a list.
         pip_secret_mounts (Optional[List[Tuple[str, str]]]): Specify a list of tuples to mount secret for pip install. Each tuple should contain the path to
