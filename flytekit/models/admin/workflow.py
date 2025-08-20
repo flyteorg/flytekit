@@ -50,9 +50,11 @@ class WorkflowSpec(_common.FlyteIdlEntity):
         """
         :rtype: flyteidl.admin.workflow_pb2.WorkflowSpec
         """
+        subwfs = sorted(self._sub_workflows, key=lambda x: x.id.name)
+
         return _admin_workflow.WorkflowSpec(
             template=self._template.to_flyte_idl(),
-            sub_workflows=[s.to_flyte_idl() for s in self._sub_workflows],
+            sub_workflows=[s.to_flyte_idl() for s in subwfs],
             description=self._docs.to_flyte_idl() if self._docs else None,
         )
 
