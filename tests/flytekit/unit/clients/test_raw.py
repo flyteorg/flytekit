@@ -20,3 +20,22 @@ def test_list_projects_paginated(mock_channel, mock_admin):
     project_list_request = _project_pb2.ProjectListRequest(limit=100, token="", filters=None, sort_by=None)
     client.list_projects(project_list_request)
     mock_admin.AdminServiceStub().ListProjects.assert_called_with(project_list_request, metadata=None)
+
+
+@mock.patch("flytekit.clients.raw.grpc.insecure_channel")
+def test_kwargs_passed_to_channel(mock_channel):
+    RawSynchronousFlyteClient(
+        PlatformConfig(endpoint="a.b.com", insecure=True),
+        options=[("grpc.default_authority", "foo.b.net")],
+    )
+
+    mock_channel.assert_called_with(
+        "a.b.com",
+        options=[
+            # ensure we're always passing these defaults
+            ("grpc.max_metadata_size", mock.ANY),
+            ("grpc.max_receive_message_length", mock.ANY),
+            # as well as the user-provided options
+            ("grpc.default_authority", "foo.b.net"),
+        ],
+    )
