@@ -20,8 +20,10 @@ def convert_to_flyte_phase(state: str) -> TaskExecution.Phase:
     Convert the state from the connector to the phase in flyte.
     """
     state = state.lower()
-    if state in ["failed", "timeout", "timedout", "canceled", "cancelled", "skipped", "internal_error"]:
+    if state in ["failed", "timeout", "timedout", "canceled", "cancelled", "skipped"]:
         return TaskExecution.FAILED
+    if state in ["internal_error"]:
+        return TaskExecution.RETRYABLE_FAILED
     elif state in ["done", "succeeded", "success", "completed"]:
         return TaskExecution.SUCCEEDED
     elif state in ["running", "terminating"]:
