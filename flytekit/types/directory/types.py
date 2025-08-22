@@ -52,7 +52,9 @@ def noop(): ...
 class _FlyteDirectoryDownloader:
     """Downloader for FlyteDirectory that uses current context when called."""
 
-    def __init__(self, remote_path: str, local_path: str, is_multipart: bool = True, batch_size: typing.Optional[int] = None):
+    def __init__(
+        self, remote_path: str, local_path: str, is_multipart: bool = True, batch_size: typing.Optional[int] = None
+    ):
         self.remote_path = remote_path
         self.local_path = local_path
         self.is_multipart = is_multipart
@@ -62,7 +64,10 @@ class _FlyteDirectoryDownloader:
         """Download the directory using current context's synced get_data method."""
         current_ctx = FlyteContextManager.current_context()
         return current_ctx.file_access.get_data(
-            remote_path=self.remote_path, local_path=self.local_path, is_multipart=self.is_multipart, batch_size=self.batch_size
+            remote_path=self.remote_path,
+            local_path=self.local_path,
+            is_multipart=self.is_multipart,
+            batch_size=self.batch_size,
         )
 
 
