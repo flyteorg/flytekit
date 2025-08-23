@@ -431,11 +431,11 @@ class FlyteDirectory(SerializableType, DataClassJsonMixin, os.PathLike, typing.G
                 paths.append(flyte_file)
             else:
                 local_folder = file_access.get_random_local_directory()
-                downloader = _FlyteDirectoryDownloader(
+                dir_downloader: typing.Callable = _FlyteDirectoryDownloader(
                     remote_path=remote_path, local_path=local_folder, is_multipart=True
                 )
 
-                flyte_directory: FlyteDirectory = FlyteDirectory(path=local_folder, downloader=downloader)
+                flyte_directory: FlyteDirectory = FlyteDirectory(path=local_folder, downloader=dir_downloader)
                 flyte_directory._remote_source = remote_path
                 paths.append(flyte_directory)
 
