@@ -156,11 +156,7 @@ class FileParamType(click.ParamType):
     def convert(
         self, value: typing.Any, param: typing.Optional[click.Parameter], ctx: typing.Optional[click.Context]
     ) -> typing.Any:
-        if isinstance(value, ArtifactQuery):
-            return value
-
-        # If value is already a FlyteFile, return it as-is to avoid creating nested FlyteFile objects
-        if isinstance(value, FlyteFile):
+        if isinstance(value, (ArtifactQuery, FlyteFile)):
             return value
 
         # set remote_directory to false if running pyflyte run locally. This makes sure that the original
