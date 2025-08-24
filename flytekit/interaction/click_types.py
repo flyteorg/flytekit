@@ -158,6 +158,11 @@ class FileParamType(click.ParamType):
     ) -> typing.Any:
         if isinstance(value, ArtifactQuery):
             return value
+
+        # If value is already a FlyteFile, return it as-is to avoid creating nested FlyteFile objects
+        if isinstance(value, FlyteFile):
+            return value
+
         # set remote_directory to false if running pyflyte run locally. This makes sure that the original
         # file is used and not a random one.
         remote_path = None if getattr(ctx.obj, "is_remote", False) else False
@@ -177,6 +182,7 @@ class PickleParamType(click.ParamType):
 
         def get_metavar(self, param: Parameter, ctx: Context) -> t.Optional[str]:
             return "Python Object <Module>:<Object>"
+
     else:
 
         def get_metavar(self, param: Parameter, *args) -> t.Optional[str]:
