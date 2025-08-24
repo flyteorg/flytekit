@@ -12,5 +12,10 @@ This package contains things that are useful when extending Flytekit.
    AirflowConnector
 """
 
+import os
+
+# Configure Airflow to enable timer unit consistency to suppress deprecation warnings
+os.environ.setdefault("AIRFLOW__METRICS__TIMER_UNIT_CONSISTENCY", "True")
+
 from .connector import AirflowConnector
 from .task import AirflowObj, AirflowTask
