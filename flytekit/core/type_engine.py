@@ -1087,6 +1087,62 @@ class EnumTransformer(TypeTransformer[enum.Enum]):
             raise TypeTransformerFailedError(f"Value {v} is not in Enum {t}")
 
 
+class LiteralTypeTransformer(TypeTransformer[object]):
+    def __init__(self):
+        super().__init__("LiteralTypeTransformer", object)
+
+    def get_literal_type(self, t: Type) -> LiteralType:
+        args = get_args(t)
+        if not args:
+            raise TypeTransformerFailedError("Literal must have at least one value")
+
+        base_type = type(args[0])
+        if not all(type(a) == base_type for a in args):
+            raise TypeTransformerFailedError("All values must be of the same type")
+
+        base_transformer: TypeTransformer[object] = TypeEngine.get_transformer(base_type)
+        return base_transformer.get_literal_type(base_type)
+
+    def to_literal(self, ctx: FlyteContext, python_val: T, python_type: Type, expected: LiteralType) -> Literal:
+        args = get_args(python_type)
+        if not args:
+            raise TypeTransformerFailedError("Literal must have at least one value")
+
+        base_type = type(args[0])
+        if not all(type(a) == base_type for a in args):
+            raise TypeTransformerFailedError("All values must be of the same type")
+
+        base_transformer: TypeTransformer[object] = TypeEngine.get_transformer(base_type)
+        return base_transformer.to_literal(ctx, python_val, python_type, expected)
+
+    def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type) -> object:
+        args = get_args(expected_python_type)
+        if not args:
+            raise TypeTransformerFailedError("Literal must have at least one value")
+
+        base_type = type(args[0])
+        if not all(type(a) == base_type for a in args):
+            raise TypeTransformerFailedError("All values must be of the same type")
+
+        base_transformer: TypeTransformer[object] = TypeEngine.get_transformer(base_type)
+        return base_transformer.to_python_value(ctx, lv, base_type)
+
+    def guess_python_type(self, literal_type: LiteralType):
+        return TypeEngine.guess_python_type(literal_type)
+
+    def assert_type(self, python_type: Type, python_val: T):
+        args = get_args(python_type)
+        if not args:
+            raise TypeTransformerFailedError("Literal must have at least one value")
+
+        base_type = type(args[0])
+        if not all(type(a) == base_type for a in args):
+            raise TypeTransformerFailedError("All values must be of the same type")
+
+        base_transformer: TypeTransformer[object] = TypeEngine.get_transformer(base_type)
+        return base_transformer.assert_type(base_type, python_val)
+
+
 def _handle_json_schema_property(
     property_key: str,
     property_val: dict,
@@ -1173,6 +1229,7 @@ class TypeEngine(typing.Generic[T]):
     _RESTRICTED_TYPES: typing.List[type] = []
     _DATACLASS_TRANSFORMER: TypeTransformer = DataclassTransformer()  # type: ignore
     _ENUM_TRANSFORMER: TypeTransformer = EnumTransformer()  # type: ignore
+    _LITERAL_TYPE_TRANSFORMER: TypeTransformer = LiteralTypeTransformer()
     lazy_import_lock = threading.Lock()
 
     @classmethod
@@ -1221,6 +1278,9 @@ class TypeEngine(typing.Generic[T]):
         if inspect.isclass(python_type) and issubclass(python_type, enum.Enum):
             # Special case: prevent that for a type `FooEnum(str, Enum)`, the str transformer is used.
             return cls._ENUM_TRANSFORMER
+
+        if get_origin(python_type) == typing.Literal:
+            return cls._LITERAL_TYPE_TRANSFORMER
 
         if hasattr(python_type, "__origin__"):
             # If the type is a generic type, we should check the origin type. But consider the case like Iterator[JSON]
