@@ -1,16 +1,16 @@
-import pytest
 import os
 from pydantic import BaseModel
 
 from flytekit.core.context_manager import FlyteContextManager
 from flytekit.core.type_engine import TypeEngine
-from flytekit.models.literals import Literal
+from datetime import datetime
 
 
 class Inner(BaseModel):
     a: int
     b: float
     c: str
+    dt2: datetime = datetime(2022, 1, 1, 12, 0, 0)
 
 
 class DC(BaseModel):
@@ -18,6 +18,7 @@ class DC(BaseModel):
     b: float
     c: str
     inner: Inner
+    dt1: datetime = datetime(2020, 1, 1, 12, 0, 0)
 
 
 def test_pydantic_v2_dataclass_to_literal():
