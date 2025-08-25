@@ -40,13 +40,14 @@ def test_pydantic_v2_dataclass_to_literal():
     print(f"Literal binary: {literal.scalar.binary}")
     
     # Write the binary value to a local file
-    binary_value = literal.scalar.binary.value
+    # i.e. this file will deserialize with
+    # flyte-cli parse-proto
+    #   -f tests/flytekit/unit/core/pydantic_v2_binary_literal.msgpack -p flyteidl.core.literals_pb2.Binary
     output_file = os.path.join(os.path.dirname(__file__), "pydantic_v2_binary_literal.msgpack")
     with open(output_file, "wb") as f:
-        f.write(binary_value)
+        f.write(literal.scalar.binary.serialize_to_string())
     print(f"Binary value written to: {output_file}")
-    print(f"Binary value size: {len(binary_value)} bytes")
-    
+
     # Convert back to Python to verify round-trip works
     python_value = TypeEngine.to_python_value(ctx, literal, DC)
     print(f"Converted back: {python_value}")
