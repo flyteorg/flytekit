@@ -3,7 +3,12 @@ from pydantic import BaseModel
 
 from flytekit.core.context_manager import FlyteContextManager
 from flytekit.core.type_engine import TypeEngine
+from flytekit.types.structured import StructuredDataset
 from datetime import datetime
+import pandas as pd
+
+
+sample_df = pd.DataFrame({"col1": [1, 2], "col2": ["a", "b"]})
 
 
 class Inner(BaseModel):
@@ -18,6 +23,7 @@ class DC(BaseModel):
     b: float
     c: str
     inner: Inner
+    df: StructuredDataset
     dt1: datetime = datetime(2020, 1, 1, 12, 0, 0)
 
 
@@ -26,9 +32,10 @@ def test_pydantic_v2_dataclass_to_literal():
     ctx = FlyteContextManager.current_context()
     
     # Create test data
+    sd = StructuredDataset(dataframe=sample_df)
     inner = Inner(a=42, b=3.14, c="hello")
-    dc = DC(a=1, b=2.5, c="world", inner=inner)
-    
+    dc = DC(a=1, b=2.5, c="world", df=sd, inner=inner)
+
     # Get the literal type
     literal_type = TypeEngine.to_literal_type(DC)
     print(f"Literal type: {literal_type}")
@@ -44,7 +51,7 @@ def test_pydantic_v2_dataclass_to_literal():
     # i.e. this file will deserialize with
     # flyte-cli parse-proto
     #   -f tests/flytekit/unit/core/pydantic_v2_binary_literal.msgpack -p flyteidl.core.literals_pb2.Binary
-    output_file = os.path.join(os.path.dirname(__file__), "pydantic_v2_binary_literal.msgpack")
+    output_file = os.path.join(os.path.dirname(__file__), "pydantic_v2_scalar_binary.msgpack.pb")
     with open(output_file, "wb") as f:
         f.write(literal.scalar.binary.serialize_to_string())
     print(f"Binary value written to: {output_file}")
