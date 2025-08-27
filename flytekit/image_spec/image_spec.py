@@ -4,6 +4,7 @@ import dataclasses
 import hashlib
 import os
 import pathlib
+import platform
 import re
 import sys
 import typing
@@ -48,7 +49,7 @@ class ImageSpec:
         cuda (Optional[str]): Version of cuda to install.
         cudnn (Optional[str]): Version of cudnn to install.
         base_image (Optional[Union[str, 'ImageSpec']]): Base image of the image.
-        platform (str): Specify the target platforms for the build output (for example, windows/amd64 or linux/amd64,darwin/arm64).
+        platform (Optional[str]): Specify the target platforms for the build output (for example, windows/amd64 or linux/amd64,darwin/arm64).
         pip_index (Optional[str]): Specify the custom pip index url.
         pip_extra_index_url (Optional[List[str]]): Specify one or more pip index urls as a list.
         pip_secret_mounts (Optional[List[Tuple[str, str]]]): Specify a list of tuples to mount secret for pip install. Each tuple should contain the path to
@@ -94,7 +95,7 @@ class ImageSpec:
     cuda: Optional[str] = None
     cudnn: Optional[str] = None
     base_image: Optional[Union[str, "ImageSpec"]] = None
-    platform: str = "linux/amd64"
+    platform: Optional[str] = None
     pip_index: Optional[str] = None
     pip_extra_index_url: Optional[List[str]] = None
     pip_secret_mounts: Optional[List[Tuple[str, str]]] = None
@@ -125,6 +126,17 @@ class ImageSpec:
                     f"- 'ghcr.io/username' (for GitHub Container Registry)\n"
                     f"- 'docker.io/username' (for docker hub)\n"
                 )
+
+        if self.platform is None:
+            if (
+                self.registry
+                and self.registry.lower().startswith("localhost:")
+                and platform.machine().lower() in ("arm64", "aarch64")
+            ):
+                # Only change platform to ARM64 if platform is not set and pushing to local registry on ARM64 machine
+                self.platform = "linux/arm64"
+            else:
+                self.platform = "linux/amd64"
 
         # If not set, help the user set this option as well, to support the older default behavior where existence
         # of the source root implied that copying of files was needed.
