@@ -1091,7 +1091,8 @@ class LiteralTypeTransformer(TypeTransformer[object]):
     def __init__(self):
         super().__init__("LiteralTypeTransformer", object)
 
-    def get_literal_type(self, t: Type) -> LiteralType:
+    @classmethod
+    def get_base_type(cls, t: Type) -> Type:
         args = get_args(t)
         if not args:
             raise TypeTransformerFailedError("Literal must have at least one value")
@@ -1100,45 +1101,48 @@ class LiteralTypeTransformer(TypeTransformer[object]):
         if not all(type(a) == base_type for a in args):
             raise TypeTransformerFailedError("All values must be of the same type")
 
-        base_transformer: TypeTransformer[object] = TypeEngine.get_transformer(base_type)
-        return base_transformer.get_literal_type(base_type)
+        return base_type
+
+    def get_literal_type(self, t: Type) -> LiteralType:
+        base_type = self.get_base_type(t)
+        vals = list(get_args(t))
+        ann = TypeAnnotationModel(annotations={"literal_values": vals})
+        if base_type is str:
+            simple = SimpleType.STRING
+        elif base_type is int:
+            simple = SimpleType.INTEGER
+        elif base_type is float:
+            simple = SimpleType.FLOAT
+        elif base_type is bool:
+            simple = SimpleType.BOOLEAN
+        elif base_type is datetime.datetime:
+            simple = SimpleType.DATETIME
+        elif base_type is datetime.timedelta:
+            simple = SimpleType.DURATION
+        else:
+            raise TypeTransformerFailedError(f"Unsupported type: {base_type}")
+        return LiteralType(simple=simple, annotation=ann)
 
     def to_literal(self, ctx: FlyteContext, python_val: T, python_type: Type, expected: LiteralType) -> Literal:
-        args = get_args(python_type)
-        if not args:
-            raise TypeTransformerFailedError("Literal must have at least one value")
-
-        base_type = type(args[0])
-        if not all(type(a) == base_type for a in args):
-            raise TypeTransformerFailedError("All values must be of the same type")
-
+        base_type = self.get_base_type(python_type)
         base_transformer: TypeTransformer[object] = TypeEngine.get_transformer(base_type)
         return base_transformer.to_literal(ctx, python_val, python_type, expected)
 
     def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type) -> object:
-        args = get_args(expected_python_type)
-        if not args:
-            raise TypeTransformerFailedError("Literal must have at least one value")
-
-        base_type = type(args[0])
-        if not all(type(a) == base_type for a in args):
-            raise TypeTransformerFailedError("All values must be of the same type")
-
+        base_type = self.get_base_type(expected_python_type)
         base_transformer: TypeTransformer[object] = TypeEngine.get_transformer(base_type)
         return base_transformer.to_python_value(ctx, lv, base_type)
 
-    def guess_python_type(self, literal_type: LiteralType):
-        return TypeEngine.guess_python_type(literal_type)
+    def guess_python_type(self, literal_type: LiteralType) -> Type:
+        ann = getattr(literal_type, "annotation", None)
+        if ann and getattr(ann, "annotations", None):
+            vals = ann.annotations.get("literal_values")
+            if vals and isinstance(vals, list):
+                return typing.Literal[tuple(vals)]  # type: ignore
+        raise ValueError(f"LiteralType transformer cannot reverse {literal_type}")
 
     def assert_type(self, python_type: Type, python_val: T):
-        args = get_args(python_type)
-        if not args:
-            raise TypeTransformerFailedError("Literal must have at least one value")
-
-        base_type = type(args[0])
-        if not all(type(a) == base_type for a in args):
-            raise TypeTransformerFailedError("All values must be of the same type")
-
+        base_type = self.get_base_type(python_type)
         base_transformer: TypeTransformer[object] = TypeEngine.get_transformer(base_type)
         return base_transformer.assert_type(base_type, python_val)
 
