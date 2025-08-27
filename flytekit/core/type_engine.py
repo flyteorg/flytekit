@@ -1175,7 +1175,7 @@ class TypeEngine(typing.Generic[T]):
     _DATACLASS_TRANSFORMER: TypeTransformer = DataclassTransformer()  # type: ignore
     _ENUM_TRANSFORMER: TypeTransformer = EnumTransformer()  # type: ignore
     lazy_import_lock = threading.Lock()
-    _CACHE: LRUCache = LRUCache(maxsize=128)
+    _LITERAL_CACHE: LRUCache = LRUCache(maxsize=128)
 
     @classmethod
     def register(
@@ -1380,7 +1380,7 @@ class TypeEngine(typing.Generic[T]):
         return hsh
 
     @classmethod
-    def make_key(cls, python_val: typing.Any, python_type: Type[T]) -> Optional[tuple]:
+    def _get_literal_cache_key(cls, python_val: typing.Any, python_type: Type[T]) -> Optional[tuple]:
         import cloudpickle
 
         val_hash: int
@@ -1404,9 +1404,9 @@ class TypeEngine(typing.Generic[T]):
         to_literal function, and allowing this to_literal function, to then invoke yet another async function,
         namely an async transformer.
         """
-        key = cls.make_key(python_val, python_type)
-        if key is not None and key in cls._CACHE:
-            return cls._CACHE[key]
+        key = cls._get_literal_cache_key(python_val, python_type)
+        if key is not None and key in cls._LITERAL_CACHE:
+            return cls._LITERAL_CACHE[key]
 
         from flytekit.core.promise import Promise
 
@@ -1430,7 +1430,7 @@ class TypeEngine(typing.Generic[T]):
         lv.hash = cls.calculate_hash(python_val, python_type)
 
         if key is not None:
-            cls._CACHE[key] = lv
+            cls._LITERAL_CACHE[key] = lv
 
         return lv
 

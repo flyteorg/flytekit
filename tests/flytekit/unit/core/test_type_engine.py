@@ -3855,9 +3855,9 @@ async def test_dict_transformer_annotated_type():
 @pytest.fixture(autouse=True)
 def clear_type_engine_cache():
     """Clear TypeEngine cache before and after each test"""
-    TypeEngine._CACHE.clear()
+    TypeEngine._LITERAL_CACHE.clear()
     yield
-    TypeEngine._CACHE.clear()
+    TypeEngine._LITERAL_CACHE.clear()
 
 def test_type_engine_cache_with_list():
     ctx = FlyteContext.current_context()
@@ -3871,9 +3871,9 @@ def test_type_engine_cache_with_list():
         # First call
         literal1 = TypeEngine.to_literal(ctx, python_val, python_type, expected)
 
-        key = TypeEngine.make_key(python_val, python_type)
+        key = TypeEngine._get_literal_cache_key(python_val, python_type)
         assert key is not None
-        assert key in TypeEngine._CACHE
+        assert key in TypeEngine._LITERAL_CACHE
 
         # Second call with same DataFrame
         literal2 = TypeEngine.to_literal(ctx, python_val, python_type, expected)
@@ -3886,11 +3886,11 @@ def test_type_engine_cache_with_list():
     # Test with different data - should not use cache
     different_val = [2, 1, 3, 4, 5]
     literal3 = TypeEngine.to_literal(ctx, different_val, python_type, expected)
-    key_different = TypeEngine.make_key(different_val, python_type)
+    key_different = TypeEngine._get_literal_cache_key(different_val, python_type)
 
     assert key_different is not key
     assert key_different is not None
-    assert key_different in TypeEngine._CACHE
+    assert key_different in TypeEngine._LITERAL_CACHE
 
     # Verify different literals are different objects
     assert literal1 is not literal3
@@ -3903,7 +3903,7 @@ def test_type_engine_cache_with_list():
         TypeEngine.to_literal(ctx, test_val, test_type, test_expected)
 
     # Cache should not exceed maxsize
-    assert len(TypeEngine._CACHE) == 128
+    assert len(TypeEngine._LITERAL_CACHE) == 128
 
 def test_type_engine_cache_with_dict():
     ctx = FlyteContext.current_context()
@@ -3917,9 +3917,9 @@ def test_type_engine_cache_with_dict():
         # First call
         literal1 = TypeEngine.to_literal(ctx, python_val, python_type, expected)
 
-        key = TypeEngine.make_key(python_val, python_type)
+        key = TypeEngine._get_literal_cache_key(python_val, python_type)
         assert key is not None
-        assert key in TypeEngine._CACHE
+        assert key in TypeEngine._LITERAL_CACHE
 
         # Second call with same DataFrame
         literal2 = TypeEngine.to_literal(ctx, python_val, python_type, expected)
@@ -3934,8 +3934,8 @@ def test_make_key_with_annotated_types():
     annotated_val = [1, 2, 3]
     annotated_type = typing.Annotated[typing.List[int], "test_annotation"]
 
-    key = TypeEngine.make_key(annotated_val, annotated_type)
-    key_without_annotation = TypeEngine.make_key(annotated_val, typing.List[int])
+    key = TypeEngine._get_literal_cache_key(annotated_val, annotated_type)
+    key_without_annotation = TypeEngine._get_literal_cache_key(annotated_val, typing.List[int])
     # Should handle Annotated types correctly
     assert key is not None
     assert key_without_annotation is not None
