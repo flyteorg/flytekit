@@ -84,6 +84,7 @@ async def test_coroutine_batching_of_list_transformer():
         with pytest.raises(ValueError):
             TypeEngine.to_literal(ctx, python_val_2, typing.List[MyInt], lt)
 
+    # Cache hit for python_val prevents async_to_literal calls, avoiding the batch size limit of 2 error defined in MyIntAsyncTransformer
     with mock.patch("flytekit.core.type_engine._TYPE_ENGINE_COROS_BATCH_SIZE", 5):
             TypeEngine.to_literal(ctx, python_val, typing.List[MyInt], lt)
 
