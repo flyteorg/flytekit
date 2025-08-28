@@ -2,6 +2,11 @@ import os
 import typing
 
 import rich_click as click
+import flyte
+import flytekit.core.task
+from flyte import Image, Resources, TaskEnvironment
+from flyte._doc import Documentation
+from flyte._task import AsyncFunctionTaskTemplate, P, R
 
 from flytekit import configuration
 from flytekit.clis.sdk_in_container.backfill import backfill
@@ -54,8 +59,15 @@ from flytekit.loggers import logger
     type=str,
     help="Path to config file for use within container",
 )
+@click.option(
+    "-v2",
+    "--v2cmd",
+    required=False,
+    is_flag=True,
+    help="Use the v2 command set. This is the default behavior, but this flag is provided for backwards compatibility with older scripts that may have used the v1 command set (which is now deprecated).",
+)
 @click.pass_context
-def main(ctx, pkgs: typing.List[str], config: str, verbose: int):
+def main(ctx, pkgs: typing.List[str], config: str, verbose: int, v2cmd: bool):
     """
     Entrypoint for all the user commands.
     """
@@ -76,6 +88,17 @@ def main(ctx, pkgs: typing.List[str], config: str, verbose: int):
             pkgs = LocalSDK.WORKFLOW_PACKAGES.read(cfg)
             if pkgs is None:
                 pkgs = []
+
+    if v2cmd:
+        from flytekit.migration.task import task_shim as flyte_sdk_task_shim
+        flytekit.task = flyte_sdk_task_shim
+
+        env = TaskEnvironment(
+            name="flytekit",
+            resources=Resources(cpu=0.8, memory="800Mi"),
+            image=Image.from_debian_base().with_apt_packages("vim").with_pip_packages("flytekit", "pandas"),
+        )
+
 
     ctx.obj[CTX_PACKAGES] = pkgs
     ctx.obj[CTX_VERBOSE] = verbose
