@@ -291,14 +291,65 @@ def test_container_task_timeout_k8s_serialization():
     sys.platform in ["darwin", "win32"],
     reason="Skip if running on windows or macos due to CI Docker environment setup failure",
 )
-def test_container_task_within_timeout():
-    ct_timedelta = ContainerTask(
-        name="no-timeout-task",
-        input_data_dir="/var/inputs",
-        output_data_dir="/var/outputs",
+def test_container_task_timeout_in_metadata():
+    from flytekit.core.base_task import TaskMetadata
+
+    ct_with_timedelta = ContainerTask(
+        name="timeout-metadata-test",
         image="busybox",
-        command=["sleep", "1"],
-        timeout=timedelta(seconds=500),
+        command=["echo", "hello"],
+        timeout=timedelta(minutes=5),
     )
 
-    ct_timedelta.execute()
+    assert ct_with_timedelta.metadata.timeout == timedelta(minutes=5)
+
+    # Test with custom metadata - timeout should be set in the provided metadata
+    custom_metadata = TaskMetadata(retries=3)
+    ct_with_custom_metadata = ContainerTask(
+        name="custom-metadata-timeout-test",
+        image="busybox",
+        command=["echo", "hello"],
+        metadata=custom_metadata,
+        timeout=timedelta(seconds=30),
+    )
+
+    # Verify timeout is set in the custom metadata and retries are preserved
+    assert ct_with_custom_metadata.metadata.timeout == timedelta(seconds=30)
+    assert ct_with_custom_metadata.metadata.retries == 3
+
+    ct_without_timeout = ContainerTask(
+        name="no-timeout-test",
+        image="busybox",
+        command=["echo", "hello"]
+    )
+
+    assert ct_without_timeout.metadata.timeout is None
+
+
+def test_container_task_timeout_serialization():
+    ps = V1PodSpec(
+        containers=[], tolerations=[V1Toleration(effect="NoSchedule", key="nvidia.com/gpu", operator="Exists")]
+    )
+    pt = PodTemplate(pod_spec=ps, labels={"test": "timeout"})
+
+    default_image = Image(name="default", fqn="docker.io/xyz", tag="some-git-hash")
+    default_image_config = ImageConfig(default_image=default_image)
+    default_serialization_settings = SerializationSettings(
+        project="p", domain="d", version="v", image_config=default_image_config
+    )
+
+    ct_with_timeout = ContainerTask(
+        name="timeout-serialization-test",
+        image="busybox",
+        command=["echo", "hello"],
+        pod_template=pt,
+        timeout=timedelta(minutes=10),
+    )
+
+    from flytekit.tools.translator import get_serializable_task
+    from collections import OrderedDict
+
+    serialized_task = get_serializable_task(OrderedDict(), default_serialization_settings, ct_with_timeout)
+
+    k8s_pod = ct_with_timeout.get_k8s_pod(default_serialization_settings)
+    assert k8s_pod.pod_spec["activeDeadlineSeconds"] == 600  # 10 minutes in seconds

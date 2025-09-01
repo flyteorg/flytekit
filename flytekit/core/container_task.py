@@ -76,6 +76,9 @@ class ContainerTask(PythonTask):
         metadata = metadata or TaskMetadata()
         metadata.pod_template_name = pod_template_name
 
+        if timeout is not None:
+            metadata.timeout = timeout
+
         super().__init__(
             task_type="raw-container",
             name=name,
@@ -283,7 +286,6 @@ class ContainerTask(PythonTask):
             self._image, command=commands, remove=True, volumes=volume_bindings, detach=True
         )
 
-        # Wait for the container to finish the task, with timeout if specified
         timeout_seconds = None
         if self._timeout is not None:
             timeout_seconds = self._timeout.total_seconds()
