@@ -701,7 +701,7 @@ class TaskSpec(_common.FlyteIdlEntity):
 
 
 class Task(_common.FlyteIdlEntity):
-    def __init__(self, id, closure, short_description):
+    def __init__(self, id, closure, short_description=None):
         """
         :param flytekit.models.core.identifier.Identifier id: The (project, domain, name) identifier for this task.
         :param TaskClosure closure: The closure for the underlying workload.
@@ -729,6 +729,7 @@ class Task(_common.FlyteIdlEntity):
     @property
     def short_description(self):
         """
+        The short description of the task.
         :rtype: str
         """
         return self._short_description
