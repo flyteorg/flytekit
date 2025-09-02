@@ -72,7 +72,7 @@ class WorkflowSpec(_common.FlyteIdlEntity):
 
 
 class Workflow(_common.FlyteIdlEntity):
-    def __init__(self, id, closure, short_description):
+    def __init__(self, id, closure, short_description=None):
         """
         :param flytekit.models.core.identifier.Identifier id:
         :param WorkflowClosure closure:
