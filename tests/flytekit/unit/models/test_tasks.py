@@ -299,6 +299,7 @@ def test_task(task_closure):
     obj = task.Task(
         identifier.Identifier(identifier.ResourceType.TASK, "project", "domain", "name", "version"),
         task_closure,
+        "my short description",
     )
     assert obj.id.project == "project"
     assert obj.id.domain == "domain"
