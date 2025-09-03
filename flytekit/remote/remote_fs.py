@@ -145,9 +145,11 @@ class FlyteFS(HTTPFileSystem):
         """
         prefix = kwargs.pop(_PREFIX_KEY)
         lpath = pathlib.Path(lpath)
-        relative_subdirectory = str(lpath.parent.relative_to(pathlib.Path(kwargs.pop(_LPATH_ROOT_KEY))))
-        if relative_subdirectory != ".":
-            prefix += "/" + relative_subdirectory
+        if _LPATH_ROOT_KEY in kwargs:
+            lpath_root = pathlib.Path(kwargs.pop(_LPATH_ROOT_KEY))
+            relative_subdirectory = str(lpath.parent.relative_to(lpath_root))
+            if relative_subdirectory != ".":
+                prefix += "/" + relative_subdirectory
         _, native_url = self._remote.upload_file(
             lpath, self._remote.default_project, self._remote.default_domain, prefix
         )
