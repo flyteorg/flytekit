@@ -3851,3 +3851,42 @@ async def test_dict_transformer_annotated_type():
 
     literal3 = await TypeEngine.async_to_literal(ctx, nested_dict, nested_dict_type, expected_type)
     assert literal3.map.literals["outer"].map.literals["inner"].scalar.primitive.integer == 42
+
+def test_literal_transformer_string_type():
+    # Python -> Flyte
+    t = typing.Literal["outcome", "income"]
+    lt = TypeEngine.get_transformer(t).get_literal_type(t)
+    assert lt.simple == SimpleType.STRING
+    assert lt.annotation.annotations["literal_values"] == ["outcome", "income"]
+
+    lv = TypeEngine.to_literal(FlyteContext.current_context(), "outcome", t, lt)
+    assert lv.scalar.primitive.string_value == "outcome"
+
+    # Flyte -> Python (reconstruction)
+    pt = TypeEngine.get_transformer(t).guess_python_type(lt)
+    assert pt is typing.Literal["outcome", "income"]
+    pv = TypeEngine.get_transformer(pt).to_python_value(FlyteContext.current_context(), lv, pt)
+    TypeEngine.get_transformer(pt).assert_type(pt, pv)
+    assert pv == "outcome"
+
+def test_literal_transformer_int_type():
+    # Python -> Flyte
+    t = typing.Literal[1, 2, 3]
+    lt = TypeEngine.get_transformer(t).get_literal_type(t)
+    assert lt.simple == SimpleType.INTEGER
+    assert lt.annotation.annotations["literal_values"] == [1, 2, 3]
+
+    lv = TypeEngine.to_literal(FlyteContext.current_context(), 1, t, lt)
+    assert lv.scalar.primitive.integer == 1
+
+    # Flyte -> Python (reconstruction)
+    pt = TypeEngine.get_transformer(t).guess_python_type(lt)
+    assert pt is typing.Literal[1, 2, 3]
+    pv = TypeEngine.get_transformer(pt).to_python_value(FlyteContext.current_context(), lv, pt)
+    TypeEngine.get_transformer(pt).assert_type(pt, pv)
+    assert pv == 1
+
+def test_literal_transformer_mixed_base_types():
+    t = typing.Literal["a", 1]
+    with pytest.raises(TypeTransformerFailedError):
+        TypeEngine.get_transformer(t).get_literal_type(t)
