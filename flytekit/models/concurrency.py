@@ -22,6 +22,7 @@ class ConcurrencyPolicy(_common.FlyteIdlEntity):
     """
     Defines the concurrency policy for a launch plan.
     """
+
     def __init__(self, max_concurrency: int, behavior: ConcurrencyLimitBehavior = None):
         self._max_concurrency = max_concurrency
         self._behavior = behavior if behavior is not None else ConcurrencyLimitBehavior.SKIP
