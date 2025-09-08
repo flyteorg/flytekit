@@ -32,6 +32,7 @@ from flytekit.models import interface as interface_models
 from flytekit.models import launch_plan as _launch_plan_models
 from flytekit.models.admin import workflow as admin_workflow_models
 from flytekit.models.admin.workflow import WorkflowSpec
+from flytekit.models.concurrency import ConcurrencyPolicy
 from flytekit.models.core import identifier as _identifier_model
 from flytekit.models.core import workflow as _core_wf
 from flytekit.models.core import workflow as workflow_model
@@ -39,7 +40,6 @@ from flytekit.models.core.workflow import ApproveCondition, GateNode, SignalCond
 from flytekit.models.core.workflow import ArrayNode as ArrayNodeModel
 from flytekit.models.core.workflow import BranchNode as BranchNodeModel
 from flytekit.models.task import TaskSpec, TaskTemplate
-from flytekit.models.concurrency import ConcurrencyPolicy
 
 FlyteLocalEntity = Union[
     PythonTask,
@@ -362,8 +362,7 @@ def get_serializable_launch_plan(
     concurrency_policy = None
     if entity.concurrency is not None:
         concurrency_policy = ConcurrencyPolicy(
-            max_concurrency=entity.concurrency.max_concurrency,
-            behavior=entity.concurrency.behavior
+            max_concurrency=entity.concurrency.max_concurrency, behavior=entity.concurrency.behavior
         )
 
     lps = _launch_plan_models.LaunchPlanSpec(

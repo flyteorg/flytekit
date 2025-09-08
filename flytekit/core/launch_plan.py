@@ -4,7 +4,6 @@ import typing
 from typing import Any, Callable, Dict, List, Optional, Type
 
 from flytekit.core import workflow as _annotated_workflow
-from flytekit.models.concurrency import ConcurrencyPolicy
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager, FlyteEntities
 from flytekit.core.interface import Interface, transform_function_to_interface, transform_inputs_to_parameters
 from flytekit.core.promise import create_and_link_node, translate_inputs_to_literals
@@ -15,6 +14,7 @@ from flytekit.models import interface as _interface_models
 from flytekit.models import literals as _literal_models
 from flytekit.models import schedule as _schedule_model
 from flytekit.models import security
+from flytekit.models.concurrency import ConcurrencyPolicy
 from flytekit.models.core import workflow as _workflow_model
 
 

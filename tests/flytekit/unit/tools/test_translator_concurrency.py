@@ -35,14 +35,14 @@ def test_translator_with_concurrency_policy():
         default_inputs={"a": 10},
         concurrency=concurrency_policy
     )
-    
+
     entity_mapping = OrderedDict()
     serialized_lp = get_serializable(entity_mapping, serialization_settings, lp)
-    
+
     assert serialized_lp.spec.concurrency_policy is not None
     assert serialized_lp.spec.concurrency_policy.max_concurrency == 5
     assert serialized_lp.spec.concurrency_policy.behavior == ConcurrencyLimitBehavior.SKIP
-    
+
     # Create a launch plan without concurrency policy
     lp_no_concurrency = launch_plan.LaunchPlan.get_or_create(
         workflow=my_wf,
@@ -51,6 +51,6 @@ def test_translator_with_concurrency_policy():
     )
     entity_mapping_2 = OrderedDict()
     serialized_lp_2 = get_serializable(entity_mapping_2, serialization_settings, lp_no_concurrency)
-    
+
     # Verify concurrency policy is not set
     assert serialized_lp_2.spec.concurrency_policy is None

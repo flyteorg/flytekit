@@ -8,8 +8,8 @@ from flytekit.models import interface as _interface
 from flytekit.models import literals as _literals
 from flytekit.models import schedule as _schedule
 from flytekit.models import security
-from flytekit.models.core import identifier as _identifier
 from flytekit.models.concurrency import ConcurrencyPolicy
+from flytekit.models.core import identifier as _identifier
 
 
 class LaunchPlanMetadata(_common.FlyteIdlEntity):
@@ -310,7 +310,8 @@ class LaunchPlanSpec(_common.FlyteIdlEntity):
             else None,
             overwrite_cache=pb2.overwrite_cache if pb2.overwrite_cache else None,
             concurrency_policy=ConcurrencyPolicy.from_flyte_idl(pb2.concurrency_policy)
-            if pb2.HasField("concurrency_policy") else None,
+            if pb2.HasField("concurrency_policy")
+            else None,
         )
 
 
