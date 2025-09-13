@@ -73,6 +73,8 @@ async def test_coroutine_batching_of_list_transformer():
 
     lt = LiteralType(simple=SimpleType.INTEGER)
     python_val = [MyInt(10), MyInt(11), MyInt(12), MyInt(13), MyInt(14)]
+    # Use the different python_val to avoid hitting the cache
+    python_val_2 = [MyInt(11), MyInt(10), MyInt(12), MyInt(13), MyInt(14)]
     ctx = FlyteContext.current_context()
 
     with mock.patch("flytekit.core.type_engine._TYPE_ENGINE_COROS_BATCH_SIZE", 2):
@@ -80,6 +82,10 @@ async def test_coroutine_batching_of_list_transformer():
 
     with mock.patch("flytekit.core.type_engine._TYPE_ENGINE_COROS_BATCH_SIZE", 5):
         with pytest.raises(ValueError):
+            TypeEngine.to_literal(ctx, python_val_2, typing.List[MyInt], lt)
+
+    # Cache hit for python_val prevents async_to_literal calls, avoiding the batch size limit of 2 error defined in MyIntAsyncTransformer
+    with mock.patch("flytekit.core.type_engine._TYPE_ENGINE_COROS_BATCH_SIZE", 5):
             TypeEngine.to_literal(ctx, python_val, typing.List[MyInt], lt)
 
     del TypeEngine._REGISTRY[MyInt]
