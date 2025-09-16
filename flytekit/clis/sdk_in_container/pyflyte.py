@@ -55,7 +55,6 @@ from flytekit.loggers import logger
     type=str,
     help="Path to config file for use within container",
 )
-
 @click.pass_context
 def main(ctx, pkgs: typing.List[str], config: str, verbose: int):
     """
@@ -78,7 +77,6 @@ def main(ctx, pkgs: typing.List[str], config: str, verbose: int):
             pkgs = LocalSDK.WORKFLOW_PACKAGES.read(cfg)
             if pkgs is None:
                 pkgs = []
-
 
     ctx.obj[CTX_PACKAGES] = pkgs
     ctx.obj[CTX_VERBOSE] = verbose

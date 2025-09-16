@@ -1,9 +1,8 @@
 # compat_v2/workflow.py
 from __future__ import annotations
-from typing import Callable, Optional, Dict, Any
 
-import flytekit
-import flyte
+from typing import Any, Callable, Optional
+
 from flyte import Image, Resources, TaskEnvironment
 from flyte._doc import Documentation as V2Docs
 

@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 import importlib.util
 import json
 import sys
@@ -6,8 +7,8 @@ from typing import Any, Dict
 
 import click
 import flyte
-import flytekit
 
+import flytekit
 from flytekit.migration.task import task_shim
 from flytekit.migration.workflow import workflow_shim
 
@@ -30,7 +31,7 @@ def _parse_kv(pairs: tuple[str, ...]) -> Dict[str, Any]:
         k, v = kv.split("=", 1)
         # naive coercion
         if v.lower() in {"true", "false"}:
-            out[k] = (v.lower() == "true")
+            out[k] = v.lower() == "true"
         else:
             try:
                 out[k] = int(v) if "." not in v else float(v)
@@ -61,13 +62,17 @@ def _run_remote(entity, inputs):
 
 
 @click.command("runv2", context_settings={"ignore_unknown_options": True})
-@click.option("--remote", is_flag=True, default=False,
-              help="Submit via Flyte 2 remote backend if configured; otherwise run locally.")
+@click.option(
+    "--remote",
+    is_flag=True,
+    default=False,
+    help="Submit via Flyte 2 remote backend if configured; otherwise run locally.",
+)
 @click.argument("pyfile", type=click.Path(exists=True))
 @click.argument("entity_name")
 @click.option("-i", "--input", "inputs_kv", multiple=True, help="key=value pairs")
 @click.option("--config", type=click.Path(exists=True), help="Flyte 2 SDK config file")
-def runv2(pyfile: str, entity_name: str, inputs_kv: tuple[str, ...], config: str | None,remote: bool):
+def runv2(pyfile: str, entity_name: str, inputs_kv: tuple[str, ...], config: str | None, remote: bool):
     """
     pyflyte runv2 xx.py <workflow_or_task_name> -i a=1 -i b=hello
 
@@ -92,8 +97,11 @@ def runv2(pyfile: str, entity_name: str, inputs_kv: tuple[str, ...], config: str
     inputs = {}
     for kv in inputs_kv:
         k, v = kv.split("=", 1)
-        inputs[k] = (v.lower() == "true") if v.lower() in ("true", "false") else (
-            float(v) if "." in v else (int(v) if v.isdigit() else v))
+        inputs[k] = (
+            (v.lower() == "true")
+            if v.lower() in ("true", "false")
+            else (float(v) if "." in v else (int(v) if v.isdigit() else v))
+        )
 
     if remote:
         out = _run_remote(entity, inputs)

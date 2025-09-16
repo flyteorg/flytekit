@@ -1,6 +1,11 @@
 from __future__ import annotations
+
 import datetime
-from typing import Callable, Dict, Iterable, List, Literal, Optional, Tuple, Union, Any
+from typing import Any, Callable, Dict, Iterable, List, Literal, Optional, Tuple, Union
+
+from flyte import Image, Resources, TaskEnvironment
+from flyte._doc import Documentation as V2Docs
+from flyte._task import AsyncFunctionTaskTemplate, P, R
 
 import flytekit
 from flytekit.core import launch_plan, workflow
@@ -10,14 +15,11 @@ from flytekit.core.task import FuncOut
 from flytekit.deck import DeckField
 from flytekit.extras.accelerators import BaseAccelerator
 
-from flyte import Image, Resources, TaskEnvironment
-from flyte._doc import Documentation as V2Docs
-from flyte._task import AsyncFunctionTaskTemplate, P, R
-
 
 def _to_v2_resources(req: Optional[flytekit.Resources], lim: Optional[flytekit.Resources]) -> Optional[Resources]:
     if not req and not lim:
         return None
+
     # Pick requests first, then fall back to limits if requests missing.
     def pick(getter: Callable[[flytekit.Resources], Any], fallback_getter: Callable[[flytekit.Resources], Any]):
         if req and getter(req) is not None:
@@ -89,7 +91,7 @@ def task_shim(
     accelerator: Optional[BaseAccelerator] = None,
     pickle_untyped: bool = False,
     shared_memory: Optional[Union[Literal[True], str]] = None,
-    resources: Optional[Resources] = None,   # explicit v2 resources passthrough
+    resources: Optional[Resources] = None,  # explicit v2 resources passthrough
     labels: Optional[dict[str, str]] = None,
     annotations: Optional[dict[str, str]] = None,
     **kwargs,
