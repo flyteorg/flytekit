@@ -1,67 +1,80 @@
 from __future__ import annotations
-
 import datetime
-import inspect
-import os
-from functools import partial, update_wrapper
-from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple, Type, TypeVar, Union, overload
-from typing import Literal as L
-
-from typing_extensions import ParamSpec  # type: ignore
+from typing import Callable, Dict, Iterable, List, Literal, Optional, Tuple, Union, Any
 
 import flytekit
-from flytekit.core import launch_plan as _annotated_launchplan
-from flytekit.core import workflow as _annotated_workflow
-from flytekit.core.base_task import PythonTask, TaskMetadata, TaskResolverMixin
-from flytekit.core.cache import Cache, VersionParameters
-from flytekit.core.interface import Interface, output_name_generator, transform_function_to_interface
-from flytekit.core.pod_template import PodTemplate
-from flytekit.core.python_function_task import AsyncPythonFunctionTask, EagerAsyncPythonFunctionTask, PythonFunctionTask
-from flytekit.core.reference_entity import ReferenceEntity, TaskReference
-from flytekit.core.resources import Resources
-from flytekit.core.utils import str2bool
+from flytekit.core import launch_plan, workflow
+from flytekit.core.base_task import T, TaskResolverMixin
+from flytekit.core.python_function_task import PythonFunctionTask
+from flytekit.core.task import FuncOut
 from flytekit.deck import DeckField
 from flytekit.extras.accelerators import BaseAccelerator
-from flytekit.image_spec.image_spec import ImageSpec
-from flytekit.interactive import vscode
-from flytekit.interactive.constants import FLYTE_ENABLE_VSCODE_KEY
-from flytekit.models.documentation import Documentation
-from flytekit.models.security import Secret
 
-import flyte
 from flyte import Image, Resources, TaskEnvironment
-from flyte._doc import Documentation
+from flyte._doc import Documentation as V2Docs
 from flyte._task import AsyncFunctionTaskTemplate, P, R
 
-P = ParamSpec("P")
-T = TypeVar("T")
-FuncOut = TypeVar("FuncOut")
+
+def _to_v2_resources(req: Optional[flytekit.Resources], lim: Optional[flytekit.Resources]) -> Optional[Resources]:
+    if not req and not lim:
+        return None
+    # Pick requests first, then fall back to limits if requests missing.
+    def pick(getter: Callable[[flytekit.Resources], Any], fallback_getter: Callable[[flytekit.Resources], Any]):
+        if req and getter(req) is not None:
+            return getter(req)
+        if lim and fallback_getter(lim) is not None:
+            return fallback_getter(lim)
+        return None
+
+    cpu = pick(lambda r: r.cpu, lambda r: r.cpu)
+    mem = pick(lambda r: r.mem, lambda r: r.mem)
+    gpu = pick(lambda r: r.gpu, lambda r: r.gpu)
+    # Flyte-SDK Resources accepts cpu as float/str, memory as str like "800Mi"
+    return Resources(cpu=cpu, memory=mem, gpu=gpu)
+
+
+def _to_v2_image(container_image: Optional[Union[str, flytekit.ImageSpec]]) -> Image:
+    if isinstance(container_image, flytekit.ImageSpec):
+        img = Image.from_debian_base()
+        if container_image.apt_packages:
+            img = img.with_apt_packages(*container_image.apt_packages)
+        pip_packages = []
+        pip_packages.append("flyte")
+        pip_packages.append("flytekit")
+        if container_image.packages:
+            pip_packages.extend(container_image.packages)
+        return img.with_pip_packages(*pip_packages)
+    if isinstance(container_image, str):
+        return Image.from_base(container_image).with_pip_packages("flyte", "flytekit")
+    # default
+    return Image.from_debian_base().with_pip_packages("flyte", "flytekit")
+
 
 def task_shim(
     _task_function: Optional[Callable[P, FuncOut]] = None,
     task_config: Optional[T] = None,
-    cache: Union[bool, Cache] = False,
+    cache: Union[bool, flytekit.Cache] = False,
     retries: int = 0,
     interruptible: Optional[bool] = None,
     deprecated: str = "",
     timeout: Union[datetime.timedelta, int] = 0,
-    container_image: Optional[Union[str, ImageSpec]] = None,
+    container_image: Optional[Union[str, flytekit.ImageSpec]] = None,
     environment: Optional[Dict[str, str]] = None,
-    requests: Optional[Resources] = None,
-    limits: Optional[Resources] = None,
-    secret_requests: Optional[List[Secret]] = None,
+    requests: Optional[flytekit.Resources] = None,
+    limits: Optional[flytekit.Resources] = None,
+    secret_requests: Optional[List[flytekit.Secret]] = None,
     execution_mode: PythonFunctionTask.ExecutionBehavior = PythonFunctionTask.ExecutionBehavior.DEFAULT,
     node_dependency_hints: Optional[
         Iterable[
             Union[
-                PythonFunctionTask,
-                _annotated_launchplan.LaunchPlan,
-                _annotated_workflow.WorkflowBase,
+                flytekit.PythonFunctionTask,
+                launch_plan.LaunchPlan,
+                workflow.WorkflowBase,
             ]
         ]
     ] = None,
     task_resolver: Optional[TaskResolverMixin] = None,
-    docs: Optional[Documentation] = None,
+    docs: Optional[flytekit.Documentation] = None,
     disable_deck: Optional[bool] = None,
     enable_deck: Optional[bool] = None,
     deck_fields: Optional[Tuple[DeckField, ...]] = (
@@ -71,61 +84,55 @@ def task_shim(
         DeckField.INPUT,
         DeckField.OUTPUT,
     ),
-    pod_template: Optional[PodTemplate] = None,
+    pod_template: Optional[flytekit.PodTemplate] = None,
     pod_template_name: Optional[str] = None,
     accelerator: Optional[BaseAccelerator] = None,
     pickle_untyped: bool = False,
-    shared_memory: Optional[Union[L[True], str]] = None,
-    resources: Optional[Resources] = None,
+    shared_memory: Optional[Union[Literal[True], str]] = None,
+    resources: Optional[Resources] = None,   # explicit v2 resources passthrough
     labels: Optional[dict[str, str]] = None,
     annotations: Optional[dict[str, str]] = None,
     **kwargs,
-) -> Union[AsyncFunctionTaskTemplate, Callable[P, R]]:
+) -> Union[AsyncFunctionTaskTemplate, Callable[[Callable[P, R]], AsyncFunctionTaskTemplate]]:
     """
-    Shim to allow using flytekit configuration to run flyte-sdk tasks.
-    Converts flytekit-native config to flyte-sdk compatible task.
+    Decorator that mimics flytekit.task but registers a Flyte 2 task under the hood.
+    Returns a decorator if called with no function; otherwise returns the wrapped task.
     """
-    def wrapper(fn: Callable[P, FuncOut]) -> PythonFunctionTask[T]:
-        # Convert flytekit-native types to flyte-sdk compatible types if needed
-        # (This is a placeholder for actual conversion logic if required)
-        # For now, we just call the main task function, but this is where bridging logic would go.
-        plugin_config = task_config
-        _pod_template = (
-            flyte.PodTemplate(
-                pod_spec=pod_template.pod_spec,
-                primary_container_name=pod_template.primary_container_name,
-                labels=pod_template.labels,
-                annotations=pod_template.annotations,
-            )
-            if pod_template
-            else None
-        )
 
-        if isinstance(container_image, flytekit.ImageSpec):
-            image = Image.from_debian_base()
-            if container_image.apt_packages:
-                image = image.with_apt_packages(*container_image.apt_packages)
-            pip_packages = ["flytekit"]
-            if container_image.packages:
-                pip_packages.extend(container_image.packages)
-            image = image.with_pip_packages(*pip_packages)
-        elif isinstance(container_image, str):
-            image = Image.from_base(container_image).with_pip_packages("flyte")
-        else:
-            image = Image.from_debian_base().with_pip_packages("flytekit")
+    # Build V2 image/resources
+    image = _to_v2_image(container_image)
+    if resources is None:
+        resources = _to_v2_resources(requests, limits)
 
-        _docs = Documentation(description=docs.short_description) if docs else None
+    v2_docs = V2Docs(description=getattr(docs, "short_description", None)) if docs else None
 
-        env = TaskEnvironment(
-            name="flytekit",
-            resources=resources,
-            image=image,
-            cache="enabled" if cache else "disable",
-            plugin_config=plugin_config,
-        )
-        return env.task(retries=retries, pod_template=pod_template_name or _pod_template, docs=_docs)(fn)
+    # cache mapping
+    cache_mode: Literal["enabled", "disabled"]
+    cache_mode = "enabled" if (cache is True or str(cache).lower() == "true") else "disabled"
 
+    # PodTemplate passthrough: prefer name, else object
+    pod_tpl = pod_template_name or (pod_template and pod_template.pod_spec and pod_template) or None
 
+    env = TaskEnvironment(
+        name="flytekit",
+        resources=resources or Resources(cpu=0.8, memory="800Mi"),
+        image=image,
+        cache=cache_mode,
+        plugin_config=task_config,
+        env=environment,
+    )
+
+    def _decorator(fn: Callable[P, R]) -> AsyncFunctionTaskTemplate:
+        # You can add retries, timeout, accelerator, secrets mapping here as needed
+        return env.task(
+            retries=retries,
+            pod_template=pod_tpl,
+            docs=v2_docs,
+            timeout=timeout if isinstance(timeout, int) else int(timeout.total_seconds()) if timeout else 0,
+            # You may add accelerator, secrets, interruptible, etc. when Flyte 2 exposes them
+        )(fn)
+
+    # Support both @task and @task()
     if _task_function is not None:
-        return wrapper(_task_function)
-    return wrapper
+        return _decorator(_task_function)
+    return _decorator
