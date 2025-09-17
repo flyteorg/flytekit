@@ -383,7 +383,7 @@ def test_convert_to_flyte_phase():
     assert convert_to_flyte_phase("TIMEDOUT") == TaskExecution.FAILED
     assert convert_to_flyte_phase("CANCELED") == TaskExecution.FAILED
     assert convert_to_flyte_phase("SKIPPED") == TaskExecution.FAILED
-    assert convert_to_flyte_phase("INTERNAL_ERROR") == TaskExecution.FAILED
+    assert convert_to_flyte_phase("INTERNAL_ERROR") == TaskExecution.RETRYABLE_FAILED
 
     assert convert_to_flyte_phase("DONE") == TaskExecution.SUCCEEDED
     assert convert_to_flyte_phase("SUCCEEDED") == TaskExecution.SUCCEEDED
