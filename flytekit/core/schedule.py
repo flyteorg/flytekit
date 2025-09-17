@@ -142,12 +142,12 @@ class CronSchedule(_schedule_models.Schedule):
     def _validate_schedule(schedule: str):
         if schedule.lower() not in CronSchedule._VALID_CRON_ALIASES:
             try:
-                croniter.croniter(schedule)
-            except Exception:
-                raise ValueError(
-                    "Schedule is invalid. It must be set to either a cron alias or valid cron expression."
-                    f" Provided schedule: {schedule}"
-                )
+                # Validate the cron expression
+                cron = croniter.croniter(schedule)
+                # Try to get the next occurrence to validate the schedule
+                cron.get_next(datetime.datetime)
+            except Exception as e:
+                raise ValueError(f"Schedule is invalid. Provided schedule: {schedule} Error: {str(e)}")
 
     @staticmethod
     def _validate_offset(offset: str):
