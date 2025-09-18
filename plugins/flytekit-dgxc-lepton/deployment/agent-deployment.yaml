@@ -1,0 +1,70 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: lepton-agent
+  namespace: flyte
+  labels:
+    app: lepton-agent
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: lepton-agent
+  template:
+    metadata:
+      labels:
+        app: lepton-agent
+    spec:
+      containers:
+      - name: lepton-agent
+        image: <base64-encoded-workspace-id>/lepton-agent:latest
+        ports:
+        - containerPort: 8000
+        env:
+        # Lepton credentials
+        - name: LEPTON_WORKSPACE_ID
+          valueFrom:
+            secretKeyRef:
+              name: lepton-secrets
+              key: workspace_id
+        - name: LEPTON_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: lepton-secrets
+              key: token
+        - name: DEBUG_MODE
+          value: "true"
+        # Logging configuration
+        - name: ROOT_LOG_LEVEL
+          value: "DEBUG"
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "250m"
+          limits:
+            memory: "1Gi"
+            cpu: "500m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: lepton-agent-service
+  namespace: flyte
+spec:
+  selector:
+    app: lepton-agent
+  ports:
+  - protocol: TCP
+    port: 8000
+    targetPort: 8000
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: lepton-secrets
+  namespace: flyte
+type: Opaque
+data:
+  workspace_id: <base64-encoded-workspace-id>
+  token: <base64-encoded-lepton-token>
