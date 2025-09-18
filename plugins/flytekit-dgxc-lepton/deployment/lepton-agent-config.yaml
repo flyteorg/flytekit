@@ -1,0 +1,54 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: flyte-sandbox-config
+  namespace: flyte
+data:
+  001-plugins.yaml: |
+    tasks:
+      task-plugins:
+        default-for-task-types:
+          container: container
+          container_array: k8s-array
+          sidecar: sidecar
+          lepton_endpoint_task: connector-service  # Route our task type to connector service
+        enabled-plugins:
+        - container
+        - sidecar
+        - k8s-array
+        - connector-service
+        - echo
+    plugins:
+      logs:
+        kubernetes-enabled: true
+        kubernetes-template-uri: http://localhost:30080/kubernetes-dashboard/#/log/{{.namespace }}/{{ .podName }}/pod?namespace={{ .namespace }}
+        cloudwatch-enabled: false
+        stackdriver-enabled: false
+      k8s:
+        co-pilot:
+          image: "cr.flyte.org/flyteorg/flytecopilot:v1.16.0"
+      k8s-array:
+        logs:
+          config:
+            kubernetes-enabled: true
+            kubernetes-template-uri: http://localhost:30080/kubernetes-dashboard/#/log/{{.namespace }}/{{ .podName }}/pod?namespace={{ .namespace }}
+            cloudwatch-enabled: false
+            stackdriver-enabled: false
+      connector-service:
+        defaultConnector:
+          defaultTimeout: 10s
+          endpoint: k8s://flyteconnector.flyte:8000
+          insecure: true
+          timeouts:
+            GetTask: 10s
+            ListAgents: 3s
+        connectors:
+          # Route lepton tasks to our dedicated agent
+          lepton_endpoint_task:
+            endpoint: k8s://lepton-agent-service.flyte:8000
+            insecure: true
+            defaultTimeout: 30s
+            timeouts:
+              GetTask: 30s
+              CreateTask: 300s
+              DeleteTask: 60s
