@@ -99,6 +99,7 @@ Scheduling
 - BlobType
 
 """
+import flytekit.migrate  # isort: skip
 
 import os
 import sys

@@ -7,7 +7,7 @@ on:
     branches:
       - master
       - 'release-v**'
-  pull_request:
+  # pull_request:
   schedule:
     - cron: "0 13 * * *" # This schedule runs at 1pm UTC every day
 

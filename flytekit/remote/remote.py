@@ -12,6 +12,7 @@ import configparser
 import functools
 import gzip
 import hashlib
+import logging
 import os
 import pathlib
 import tempfile
@@ -1931,6 +1932,12 @@ class FlyteRemote(object):
                 serialization_settings=serialization_settings,
             )
         raise NotImplementedError(f"entity type {type(entity)} not recognized for execution")
+
+    def execute_v2(self, entity, **kwargs):
+        import flyte
+        flyte.init_from_config()
+        run = flyte.with_runcontext(log_level=logging.DEBUG).run(entity, **kwargs)
+        print(run.url)
 
     # Flyte Remote Entities
     # ---------------------

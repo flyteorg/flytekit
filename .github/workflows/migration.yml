@@ -1,0 +1,50 @@
+name: Build
+
+# Schedule runs to run twice a day
+
+on:
+  push:
+    branches:
+      - master
+      - 'release-v**'
+  pull_request:
+
+env:
+  FLYTE_SDK_LOGGING_LEVEL: 10 # debug
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    needs:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-24.04-arm
+#          - ubuntu-latest
+#          - windows-latest
+#          - macos-latest
+        python-version:
+          - "3.12"
+    steps:
+      - uses: actions/checkout@v4
+      - name: "Clear action cache"
+        uses: ./.github/actions/clear-action-cache
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install dependencies
+        run: |
+          pip install uv
+          make setup-global-uv
+          uv pip install --pre flyte
+          uv pip freeze
+      - name: Test migrations
+        run: |
+          python migrate_examples/hello.py
+      
