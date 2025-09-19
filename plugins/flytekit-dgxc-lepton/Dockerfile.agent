@@ -1,0 +1,29 @@
+# Dockerfile for Lepton Agent
+# This creates a standalone agent service for handling Lepton endpoint operations
+
+FROM ghcr.io/flyteorg/flytekit:py3.12-latest
+
+# leptonai will be installed automatically as dependency via setup.py
+
+# Switch to root to handle file permissions
+USER root
+
+# Copy and install our plugin
+COPY --chown=flytekit:flytekit . /home/flytekit/dgxc-lepton-plugin
+WORKDIR /home/flytekit/dgxc-lepton-plugin
+
+# Clean any existing build artifacts
+RUN rm -rf *.egg-info build dist
+
+# Install the plugin
+RUN pip install .
+
+# Switch back to flytekit user
+USER flytekit
+
+# Expose agent service port
+EXPOSE 8000
+
+# Start the connector service
+# The connector service will handle Lepton endpoint lifecycle operations via gRPC
+CMD ["pyflyte", "serve", "connector", "--port", "8000", "--modules", "flytekitplugins.dgxc_lepton"]
