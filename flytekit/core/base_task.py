@@ -70,6 +70,7 @@ from flytekit.core.promise import (
     flyte_entity_call_handler,
     translate_inputs_to_literals,
 )
+from flytekit.core.retry import Retry
 from flytekit.core.tracker import TrackedInstance
 from flytekit.core.type_engine import TypeEngine, TypeTransformerFailedError
 from flytekit.core.utils import timeit
@@ -126,7 +127,7 @@ class TaskMetadata(object):
         cache_ignore_input_vars (Tuple[str, ...]): Input variables that should not be included when calculating hash for cache.
         interruptible (Optional[bool]): Indicates that this task can be interrupted and/or scheduled on nodes with lower QoS guarantees that can include pre-emption.
         deprecated (str): Can be used to provide a warning message for a deprecated task. An absence or empty string indicates that the task is active and not deprecated.
-        retries (int): for retries=n; n > 0, on failures of this task, the task will be retried at-least n number of times.
+        retries (Union[int, Retry]): for retries=n; n > 0, on failures of this task, the task will be retried at-least n number of times.
         timeout (Optional[Union[datetime.timedelta, int]]): The maximum duration for which one execution of this task should run. The execution will be terminated if the runtime exceeds this timeout.
         pod_template_name (Optional[str]): The name of an existing PodTemplate resource in the cluster which will be used for this task.
         generates_deck (bool): Indicates whether the task will generate a Deck URI.
@@ -141,7 +142,7 @@ class TaskMetadata(object):
     cache_ignore_input_vars: Tuple[str, ...] = ()
     interruptible: Optional[bool] = None
     deprecated: str = ""
-    retries: int = 0
+    retries: Union[int, Retry] = 0
     timeout: Optional[Union[datetime.timedelta, int]] = None
     pod_template_name: Optional[str] = None
     generates_deck: bool = False
@@ -166,7 +167,28 @@ class TaskMetadata(object):
 
     @property
     def retry_strategy(self) -> _literal_models.RetryStrategy:
-        return _literal_models.RetryStrategy(self.retries)
+        if isinstance(self.retries, int):
+            return _literal_models.RetryStrategy(retries=self.retries)
+        elif isinstance(self.retries, Retry):
+            if self.retries.on_oom is None:
+                on_oom = None
+            else:
+                if self.retries.on_oom.backoff is None:
+                    backoff = None
+                else:
+                    backoff = _literal_models.ExponentialBackoff(
+                        exponent=self.retries.on_oom.backoff.exponent,
+                        max=self.retries.on_oom.backoff.max,
+                    )
+                on_oom = _literal_models.RetryOnOOM(
+                    factor=self.retries.on_oom.factor,
+                    limit=self.retries.on_oom.limit,
+                    backoff=backoff,
+                )
+            return _literal_models.RetryStrategy(
+                self.retries.attempts,
+                on_oom=on_oom,
+            )
 
     def to_taskmetadata_model(self) -> _task_model.TaskMetadata:
         """
