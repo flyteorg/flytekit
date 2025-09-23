@@ -1517,7 +1517,6 @@ def workflow(
     :param default_options: Default options for the workflow when creating a default launch plan. Currently only
          the labels and annotations are allowed to be set as defaults.
     """
-    print("in the workflowwwwww")
     def wrapper(fn: Callable[P, FuncOut]) -> PythonFunctionWorkflow:
         workflow_metadata = WorkflowMetadata(on_failure=failure_policy or WorkflowFailurePolicy.FAIL_IMMEDIATELY)
 
