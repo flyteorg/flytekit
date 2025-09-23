@@ -72,7 +72,7 @@ def task_shim(
     docs = Documentation(description=docs.short_description) if docs else None
 
     env = TaskEnvironment(
-        name="flytekit",
+        name="flytekit_task",
         resources=Resources(cpu=0.8, memory="800Mi"),
         image=image,
         cache="auto" if cache else "disable",

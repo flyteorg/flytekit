@@ -161,7 +161,7 @@ from flytekit.types.structured.structured_dataset import (
     StructuredDatasetTransformerEngine,
     StructuredDatasetType,
 )
-import flytekit.migrate  # isort: skip
+import flytekit._migrate  # isort: skip
 
 
 def current_context() -> ExecutionParameters:
