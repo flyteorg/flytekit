@@ -75,7 +75,7 @@ def task_shim(
         name="flytekit",
         resources=Resources(cpu=0.8, memory="800Mi"),
         image=image,
-        cache="enabled" if cache else "disable",
+        cache="auto" if cache else "disable",
         plugin_config=plugin_config,
     )
     return env.task(retries=retries, pod_template=pod_template_name or pod_template, docs=docs)

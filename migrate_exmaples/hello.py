@@ -1,6 +1,6 @@
 import logging
-
 from flytekit import ImageSpec, dynamic, task, workflow
+
 
 image = ImageSpec(apt_packages=["vim"], packages=["pandas"])
 
@@ -24,6 +24,6 @@ def wf(name: str):
 if __name__ == "__main__":
     import flyte
     flyte.init_from_config(log_level=logging.DEBUG)
-    # run = flyte.with_runcontext(log_level=logging.DEBUG).run(wf, name="flyte")
-    # print(run.name)
-    # print(run.url)
+    run = flyte.with_runcontext(log_level=logging.DEBUG).run(wf, name="flyte")
+    print(run.name)
+    print(run.url)

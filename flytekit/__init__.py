@@ -99,8 +99,6 @@ Scheduling
 - BlobType
 
 """
-import flytekit.migrate  # isort: skip
-
 import os
 import sys
 from typing import Generator
@@ -163,6 +161,7 @@ from flytekit.types.structured.structured_dataset import (
     StructuredDatasetTransformerEngine,
     StructuredDatasetType,
 )
+import flytekit.migrate  # isort: skip
 
 
 def current_context() -> ExecutionParameters:
