@@ -9,30 +9,36 @@ from flytekitplugins.dgxc_lepton import create_lepton_endpoint_task
 
 from flytekit import workflow
 
-# Create a vLLM deployment task using unified API
 vllm_deployment = create_lepton_endpoint_task(
     deployment_type="vllm",
-    name="deploy_vllm_llama",
+    name="deploy_vllm_llama_v8",
     image="vllm/vllm-openai:latest",
     port=8000,
-    resource_shape="gpu.1xh200",
-    min_replicas=1,
-    max_replicas=2,
+    checkpoint_path="meta-llama/Llama-3.1-8B-Instruct",
+    served_model_name="llama-3.1-8b-instruct",
     tensor_parallel_size=1,
     pipeline_parallel_size=1,
     data_parallel_size=1,
     extra_args="--gpu-memory-utilization 0.95 --trust-remote-code",
+    api_token="VLLM_ENDPOINT_TOKEN",
+    secrets={"HF_TOKEN": "HUGGING_FACE_HUB_TOKEN_read"},
+    scaling_mode="traffic",
+    no_traffic_timeout=3600,
+    scale_to_zero=True,
+    # Direct environment variables (non-secrets)
     env_vars={
-        "HF_TOKEN": {"value_from": {"secret_name_ref": "HUGGING_FACE_HUB_TOKEN_read"}},
+        "HF_HOME": "/opt/vllm/.cache",
         "VLLM_WORKER_MULTIPROC_METHOD": "spawn",
     },
-    api_tokens=[{"value": "VLLM_ENDPOINT_TOKEN"}],
-    mounts={
-        "enabled": True,
-        "cache_path": "/shared-storage/model-cache/vllm-models",  # Replace with your cache path
-        "mount_path": "/opt/nim/.cache",
-        "storage_source": "node-nfs:lepton-shared-fs",
-    },
+    # Mounts configuration
+    mounts=[
+        {
+            "enabled": True,
+            "cache_path": "/shared-storage/model-cache/vllm",
+            "mount_path": "/opt/vllm/.cache",
+            "storage_source": "node-nfs:lepton-shared-fs",
+        }
+    ],
 )
 
 
@@ -40,7 +46,11 @@ vllm_deployment = create_lepton_endpoint_task(
 def vllm_inference_workflow() -> str:
     """Workflow that deploys and uses a vLLM inference endpoint."""
     endpoint_url = vllm_deployment(
-        endpoint_name="vllm-llama-inference", resource_shape="gpu.1xh200", deployment_type="vllm"
+        endpoint_name="vllm-llama-inference",
+        resource_shape="gpu.1xh200",
+        min_replicas=1,
+        max_replicas=2,
+        node_group="<your-node-group>",
     )
     return endpoint_url
 

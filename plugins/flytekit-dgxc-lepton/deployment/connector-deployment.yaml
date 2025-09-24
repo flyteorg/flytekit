@@ -32,6 +32,11 @@ spec:
             secretKeyRef:
               name: lepton-secrets
               key: token
+        - name: LEPTON_WORKSPACE_ORIGIN_URL
+          valueFrom:
+            secretKeyRef:
+              name: lepton-secrets
+              key: origin_url
         - name: DEBUG_MODE
           value: "true"
         # Logging configuration

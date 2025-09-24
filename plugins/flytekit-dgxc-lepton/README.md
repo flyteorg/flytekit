@@ -27,6 +27,7 @@ The Flyte backend requires:
 Configure these secrets in your Flyte deployment:
 - `lepton_workspace_id`: Your Lepton workspace identifier
 - `lepton_token`: Your Lepton API authentication token
+- `lepton_workspace_origin_url`: Your Lepton workspace origin URL
 
 Users do not need local Lepton CLI installation - all operations are handled by the backend connector.
 
@@ -48,6 +49,14 @@ Create the Lepton credentials secret:
 kubectl create secret generic lepton-secrets \
   --from-literal=workspace_id=<your-workspace-id> \
   --from-literal=token=<your-api-token> \
+  --from-literal=origin_url=<your-lepton-origin-url> \
+  -n flyte
+
+# Example for DGXC environment:
+kubectl create secret generic lepton-secrets \
+  --from-literal=workspace_id=xfre17eu \
+  --from-literal=token=nvapi-xxxxx \
+  --from-literal=origin_url=https://gateway.dgxc-lepton.nvidia.com \
   -n flyte
 ```
 
@@ -67,28 +76,22 @@ You should see the connector listed in the supported task types.
 from flytekit import workflow
 from flytekitplugins.dgxc_lepton import create_lepton_endpoint_task
 
-# Create deployment tasks using the optimized unified API
 http_server = create_lepton_endpoint_task(
-    deployment_type="custom",  # Specify deployment type
+    deployment_type="custom",
     name="deploy_http_server",
     image="python:3.11-slim",
     command=["/bin/bash", "-c", "python3 -m http.server 8080 --bind 0.0.0.0"],
-)
-
-# Deploy vLLM with optimized defaults
-vllm_server = create_lepton_endpoint_task(
-    deployment_type="vllm",    # Automatically sets vLLM + GPU defaults
-    name="deploy_vllm_server",
-    checkpoint_path="meta-llama/Llama-3.1-8B-Instruct",
-    served_model_name="llama-3.1-8b-instruct",
+    api_token="my-server-token",
 )
 
 @workflow
 def inference_workflow(endpoint_name: str = "my-endpoint") -> str:
-    # Only specify what's different - defaults are auto-applied
     endpoint_url = http_server(
         endpoint_name=endpoint_name,
-        deployment_type="custom",  # Required parameter
+        resource_shape="cpu.small",
+        min_replicas=1,
+        max_replicas=1,
+        node_group="<your-node-group>",
     )
     return endpoint_url
 ```
@@ -102,8 +105,9 @@ The unified `create_lepton_endpoint_task()` function supports all deployment typ
 custom_task = create_lepton_endpoint_task(
     deployment_type="custom",
     image="python:3.11-slim",
-    port=8080,  # Overrides default 8000 for custom containers
-    command=["/bin/bash", "-c", "python3 -m http.server 8080 --bind 0.0.0.0"]
+    port=8080,
+    command=["/bin/bash", "-c", "python3 -m http.server 8080 --bind 0.0.0.0"],
+    api_token="custom-server-token",
 )
 ```
 
@@ -112,15 +116,11 @@ custom_task = create_lepton_endpoint_task(
 nim_task = create_lepton_endpoint_task(
     deployment_type="nim",
     image="nvcr.io/nim/nvidia/llama-3_3-nemotron-super-49b-v1_5:latest",
-    resource_shape="gpu.2xh200",  # Override default gpu.1xh200
-    min_replicas=0,  # Scale to zero when not in use
-    health_config={
-        "liveness": {"initial_delay_seconds": 5000}  # Large model needs time
-    },
-    env_vars={
-        "NGC_API_KEY": {"value_from": {"secret_name_ref": "NGC_API_KEY"}},
-        "HF_TOKEN": {"value_from": {"secret_name_ref": "HUGGING_FACE_TOKEN"}},
-    }
+    secrets={"NGC_API_KEY": "ngc-secret", "HF_TOKEN": "hf-secret"},
+    api_token="nim-endpoint-token",
+    scaling_mode="traffic",
+    scale_to_zero=True,
+    initial_delay_seconds=5000,
 )
 ```
 
@@ -130,8 +130,10 @@ vllm_task = create_lepton_endpoint_task(
     deployment_type="vllm",
     checkpoint_path="meta-llama/Llama-3.1-8B-Instruct",
     served_model_name="llama-3.1-8b",
+    secrets={"HF_TOKEN": "hf-secret"},
+    api_token="vllm-endpoint-token",
     tensor_parallel_size=2,
-    extra_args="--gpu-memory-utilization 0.95 --trust-remote-code"
+    extra_args="--gpu-memory-utilization 0.95 --trust-remote-code",
 )
 ```
 
@@ -140,8 +142,10 @@ vllm_task = create_lepton_endpoint_task(
 sglang_task = create_lepton_endpoint_task(
     deployment_type="sglang",
     checkpoint_path="meta-llama/Llama-3.1-8B-Instruct",
+    secrets={"HF_TOKEN": "hf-secret"},
+    api_token="sglang-endpoint-token",
     tensor_parallel_size=2,
-    data_parallel_size=1
+    data_parallel_size=1,
 )
 ```
 
@@ -181,116 +185,164 @@ pyflyte get executions -p flytesnacks -d development --limit 5
 from flytekit import workflow
 from flytekitplugins.dgxc_lepton import create_lepton_endpoint_task
 
-# Advanced NIM with comprehensive configuration
 nim_deployment = create_lepton_endpoint_task(
     deployment_type="nim",
     name="advanced_nim",
     image="nvcr.io/nim/nvidia/llama-3_3-nemotron-super-49b-v1_5:latest",
-    resource_shape="gpu.2xh200",
-    min_replicas=0,  # Scale to zero
-    health_config={
-        "liveness": {"initial_delay_seconds": 5000}  # Large model initialization
-    },
-    env_vars={
-        "NGC_API_KEY": {"value_from": {"secret_name_ref": "NGC_API_KEY"}},
-        "HF_TOKEN": {"value_from": {"secret_name_ref": "HUGGING_FACE_TOKEN"}},
-    },
-    mounts={
-        "enabled": True,
-        "cache_path": "/model-cache",
-        "mount_path": "/opt/nim/.cache",
-        "storage_source": "node-nfs:shared-fs"
-    }
+    secrets={"NGC_API_KEY": "ngc-secret", "HF_TOKEN": "hf-secret"},
+    api_token="unique-endpoint-token",
+    scaling_mode="traffic",
+    scale_to_zero=True,
+    initial_delay_seconds=5000,
+    mounts=[
+        {
+            "enabled": True,
+            "cache_path": "/model-cache",
+            "mount_path": "/opt/nim/.cache",
+            "storage_source": "node-nfs:shared-fs"
+        }
+    ]
 )
 
 @workflow
 def nim_workflow() -> str:
-    # Clean workflow - all config in task definition
-    nim_url =  nim_deployment(
+    nim_url = nim_deployment(
         endpoint_name="advanced-nim",
+        resource_shape="gpu.2xh200",
+        min_replicas=0,
+        max_replicas=3,
+        node_group="<your-node-group>",
     )
     return nim_url
 ```
 
-### Multi-Model Deployment
-```python
-@workflow
-def multi_model_workflow() -> str:
-    # Deploy multiple models in parallel
-    custom_url = create_lepton_endpoint_task("custom", image="python:3.11-slim")(
-        endpoint_name="multi-custom",
-        deployment_type="custom"
-    )
-
-    nim_url = create_lepton_endpoint_task("nim", resource_shape="gpu.2xh200")(
-        endpoint_name="multi-nim",
-        deployment_type="nim"
-    )
-
-    return f"Custom: {custom_url} | NIM: {nim_url}"
-```
 
 
 ## Configurations
 
-### Auto-scaling Configuration
+### High-Level Abstractions
 
-**Important**: Only **one** auto-scaling method can be active at a time. Set unused methods to 0.
+### Secret Management
+Instead of complex nested dictionaries, use simple secret mapping:
 
-#### Traffic-based Scaling (Default)
 ```python
-auto_scaler={
-    "scale_down": {"no_traffic_timeout": 3600, "scale_from_zero": False},
-    "target_gpu_utilization_percentage": 0,  # Disabled
-    "target_throughput": {"qpm": 0, "paths": [], "methods": []}  # Disabled
+secrets={
+    "HF_TOKEN": "huggingface-secret",
+    "NGC_API_KEY": "ngc-secret",
+    "CUSTOM_KEY": "custom-secret",
 }
+```
+
+### Auto-scaling
+Instead of complex auto_scaler dictionaries, use simple mode selection:
+
+#### Traffic-based Scaling
+```python
+scaling_mode="traffic",
+no_traffic_timeout=3600,  # 1 hour
+scale_to_zero=False
 ```
 
 #### GPU Utilization-based Scaling
 ```python
-auto_scaler={
-    "scale_down": {"no_traffic_timeout": 0, "scale_from_zero": False},  # Disabled
-    "target_gpu_utilization_percentage": 70,  # Scale based on GPU usage
-    "target_throughput": {"qpm": 0, "paths": [], "methods": []}  # Disabled
-}
+scaling_mode="gpu_utilization",
+target_gpu_utilization=70,  # 70% GPU usage
+scale_to_zero=False
 ```
 
 #### QPM (Queries Per Minute) Scaling
 ```python
-auto_scaler={
-    "scale_down": {"no_traffic_timeout": 0, "scale_from_zero": False},  # Disabled
-    "target_gpu_utilization_percentage": 0,  # Disabled
-    "target_throughput": {"qpm": 10.0, "paths": [], "methods": []}  # Scale based on request rate
+scaling_mode="qpm",
+target_qpm=10.0,  # 10 queries per minute
+scale_to_zero=True
+```
+
+### Secret Management
+```python
+secrets={
+    "HF_TOKEN": "huggingface-secret",
+    "NGC_API_KEY": "ngc-secret",
+    "CUSTOM_KEY": "custom-secret",
 }
 ```
 
-### Environment Variables & Secrets
+### API Token Management
+Instead of complex API token arrays, use simple token configuration:
+
 ```python
-env_vars={
-    "DIRECT_VALUE": "some_value",
-    "SECRET_VALUE": {"value_from": {"secret_name_ref": "MY_SECRET"}}
-}
+# Choose one:
+api_token="my-unique-endpoint-token"         # Direct value
+api_token_secret="endpoint-token-secret"     # From Lepton secret
 ```
 
-### Storage Mounts
+### Health Configuration
 ```python
-mounts={
-    "enabled": True,
-    "cache_path": "/shared-storage/model-cache",  # Your shared storage path
-    "mount_path": "/opt/nim/.cache",              # Container mount point
-    "storage_source": "node-nfs:your-storage"    # Your storage source
-}
+initial_delay_seconds=5000,  # Liveness probe delay
+liveness_timeout=30,         # Liveness probe timeout
+readiness_delay=300          # Readiness probe delay
+```
+
+### Important Scaling Constraints
+
+**scale_to_zero**: Only works with `scaling_mode="traffic"`
+
+```python
+# Correct - scale_to_zero with traffic mode
+scaling_mode="traffic", no_traffic_timeout=3600, scale_to_zero=True
+
+# Invalid - scale_to_zero with other modes (will be ignored)
+scaling_mode="gpu_utilization", scale_to_zero=True  # Won't work
+scaling_mode="qpm", scale_to_zero=True              # Won't work
+```
+
+### Storage Mounts (Array Format with Individual Control)
+
+**Single Mount**:
+```python
+mounts=[
+    {
+        "enabled": True,
+        "cache_path": "/your/cache/path",
+        "mount_path": "/opt/container/cache",
+        "storage_source": "node-nfs:your-storage"
+    }
+]
+```
+
+**Multiple Mounts** (Each Individually Controllable):
+```python
+mounts=[
+    {
+        "enabled": True,   # This mount is active
+        "cache_path": "/models-cache",
+        "mount_path": "/opt/models",
+        "storage_source": "node-nfs:model-storage"
+    },
+    {
+        "enabled": False,  # This mount is disabled
+        "cache_path": "/data-cache",
+        "mount_path": "/opt/data",
+        "storage_source": "node-nfs:data-storage"
+    },
+    {
+        "enabled": True,   # This mount is active
+        "cache_path": "/logs-cache",
+        "mount_path": "/opt/logs",
+        "storage_source": "node-nfs:logs-storage"
+    }
+]
 ```
 
 ## Configuration Requirements
 
 **Important**: Replace these placeholders with your actual values:
 
-- `<your-node-group>`: Your Kubernetes node group for GPU workloads
+- `<your-node-group>`: Your Kubernetes node group for GPU workloads (must be specified in task creation)
 - `<your-ngc-secret>`: Your NGC registry pull secret name
 - `/shared-storage/model-cache/*`: Your shared storage paths for model caching
 - `NGC_API_KEY`: Your NGC API key secret name
 - `HUGGING_FACE_HUB_TOKEN_read`: Your HuggingFace token secret name
+- `<your-lepton-origin-url>`: Your Lepton workspace origin URL (e.g., `https://gateway.dgxc-lepton.nvidia.com`)
 
 Example setup:
 ```bash

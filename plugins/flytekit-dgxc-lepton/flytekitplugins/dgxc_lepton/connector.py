@@ -195,14 +195,19 @@ class LeptonEndpointConnector(AsyncConnectorBase):
         deployment_type = config.get("deployment_type", "custom")
         port = int(config.get("port", 8080 if deployment_type == "custom" else 8000))
 
+        log_info(f"Building spec for deployment_type: {deployment_type}, port: {port}")
+
         # Base container spec
         container = {"image": config.get("image", "python:3.11-slim"), "ports": [{"container_port": port}]}
 
         # Add command if needed
         if deployment_type in self.DEPLOYMENT_COMMANDS:
             command = self.DEPLOYMENT_COMMANDS[deployment_type](config)
+            log_info(f"Generated command for {deployment_type}: {command}")
             if command:
                 container["command"] = command
+        else:
+            log_info(f"No command generator found for deployment_type: {deployment_type}")
 
         # Build environment variables efficiently
         envs = []
@@ -278,17 +283,20 @@ class LeptonEndpointConnector(AsyncConnectorBase):
         if config.get("node_group"):
             spec["resource_requirement"]["affinity"] = {"allowed_dedicated_node_groups": [config["node_group"]]}
 
-        # Storage mounts
-        mounts = config.get("mounts", {})
-        if mounts.get("enabled"):
-            spec["mounts"] = [
-                {
-                    "path": mounts["cache_path"],
-                    "from": mounts.get("storage_source", "node-nfs:lepton-shared-fs"),
-                    "mount_path": mounts["mount_path"],
-                    "mount_options": {},
-                }
-            ]
+        # Storage mounts - array format only, with individual enable/disable
+        mounts_config = config.get("mounts", [])
+        if mounts_config:
+            spec["mounts"] = []
+            for mount in mounts_config:
+                if mount.get("enabled", True):  # Each mount can be individually enabled/disabled
+                    spec["mounts"].append(
+                        {
+                            "path": mount["cache_path"],
+                            "from": mount.get("storage_source", "node-nfs:lepton-shared-fs"),
+                            "mount_path": mount["mount_path"],
+                            "mount_options": mount.get("mount_options", {}),
+                        }
+                    )
 
         return spec
 
@@ -304,7 +312,7 @@ class LeptonEndpointConnector(AsyncConnectorBase):
 
             if literal.scalar.primitive:
                 primitive = literal.scalar.primitive
-                # Use getattr for cleaner code
+                # Handle primitive types (str, int, bool, float)
                 for attr, default in [
                     ("integer", None),
                     ("float_value", None),
@@ -316,6 +324,7 @@ class LeptonEndpointConnector(AsyncConnectorBase):
                         config[key] = value
                         break
             elif literal.scalar.generic:
+                # Handle JSON/complex data
                 try:
                     config[key] = json.loads(literal.scalar.generic.value.decode("utf-8"))
                 except (json.JSONDecodeError, ValueError):
@@ -388,6 +397,21 @@ class LeptonEndpointConnector(AsyncConnectorBase):
             logs_url = self._build_logs_url(deployment_name, workspace_id)
             log_links = [TaskLog(uri=logs_url, name="Lepton Console")]
 
+            # Get recent logs to embed in message for better visibility
+            log_message = f"Status: {state}"
+            try:
+                # Call our existing get_logs method to get recent logs
+                log_response = self.get_logs(resource_meta, **kwargs)
+                if log_response.logs:
+                    # Get last few log lines for preview
+                    recent_logs = log_response.logs[-3:]  # Last 3 lines
+                    if recent_logs:
+                        log_preview = " | ".join([line.strip() for line in recent_logs if line.strip()])
+                        log_message = f"Status: {state} | Recent: {log_preview[:200]}..."  # Truncate for UI
+            except Exception:
+                # If log retrieval fails, just use basic status message
+                pass
+
             # Return appropriate response
             if flyte_phase == TaskExecution.SUCCEEDED:
                 # Get endpoint URL
@@ -398,7 +422,7 @@ class LeptonEndpointConnector(AsyncConnectorBase):
                 log_info(f"Ready: {external_endpoint}")
                 return Resource(
                     phase=flyte_phase,
-                    message=f"Status: {state}",
+                    message=f"Ready: {external_endpoint} | {log_message}",
                     log_links=log_links,
                     outputs={"o0": external_endpoint},
                 )
@@ -406,7 +430,7 @@ class LeptonEndpointConnector(AsyncConnectorBase):
                 log_info(f"Not ready: {state}")
                 return Resource(
                     phase=flyte_phase,
-                    message=f"Status: {state}",
+                    message=log_message,
                     log_links=log_links,
                 )
 
