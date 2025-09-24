@@ -1134,11 +1134,8 @@ class LiteralTypeTransformer(TypeTransformer[object]):
         return base_transformer.to_python_value(ctx, lv, base_type)
 
     def guess_python_type(self, literal_type: LiteralType) -> Type:
-        ann = getattr(literal_type, "annotation", None)
-        if ann and getattr(ann, "annotations", None):
-            vals = ann.annotations.get("literal_values")
-            if vals and isinstance(vals, list):
-                return typing.Literal[tuple(vals)]  # type: ignore
+        if literal_type.annotation and literal_type.annotation.annotations:
+            return typing.Literal[tuple(literal_type.annotation.annotations.get("literal_values"))]  # type: ignore
         raise ValueError(f"LiteralType transformer cannot reverse {literal_type}")
 
     def assert_type(self, python_type: Type, python_val: T):

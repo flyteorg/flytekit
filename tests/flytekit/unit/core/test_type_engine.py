@@ -3858,6 +3858,7 @@ def test_literal_transformer_string_type():
     lt = TypeEngine.get_transformer(t).get_literal_type(t)
     assert lt.simple == SimpleType.STRING
     assert lt.annotation.annotations["literal_values"] == ["outcome", "income"]
+    assert lt == LiteralType.from_flyte_idl(lt.to_flyte_idl())
 
     lv = TypeEngine.to_literal(FlyteContext.current_context(), "outcome", t, lt)
     assert lv.scalar.primitive.string_value == "outcome"
@@ -3875,6 +3876,7 @@ def test_literal_transformer_int_type():
     lt = TypeEngine.get_transformer(t).get_literal_type(t)
     assert lt.simple == SimpleType.INTEGER
     assert lt.annotation.annotations["literal_values"] == [1, 2, 3]
+    assert lt == LiteralType.from_flyte_idl(lt.to_flyte_idl())
 
     lv = TypeEngine.to_literal(FlyteContext.current_context(), 1, t, lt)
     assert lv.scalar.primitive.integer == 1
