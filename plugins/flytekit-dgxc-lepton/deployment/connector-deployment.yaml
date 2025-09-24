@@ -1,23 +1,23 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: lepton-agent
+  name: lepton-connector
   namespace: flyte
   labels:
-    app: lepton-agent
+    app: lepton-connector
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: lepton-agent
+      app: lepton-connector
   template:
     metadata:
       labels:
-        app: lepton-agent
+        app: lepton-connector
     spec:
       containers:
-      - name: lepton-agent
-        image: <base64-encoded-workspace-id>/lepton-agent:latest
+      - name: lepton-connector
+        image: localhost:30000/lepton-connector:latest
         ports:
         - containerPort: 8000
         env:
@@ -36,7 +36,7 @@ spec:
           value: "true"
         # Logging configuration
         - name: ROOT_LOG_LEVEL
-          value: "DEBUG"
+          value: "WARNING"
         resources:
           requests:
             memory: "512Mi"
@@ -44,27 +44,3 @@ spec:
           limits:
             memory: "1Gi"
             cpu: "500m"
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: lepton-agent-service
-  namespace: flyte
-spec:
-  selector:
-    app: lepton-agent
-  ports:
-  - protocol: TCP
-    port: 8000
-    targetPort: 8000
-  type: ClusterIP
----
-apiVersion: v1
-kind: Secret
-metadata:
-  name: lepton-secrets
-  namespace: flyte
-type: Opaque
-data:
-  workspace_id: <base64-encoded-workspace-id>
-  token: <base64-encoded-lepton-token>

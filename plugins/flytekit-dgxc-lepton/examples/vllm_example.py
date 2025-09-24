@@ -2,58 +2,50 @@
 Example: vLLM Deployment with Lepton
 
 This example demonstrates how to deploy a vLLM inference endpoint
-using the Lepton plugin for Flytekit.
+using the new task-based Lepton API.
 """
 
-from flytekitplugins.dgxc_lepton import LeptonConfig
+from flytekitplugins.dgxc_lepton import create_lepton_endpoint_task
 
-from flytekit import task, workflow
+from flytekit import workflow
 
-
-@task(
-    task_config=LeptonConfig(
-        endpoint_name="vllm-llama-inference",
-        image="vllm/vllm-openai:latest",
-        deployment_type="vllm",
-        port=8000,
-        # Model configuration
-        checkpoint_path="meta-llama/Llama-3.1-8B-Instruct",
-        served_model_name="llama-3.1-8b-instruct",
-        tensor_parallel_size=1,
-        extra_args="--gpu-memory-utilization 0.95 --trust-remote-code",
-        # Resource configuration
-        resource_shape="gpu.1xh200",
-        min_replicas=1,
-        max_replicas=2,
-        node_group="<node-group-name>",  # Working node group
-        # Environment variables with secret references
-        env_vars={
-            "HF_TOKEN": {"value_from": {"secret_name_ref": "HUGGING_FACE_HUB_TOKEN_read"}},
-        },
-        # API tokens for endpoint access
-        api_tokens=[{"value": "VLLM_ENDPOINT_TOKEN"}],
-        # Storage mounts for model weights caching
-        mounts={
-            "enabled": True,
-            "cache_path": "/cachepath",
-            "mount_path": "/opt/nim/.cache",
-            "storage_source": "node-nfs:lepton-shared-fs",
-        },
-    )
+# Create a vLLM deployment task using unified API
+vllm_deployment = create_lepton_endpoint_task(
+    deployment_type="vllm",
+    name="deploy_vllm_llama",
+    image="vllm/vllm-openai:latest",
+    port=8000,
+    resource_shape="gpu.1xh200",
+    min_replicas=1,
+    max_replicas=2,
+    tensor_parallel_size=1,
+    pipeline_parallel_size=1,
+    data_parallel_size=1,
+    extra_args="--gpu-memory-utilization 0.95 --trust-remote-code",
+    env_vars={
+        "HF_TOKEN": {"value_from": {"secret_name_ref": "HUGGING_FACE_HUB_TOKEN_read"}},
+        "VLLM_WORKER_MULTIPROC_METHOD": "spawn",
+    },
+    api_tokens=[{"value": "VLLM_ENDPOINT_TOKEN"}],
+    mounts={
+        "enabled": True,
+        "cache_path": "/shared-storage/model-cache/vllm-models",  # Replace with your cache path
+        "mount_path": "/opt/nim/.cache",
+        "storage_source": "node-nfs:lepton-shared-fs",
+    },
 )
-def vllm_inference_task(prompt: str) -> str:
-    """Deploy and run inference on a vLLM endpoint."""
-    return f"vLLM inference result for: {prompt}"
 
 
 @workflow
-def vllm_inference_workflow(prompt: str = "What is machine learning?") -> str:
+def vllm_inference_workflow() -> str:
     """Workflow that deploys and uses a vLLM inference endpoint."""
-    response = vllm_inference_task(prompt=prompt)
-    return response
+    endpoint_url = vllm_deployment(
+        endpoint_name="vllm-llama-inference", resource_shape="gpu.1xh200", deployment_type="vllm"
+    )
+    return endpoint_url
 
 
 if __name__ == "__main__":
     # Local execution example
-    result = vllm_inference_workflow(prompt="Explain neural networks")
-    print(f"vLLM response: {result}")
+    result = vllm_inference_workflow()
+    print(f"vLLM endpoint URL: {result}")

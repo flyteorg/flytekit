@@ -20,7 +20,7 @@ pip install flytekitplugins-dgxc-lepton
 
 ### Backend Requirements
 The Flyte backend requires:
-- `leptonai` package installed in the agent environment
+- `leptonai` package installed in the connector environment
 - Properly configured Lepton credentials
 
 ### Credentials Setup
@@ -28,16 +28,16 @@ Configure these secrets in your Flyte deployment:
 - `lepton_workspace_id`: Your Lepton workspace identifier
 - `lepton_token`: Your Lepton API authentication token
 
-Users do not need local Lepton CLI installation - all operations are handled by the backend agent.
+Users do not need local Lepton CLI installation - all operations are handled by the backend connector.
 
 ## Deployment
 
-### Deploy the Agent Service
+### Deploy the Connector Service
 
-Deploy the dgxc-lepton connector as a dedicated agent service:
+Deploy the dgxc-lepton connector as a dedicated connector service:
 
 ```bash
-kubectl apply -f deployment/agent-deployment.yaml
+kubectl apply -f deployment/connector-deployment.yaml
 ```
 
 ### Required Secrets
@@ -56,7 +56,7 @@ kubectl create secret generic lepton-secrets \
 After deployment, verify the connector is registered:
 
 ```bash
-kubectl logs -n flyte deployment/lepton-agent | grep "Lepton Endpoint Connector"
+kubectl logs -n flyte deployment/lepton-connector | grep "Lepton Endpoint Connector"
 ```
 
 You should see the connector listed in the supported task types.
@@ -64,196 +64,207 @@ You should see the connector listed in the supported task types.
 ## Quick Start
 
 ```python
-from flytekit import task, workflow
-from flytekitplugins.dgxc_lepton import LeptonConfig
+from flytekit import workflow
+from flytekitplugins.dgxc_lepton import create_lepton_endpoint_task
 
-@task(task_config=LeptonConfig(
-    endpoint_name="my-inference-model",
+# Create deployment tasks using the optimized unified API
+http_server = create_lepton_endpoint_task(
+    deployment_type="custom",  # Specify deployment type
+    name="deploy_http_server",
     image="python:3.11-slim",
-    deployment_type="custom",
-    resource_shape="gpu.a10",
-    min_replicas=1,
-    max_replicas=3
-))
-def inference_task(input_data: str) -> str:
-    return f"Processed: {input_data}"
+    command=["/bin/bash", "-c", "python3 -m http.server 8080 --bind 0.0.0.0"],
+)
+
+# Deploy vLLM with optimized defaults
+vllm_server = create_lepton_endpoint_task(
+    deployment_type="vllm",    # Automatically sets vLLM + GPU defaults
+    name="deploy_vllm_server",
+    checkpoint_path="meta-llama/Llama-3.1-8B-Instruct",
+    served_model_name="llama-3.1-8b-instruct",
+)
 
 @workflow
-def inference_workflow(data: str) -> str:
-    return inference_task(input_data=data)
+def inference_workflow(endpoint_name: str = "my-endpoint") -> str:
+    # Only specify what's different - defaults are auto-applied
+    endpoint_url = http_server(
+        endpoint_name=endpoint_name,
+        deployment_type="custom",  # Required parameter
+    )
+    return endpoint_url
 ```
+
+## Supported Deployment Types
+
+The unified `create_lepton_endpoint_task()` function supports all deployment types with smart defaults:
+
+### 1. Custom Containers
+```python
+custom_task = create_lepton_endpoint_task(
+    deployment_type="custom",
+    image="python:3.11-slim",
+    port=8080,  # Overrides default 8000 for custom containers
+    command=["/bin/bash", "-c", "python3 -m http.server 8080 --bind 0.0.0.0"]
+)
+```
+
+### 2. NVIDIA NIM
+```python
+nim_task = create_lepton_endpoint_task(
+    deployment_type="nim",
+    image="nvcr.io/nim/nvidia/llama-3_3-nemotron-super-49b-v1_5:latest",
+    resource_shape="gpu.2xh200",  # Override default gpu.1xh200
+    min_replicas=0,  # Scale to zero when not in use
+    health_config={
+        "liveness": {"initial_delay_seconds": 5000}  # Large model needs time
+    },
+    env_vars={
+        "NGC_API_KEY": {"value_from": {"secret_name_ref": "NGC_API_KEY"}},
+        "HF_TOKEN": {"value_from": {"secret_name_ref": "HUGGING_FACE_TOKEN"}},
+    }
+)
+```
+
+### 3. vLLM
+```python
+vllm_task = create_lepton_endpoint_task(
+    deployment_type="vllm",
+    checkpoint_path="meta-llama/Llama-3.1-8B-Instruct",
+    served_model_name="llama-3.1-8b",
+    tensor_parallel_size=2,
+    extra_args="--gpu-memory-utilization 0.95 --trust-remote-code"
+)
+```
+
+### 4. SGLang
+```python
+sglang_task = create_lepton_endpoint_task(
+    deployment_type="sglang",
+    checkpoint_path="meta-llama/Llama-3.1-8B-Instruct",
+    tensor_parallel_size=2,
+    data_parallel_size=1
+)
+```
+
 
 ## Running Examples
 
-After deploying the agent, you can run the provided examples:
-
-### Basic Inference Example
+After deploying the connector, run the optimized examples:
 
 ```bash
-# Run the basic HTTP server example
-pyflyte run -p flytesnacks -d development --remote examples/basic_inference.py basic_inference_workflow --input_text "Hello World"
+# Basic HTTP server (uses CPU resources)
+pyflyte run --remote examples/basic_inference.py basic_inference_workflow
+
+# Advanced NIM deployment (uses GPU + advanced config)
+pyflyte run --remote examples/nemotron_nim_example.py nemotron_super_workflow
+
+# vLLM model deployment
+pyflyte run --remote examples/vllm_example.py vllm_inference_workflow
 ```
 
-### Advanced Examples
+## Monitoring & Debugging
 
 ```bash
-# Run NIM inference example
-pyflyte run -p flytesnacks -d development --remote examples/advanced_usage.py nim_inference_workflow --prompt "What is artificial intelligence?"
+# Monitor connector logs
+kubectl logs -n flyte deployment/lepton-connector --follow
 
-# Run vLLM inference example
-pyflyte run -p flytesnacks -d development --remote examples/advanced_usage.py vllm_inference_workflow --prompt "Explain neural networks"
+# Check Lepton console (URLs auto-generated)
+# Links available in Flyte execution view
 
-# Run multi-model comparison workflow
-pyflyte run -p flytesnacks -d development --remote examples/advanced_usage.py multi_model_comparison_workflow --prompt "Compare machine learning frameworks"
-
-
-```
-
-### Individual vLLM Example
-
-```bash
-# Run the standalone vLLM example
-pyflyte run -p flytesnacks -d development --remote examples/vllm_example.py vllm_inference_workflow --prompt "What is machine learning?"
-```
-
-
-### Monitor Execution
-
-You can monitor the execution in the Flyte UI or via CLI:
-
-```bash
-# List recent executions
+# List executions
 pyflyte get executions -p flytesnacks -d development --limit 5
-
-# Watch specific execution logs
-kubectl logs -n flyte deployment/lepton-agent --follow
 ```
 
-### Expected Behavior
+## Advanced Examples
 
-1. **Task Creation**: Agent creates Lepton endpoint with specified configuration
-2. **Status Polling**: Agent monitors endpoint until it becomes ready
-3. **Success**: Task completes with the endpoint URL as output
-
-The task output will contain the actual Lepton endpoint URL for making inference requests.
-
-## Container-based Deployments
-
-### NIM Deployment
+### Complete NIM Workflow
 ```python
-@task(task_config=LeptonConfig(
-    endpoint_name="nim-llama-3.1-8b-instruct",
-    image="nvcr.io/nim/meta/llama-3.1-8b-instruct:1.8.6",
-    deployment_type="nim",
-    port=8000,
-    served_model_name="meta/llama-3.1-8b-instruct",
-    resource_shape="gpu.1xh200",
-    min_replicas=1,
-    max_replicas=3,
-    node_group="nv-int-multiteam-nebius-h200-01",
+from flytekit import workflow
+from flytekitplugins.dgxc_lepton import create_lepton_endpoint_task
 
-    # Environment variables with secret references
+# Advanced NIM with comprehensive configuration
+nim_deployment = create_lepton_endpoint_task(
+    deployment_type="nim",
+    name="advanced_nim",
+    image="nvcr.io/nim/nvidia/llama-3_3-nemotron-super-49b-v1_5:latest",
+    resource_shape="gpu.2xh200",
+    min_replicas=0,  # Scale to zero
+    health_config={
+        "liveness": {"initial_delay_seconds": 5000}  # Large model initialization
+    },
     env_vars={
-        "OMPI_ALLOW_RUN_AS_ROOT": "1",
         "NGC_API_KEY": {"value_from": {"secret_name_ref": "NGC_API_KEY"}},
         "HF_TOKEN": {"value_from": {"secret_name_ref": "HUGGING_FACE_TOKEN"}},
     },
-
-    # API tokens for endpoint access
-    api_tokens=[{"value": "UNIQUE_ENDPOINT_TOKEN"}],
-
-    # Auto-scaling configuration
-    auto_scaler={
-        "scale_down": {"no_traffic_timeout": 300, "scale_from_zero": False},
-        "target_gpu_utilization_percentage": 70,
-        "target_throughput": {"qpm": 2.5, "paths": [], "methods": []}
-    },
-
-    # Storage mounts for model caching
     mounts={
         "enabled": True,
-        "cache_path": "/path/to/model/cache",
+        "cache_path": "/model-cache",
         "mount_path": "/opt/nim/.cache",
-        "storage_source": "node-nfs:lepton-shared-fs"
-    },
-
-    # Image pull secrets for private registries
-    image_pull_secrets=["my-registry-secret"],
-
-    endpoint_readiness_timeout=1800  # 30 minutes
-))
-def nim_inference_task(prompt: str) -> str:
-    # Your NIM inference logic here
-    return f"Generated response for: {prompt}"
-
-### vLLM Deployment
-```python
-@task(task_config=LeptonConfig(
-    endpoint_name="vllm-llama-3.1-8b-eval",
-    image="vllm/vllm-openai:latest",
-    deployment_type="vllm",
-    port=8000,
-
-    # Model configuration (required for vLLM)
-    checkpoint_path="meta-llama/Llama-3.1-8B-Instruct",
-    served_model_name="llama-3.1-8b-instruct",
-    tensor_parallel_size=1,
-    pipeline_parallel_size=1,
-    data_parallel_size=1,
-    extra_args="--gpu-memory-utilization 0.95 --trust-remote-code",
-
-    resource_shape="gpu.1xh200",
-    min_replicas=1,
-    max_replicas=3,
-
-    env_vars={
-        "HF_TOKEN": {"value_from": {"secret_name_ref": "HUGGING_FACE_TOKEN"}}
+        "storage_source": "node-nfs:shared-fs"
     }
-))
-def vllm_inference_task(prompt: str) -> str:
-    # Your vLLM inference logic here
-    return f"vLLM response for: {prompt}"
+)
 
-### SGLang Deployment
-```python
-@task(task_config=LeptonConfig(
-    endpoint_name="sglang-model",
-    image="lmsysorg/sglang:latest",
-    deployment_type="sglang",
-
-    # Model configuration (required for SGLang)
-    checkpoint_path="meta-llama/Llama-3.1-8B-Instruct",
-    served_model_name="llama-3.1-8b-instruct",
-    tensor_parallel_size=1,
-    data_parallel_size=1,
-
-    resource_shape="gpu.a100",
-    min_replicas=1
-))
-def sglang_inference_task(prompt: str) -> str:
-    return f"SGLang response for: {prompt}"
+@workflow
+def nim_workflow() -> str:
+    # Clean workflow - all config in task definition
+    nim_url =  nim_deployment(
+        endpoint_name="advanced-nim",
+    )
+    return nim_url
 ```
 
-## Configuration Options
+### Multi-Model Deployment
+```python
+@workflow
+def multi_model_workflow() -> str:
+    # Deploy multiple models in parallel
+    custom_url = create_lepton_endpoint_task("custom", image="python:3.11-slim")(
+        endpoint_name="multi-custom",
+        deployment_type="custom"
+    )
 
-### Core Configuration
-- `endpoint_name`: Name of the Lepton endpoint to deploy
-- `image`: Container image to deploy (required for container-based deployments)
-- `deployment_type`: Deployment type ("nim", "vllm", "sglang", or "custom")
-- `port`: Container port (default: 8080)
-- `resource_shape`: Resource shape (e.g., "cpu.small", "gpu.a10", "gpu.1xh200")
-- `min_replicas`/`max_replicas`: Replica configuration
+    nim_url = create_lepton_endpoint_task("nim", resource_shape="gpu.2xh200")(
+        endpoint_name="multi-nim",
+        deployment_type="nim"
+    )
 
-### Model Configuration (for vLLM/SGLang)
-- `checkpoint_path`: Model path or HuggingFace model ID (optional)
-- `served_model_name`: Name for the served model (optional)
-- `tensor_parallel_size`: Number of tensor parallel processes (optional, not used for NIM)
-- `pipeline_parallel_size`: Number of pipeline parallel stages (optional, vLLM only)
-- `data_parallel_size`: Number of data parallel processes (optional, not used for NIM)
-- `extra_args`: Additional command line arguments (optional)
+    return f"Custom: {custom_url} | NIM: {nim_url}"
+```
 
-### Environment Variables
-Supports both direct values and secret references:
+
+## Configurations
+
+### Auto-scaling Configuration
+
+**Important**: Only **one** auto-scaling method can be active at a time. Set unused methods to 0.
+
+#### Traffic-based Scaling (Default)
+```python
+auto_scaler={
+    "scale_down": {"no_traffic_timeout": 3600, "scale_from_zero": False},
+    "target_gpu_utilization_percentage": 0,  # Disabled
+    "target_throughput": {"qpm": 0, "paths": [], "methods": []}  # Disabled
+}
+```
+
+#### GPU Utilization-based Scaling
+```python
+auto_scaler={
+    "scale_down": {"no_traffic_timeout": 0, "scale_from_zero": False},  # Disabled
+    "target_gpu_utilization_percentage": 70,  # Scale based on GPU usage
+    "target_throughput": {"qpm": 0, "paths": [], "methods": []}  # Disabled
+}
+```
+
+#### QPM (Queries Per Minute) Scaling
+```python
+auto_scaler={
+    "scale_down": {"no_traffic_timeout": 0, "scale_from_zero": False},  # Disabled
+    "target_gpu_utilization_percentage": 0,  # Disabled
+    "target_throughput": {"qpm": 10.0, "paths": [], "methods": []}  # Scale based on request rate
+}
+```
+
+### Environment Variables & Secrets
 ```python
 env_vars={
     "DIRECT_VALUE": "some_value",
@@ -261,54 +272,66 @@ env_vars={
 }
 ```
 
-### Auto-scaling
-```python
-auto_scaler={
-    "scale_down": {"no_traffic_timeout": 0, "scale_from_zero": True},
-    "target_gpu_utilization_percentage": 70,
-    "target_throughput": {"qpm": 0, "paths": [], "methods": []}
-}
-```
-
 ### Storage Mounts
 ```python
 mounts={
     "enabled": True,
-    "cache_path": "/host/path/to/cache",
-    "mount_path": "/container/mount/path",
-    "storage_source": "node-nfs:storage-name"
+    "cache_path": "/shared-storage/model-cache",  # Your shared storage path
+    "mount_path": "/opt/nim/.cache",              # Container mount point
+    "storage_source": "node-nfs:your-storage"    # Your storage source
 }
 ```
 
-### Other Options
-- `node_group`: Node group for workload placement
-- `api_tokens`: API tokens for endpoint access
-- `image_pull_secrets`: Secrets for private registries
-- `deployment_timeout`: Deployment operation timeout
-- `endpoint_readiness_timeout`: Endpoint readiness timeout
+## Configuration Requirements
 
-## Files in This Plugin
+**Important**: Replace these placeholders with your actual values:
+
+- `<your-node-group>`: Your Kubernetes node group for GPU workloads
+- `<your-ngc-secret>`: Your NGC registry pull secret name
+- `/shared-storage/model-cache/*`: Your shared storage paths for model caching
+- `NGC_API_KEY`: Your NGC API key secret name
+- `HUGGING_FACE_HUB_TOKEN_read`: Your HuggingFace token secret name
+
+Example setup:
+```bash
+# Create your secrets
+kubectl create secret generic ngc-api-key --from-literal=key=<your-ngc-key> -n flyte
+kubectl create secret generic hf-token --from-literal=token=<your-hf-token> -n flyte
+
+# Use in your deployment
+env_vars={
+    "NGC_API_KEY": {"value_from": {"secret_name_ref": "ngc-api-key"}},
+    "HF_TOKEN": {"value_from": {"secret_name_ref": "hf-token"}},
+}
+```
+
+## Plugin Structure
 
 ```
 flytekit-dgxc-lepton/
-├── README.md                          # This comprehensive guide
-├── setup.py                           # Package configuration with leptonai dependency
-├── Dockerfile.agent                   # Docker build for dedicated agent service
-├── deployment/                        # Kubernetes deployment files
-│   ├── agent-deployment.yaml         # Agent deployment with environment variables
-│   └── lepton-agent-config.yaml      # Flyte configuration for routing tasks
-├── examples/                          # Usage examples
-│   ├── basic_inference.py            # Simple HTTP server endpoint
-│   ├── advanced_usage.py             # Comprehensive examples (Basic, NIM, vLLM)
-│   └── vllm_example.py               # Individual vLLM deployment
-└── tests/                             # Test suite
-    └── test_lepton.py                 # Comprehensive tests (7 passing)
+├── README.md                          # This guide
+├── setup.py                           # Package configuration
+├── Dockerfile.connector               # Optimized connector image
+├── deployment/                        # Kubernetes manifests
+│   ├── connector-deployment.yaml     # Connector service
+│   └── lepton-connector-config.yaml  # Flyte routing config
+├── examples/                          # Clean usage examples
+│   ├── basic_inference.py            # Simple deployment
+│   ├── nemotron_nim_example.py       # Advanced NIM
+│   └── vllm_example.py               # vLLM deployment
+├── tests/                             # Test suite
+│   └── test_lepton.py                 # Updated for optimized API
+└── flytekitplugins/dgxc_lepton/      # Source code
+    ├── __init__.py                   # Clean exports
+    ├── connector.py                  # Optimized connector
+    └── task.py                       # Unified task function
 ```
 
 ## Requirements
 
-- **User Environment**: flytekit >= 1.9.1
-- **Backend Environment**: flytekit >= 1.9.1, leptonai (auto-installed via setup.py)
+- **Runtime**: flytekit >= 1.9.1, leptonai (latest from GitHub)
+- **Backend**: Kubernetes cluster with Flyte deployed
+- **Credentials**: Lepton workspace ID and API token
 
 ## License
 

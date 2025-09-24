@@ -43,12 +43,12 @@ data:
             GetTask: 10s
             ListAgents: 3s
         connectors:
-          # Route lepton tasks to our dedicated agent
+          # Route lepton tasks to our dedicated connector with extended timeouts
           lepton_endpoint_task:
-            endpoint: k8s://lepton-agent-service.flyte:8000
+            endpoint: k8s://lepton-connector-service.flyte:8000
             insecure: true
-            defaultTimeout: 30s
+            defaultTimeout: 600s  # 10 minutes default
             timeouts:
-              GetTask: 30s
-              CreateTask: 300s
-              DeleteTask: 60s
+              GetTask: 300s      # 5 minutes for status checks
+              CreateTask: 10800s # 3 hours for large model deployment (Nemotron Super)
+              DeleteTask: 300s   # 5 minutes for deletion
