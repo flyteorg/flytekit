@@ -1767,6 +1767,7 @@ def _type_essence(x: LiteralType) -> LiteralType:
 
     return x
 
+
 def _are_types_castable(upstream: LiteralType, downstream: LiteralType) -> bool:
     if upstream.union_type is not None:
         # for each upstream variant, there must be a compatible type downstream
