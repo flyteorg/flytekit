@@ -4,7 +4,7 @@ from flytekit.models.concurrency import ConcurrencyLimitBehavior, ConcurrencyPol
 
 
 def test_concurrency_limit_behavior():
-    assert ConcurrencyLimitBehavior.SKIP == _launch_plan_idl.ConcurrencyLimitBehavior.SKIP
+    assert ConcurrencyLimitBehavior.SKIP == _launch_plan_idl.CONCURRENCY_LIMIT_BEHAVIOR_SKIP
 
     # Test enum to string conversion
     assert ConcurrencyLimitBehavior.enum_to_string(ConcurrencyLimitBehavior.SKIP) == "SKIP"
@@ -21,7 +21,7 @@ def test_concurrency_policy():
     pb = policy.to_flyte_idl()
     assert isinstance(pb, _launch_plan_idl.ConcurrencyPolicy)
     assert pb.max == 1
-    assert pb.behavior == _launch_plan_idl.ConcurrencyLimitBehavior.SKIP
+    assert pb.behavior == _launch_plan_idl.CONCURRENCY_LIMIT_BEHAVIOR_SKIP
 
     # Test deserialization from protobuf
     policy2 = ConcurrencyPolicy.from_flyte_idl(pb)
