@@ -1,28 +1,56 @@
 """
 .. currentmodule:: flytekitplugins.dgxc_lepton
 
-This package contains components for integrating Flyte with Lepton AI.
+This package contains things that are useful when extending Flytekit for Lepton AI integration.
 
 .. autosummary::
    :template: custom.rst
    :toctree: generated/
 
-   create_lepton_endpoint_task
-   LeptonEndpointTask
-   LeptonEndpointConnector
+   lepton_endpoint_deployment_task
+   lepton_endpoint_deletion_task
+   LeptonEndpointConfig
+   LeptonEndpointDeploymentTask
+   LeptonEndpointDeletionTask
+   EndpointType
+   EnvironmentConfig
+   MountReader
+   ScalingConfig
+   ScalingType
+   EndpointEngineConfig
 """
 
-from .connector import LeptonConnector, LeptonEndpointConnector
+# Clean imports with consolidated classes
+# Import connector module to trigger connector registration (connectors are not part of public API)
+from . import connector  # noqa: F401
+from .config import (
+    EndpointEngineConfig,
+    EndpointType,
+    EnvironmentConfig,
+    LeptonEndpointConfig,
+    MountReader,
+    ScalingConfig,
+    ScalingType,
+)
 from .task import (
-    LeptonEndpointTask,
-    create_lepton_endpoint_task,
+    LeptonEndpointDeletionTask,
+    LeptonEndpointDeploymentTask,
+    lepton_endpoint_deletion_task,
+    lepton_endpoint_deployment_task,
 )
 
 __all__ = [
-    # Main deployment API
-    "create_lepton_endpoint_task",
-    "LeptonEndpointTask",
-    # Connector
-    "LeptonEndpointConnector",
-    "LeptonConnector",
+    # Task API
+    "lepton_endpoint_deployment_task",
+    "lepton_endpoint_deletion_task",
+    "LeptonEndpointConfig",
+    "LeptonEndpointDeploymentTask",
+    "LeptonEndpointDeletionTask",
+    "EndpointType",
+    # Configuration classes
+    "EnvironmentConfig",
+    "MountReader",
+    "ScalingConfig",
+    "ScalingType",
+    "EndpointEngineConfig",
 ]

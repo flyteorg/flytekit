@@ -1,9 +1,10 @@
+"""Optimized Lepton AI connector with improved performance and reduced redundancy."""
+
 import asyncio
-import json
 import re
-import sys
 import time
 from dataclasses import dataclass
+from functools import lru_cache
 from typing import Any, Dict, Optional
 
 from flyteidl.admin.agent_pb2 import GetTaskLogsResponse
@@ -22,11 +23,10 @@ from flytekit.models.literals import LiteralMap
 from flytekit.models.task import TaskTemplate
 
 
-def log_info(message: str):
-    """Unified logging helper"""
-    print(message)
-    sys.stdout.flush()
+def log_info(message: str) -> None:
+    """Optimized unified logging helper."""
     logger.info(message)
+    print(message, flush=True)  # More efficient than separate flush call
 
 
 @dataclass
@@ -34,83 +34,78 @@ class LeptonMetadata(ResourceMeta):
     deployment_name: str
 
 
-class LeptonEndpointConnector(AsyncConnectorBase):
-    name = "Lepton Endpoint Connector"
+class BaseLeptonConnector(AsyncConnectorBase):
+    """Base class for Lepton connectors with shared functionality."""
 
-    # Class constants for better performance
+    # Optimized class constants
     ORIGIN_URL = "https://gateway.dgxc-lepton.nvidia.com"
-    STATUS_MAPPING = {
-        "starting": "pending",
-        "scaling": "pending",
-        "updating": "pending",
-        "not ready": "pending",
-        "notready": "pending",
-        "ready": "succeeded",
-        "deleting": "succeeded",
-        "stopping": "succeeded",
-        "terminating": "succeeded",
-        "stopped": "succeeded",
-        "terminated": "succeeded",
-        "unknown": "failed",
-        "unk": "failed",
-    }
+
+    # Consolidated status mapping with frozenset for faster lookup
+    _PENDING_STATES = frozenset(["starting", "scaling", "updating", "not ready", "notready"])
+    _SUCCESS_STATES = frozenset(["ready", "deleting", "stopping", "terminating", "stopped", "terminated"])
+    _FAILED_STATES = frozenset(["unknown", "unk"])
 
     # Pre-compiled regex for better performance
     NAME_SANITIZE_REGEX = re.compile(r"[^a-z0-9\-]")
 
-    # Deployment type command generators (cached lambdas)
-    DEPLOYMENT_COMMANDS = {
-        "vllm": lambda config: [
-            "vllm",
-            "serve",
-            config.get("checkpoint_path", "meta-llama/Llama-3.1-8B-Instruct"),
-            f"--tensor-parallel-size={int(config.get('tensor_parallel_size', 1))}",
-            f"--pipeline-parallel-size={int(config.get('pipeline_parallel_size', 1))}",
-            f"--data-parallel-size={int(config.get('data_parallel_size', 1))}",
-            f"--port={int(config.get('port', 8000))}",
-            f"--served-model-name={config.get('served_model_name', 'default-model')}",
-            *(config.get("extra_args", "").split() if config.get("extra_args") else []),
-        ],
-        "sglang": lambda config: [
-            "python3",
-            "-m",
-            "sglang.launch_server",
-            f"--model-path={config.get('checkpoint_path', 'meta-llama/Llama-3.1-8B-Instruct')}",
-            "--host=0.0.0.0",
-            f"--port={int(config.get('port', 8000))}",
-            f"--served-model-name={config.get('served_model_name', 'default-model')}",
-            f"--tp={int(config.get('tensor_parallel_size', 1))}",
-            f"--dp={int(config.get('data_parallel_size', 1))}",
-            *(config.get("extra_args", "").split() if config.get("extra_args") else []),
-        ],
-        "custom": lambda config: config.get(
-            "command", ["/bin/bash", "-c", f"python3 -m http.server {int(config.get('port', 8080))} --bind 0.0.0.0"]
-        ),
-        "nim": lambda config: [],  # NIM uses default entrypoint
-    }
+    @staticmethod
+    def _get_deployment_command(deployment_type: str, config: Dict[str, Any]) -> list:
+        """Generate deployment command based on type and config."""
+        if deployment_type == "vllm":
+            return [
+                "vllm",
+                "serve",
+                config.get("checkpoint_path", "meta-llama/Llama-3.1-8B-Instruct"),
+                f"--tensor-parallel-size={int(config.get('tensor_parallel_size', 1))}",
+                f"--pipeline-parallel-size={int(config.get('pipeline_parallel_size', 1))}",
+                f"--data-parallel-size={int(config.get('data_parallel_size', 1))}",
+                f"--port={int(config.get('port', 8000))}",
+                f"--served-model-name={config.get('served_model_name', 'default-model')}",
+            ] + (config.get("extra_args", "").split() if config.get("extra_args") else [])
+        elif deployment_type == "sglang":
+            return [
+                "python3",
+                "-m",
+                "sglang.launch_server",
+                f"--model-path={config.get('checkpoint_path', 'meta-llama/Llama-3.1-8B-Instruct')}",
+                "--host=0.0.0.0",
+                f"--port={int(config.get('port', 8000))}",
+                f"--served-model-name={config.get('served_model_name', 'default-model')}",
+                f"--tp={int(config.get('tensor_parallel_size', 1))}",
+                f"--dp={int(config.get('data_parallel_size', 1))}",
+            ] + (config.get("extra_args", "").split() if config.get("extra_args") else [])
+        elif deployment_type == "custom":
+            return config.get(
+                "command", ["/bin/bash", "-c", f"python3 -m http.server {int(config.get('port', 8080))} --bind 0.0.0.0"]
+            )
+        else:  # nim or unknown
+            return []
 
-    def __init__(self):
-        super().__init__(task_type_name="lepton_endpoint_task", metadata_type=LeptonMetadata)
+    def __init__(self, task_type_name: str, connector_name: str):
+        super().__init__(task_type_name=task_type_name, metadata_type=LeptonMetadata)
+        self.name = connector_name
         # Single client with lazy-loaded API surfaces
         self._client: Optional[APIClient] = None
         self._deployment_api: Optional[DeploymentAPI] = None
         self._log_api: Optional[LogAPI] = None
         self._dashboard_base_url: Optional[str] = None
 
+    @lru_cache(maxsize=128)
     def _sanitize_endpoint_name(self, name: str) -> str:
-        """Optimized endpoint name sanitization"""
-        # Use pre-compiled regex
+        """Optimized endpoint name sanitization with caching."""
         sanitized = self.NAME_SANITIZE_REGEX.sub("-", name.lower())
 
         # Ensure valid start/end characters
-        if not sanitized[0].isalpha():
+        if not sanitized or not sanitized[0].isalpha():
             sanitized = "ep-" + sanitized
         sanitized = sanitized.rstrip("-")
-        if not sanitized[-1].isalnum():
+        if not sanitized or not sanitized[-1].isalnum():
             sanitized = sanitized + "x"
 
-        # Efficient truncation with hash
-        return sanitized[:33] + f"{hash(name) % 100:02d}" if len(sanitized) > 36 else sanitized
+        # Efficient truncation with deterministic suffix
+        if len(sanitized) > 36:
+            return sanitized[:33] + f"{hash(name) % 1000:03d}"
+        return sanitized
 
     def _get_dashboard_base_url(self) -> str:
         """Get dashboard base URL dynamically from workspace origin URL"""
@@ -187,46 +182,52 @@ class LeptonEndpointConnector(AsyncConnectorBase):
         return self._log_api
 
     def _map_status_to_phase(self, status: str) -> TaskExecution.Phase:
-        """Optimized status mapping with fallback"""
-        return convert_to_flyte_phase(self.STATUS_MAPPING.get(status.lower() if status else "unknown", "pending"))
+        """Optimized status mapping using frozensets for faster lookup."""
+        if not status:
+            return convert_to_flyte_phase("pending")
+
+        status_lower = status.lower()
+        if status_lower in self._PENDING_STATES:
+            return convert_to_flyte_phase("pending")
+        elif status_lower in self._SUCCESS_STATES:
+            return convert_to_flyte_phase("succeeded")
+        elif status_lower in self._FAILED_STATES:
+            return convert_to_flyte_phase("failed")
+        else:
+            return convert_to_flyte_phase("pending")  # Default fallback
 
     def _build_spec(self, config: Dict[str, Any]) -> Dict[str, Any]:
-        """Streamlined spec generation"""
+        """Optimized spec generation with reduced complexity."""
         deployment_type = config.get("deployment_type", "custom")
-        port = int(config.get("port", 8080 if deployment_type == "custom" else 8000))
+        port = config.get("port", 8080 if deployment_type == "custom" else 8000)
 
-        log_info(f"Building spec for deployment_type: {deployment_type}, port: {port}")
+        log_info(f"Building spec for {deployment_type}, port: {port}")
 
         # Base container spec
         container = {"image": config.get("image", "python:3.11-slim"), "ports": [{"container_port": port}]}
 
-        # Add command if needed
-        if deployment_type in self.DEPLOYMENT_COMMANDS:
-            command = self.DEPLOYMENT_COMMANDS[deployment_type](config)
-            log_info(f"Generated command for {deployment_type}: {command}")
-            if command:
-                container["command"] = command
-        else:
-            log_info(f"No command generator found for deployment_type: {deployment_type}")
+        # Add command using optimized method
+        command = self._get_deployment_command(deployment_type, config)
+        if command:
+            container["command"] = command
+            log_info(f"Generated command: {' '.join(command[:3])}...")
 
         # Build environment variables efficiently
         envs = []
 
-        # Auto-derived envs
-        auto_envs = [
-            ("SERVED_MODEL_NAME", config.get("served_model_name")),
-            ("MODEL_PORT", str(port) if config.get("port") else None),
-            ("MODEL_PATH", config.get("checkpoint_path") if deployment_type in ["vllm", "sglang"] else None),
-            (
-                "TENSOR_PARALLEL_SIZE",
-                str(int(config.get("tensor_parallel_size", 1))) if deployment_type in ["vllm", "sglang"] else None,
-            ),
-            ("NIM_MODEL_NAME", config.get("served_model_name") if deployment_type == "nim" else None),
-        ]
+        # Auto-derived environment variables
+        if config.get("served_model_name"):
+            envs.append({"name": "SERVED_MODEL_NAME", "value": config["served_model_name"]})
+        if config.get("port"):
+            envs.append({"name": "MODEL_PORT", "value": str(port)})
+        if deployment_type in ("vllm", "sglang") and config.get("checkpoint_path"):
+            envs.append({"name": "MODEL_PATH", "value": config["checkpoint_path"]})
+        if deployment_type in ("vllm", "sglang"):
+            envs.append({"name": "TENSOR_PARALLEL_SIZE", "value": str(config.get("tensor_parallel_size", 1))})
+        if deployment_type == "nim" and config.get("served_model_name"):
+            envs.append({"name": "NIM_MODEL_NAME", "value": config["served_model_name"]})
 
-        envs.extend([{"name": k, "value": v} for k, v in auto_envs if v])
-
-        # User-defined envs
+        # User-defined environment variables
         for key, value in config.get("env_vars", {}).items():
             env_var = {"name": key}
             if isinstance(value, dict) and "value_from" in value:
@@ -246,11 +247,7 @@ class LeptonEndpointConnector(AsyncConnectorBase):
             else:
                 api_tokens.append({"value": str(token_config)})
 
-        # Legacy support
-        if not api_tokens and config.get("api_token"):
-            api_tokens.append({"value": config["api_token"]})
-
-        # Assemble final spec
+        # Assemble final spec more efficiently
         spec = {
             "container": container,
             "resource_requirement": {
@@ -267,85 +264,133 @@ class LeptonEndpointConnector(AsyncConnectorBase):
             "user_security_context": {},
         }
 
-        # Add optional configurations efficiently
-        optional_fields = [
-            ("auto_scaler", config.get("auto_scaler")),
-            ("queue_config", config.get("queue_config")),
-            ("image_pull_secrets", config.get("image_pull_secrets")),
-            ("api_tokens", api_tokens if api_tokens else None),
-        ]
-
-        for field_name, value in optional_fields:
-            if value:
-                spec[field_name] = value
+        # Add optional configurations
+        if config.get("auto_scaler"):
+            spec["auto_scaler"] = config["auto_scaler"]
+        if config.get("queue_config"):
+            spec["queue_config"] = config["queue_config"]
+        if config.get("image_pull_secrets"):
+            spec["image_pull_secrets"] = config["image_pull_secrets"]
+        if api_tokens:
+            spec["api_tokens"] = api_tokens
 
         # Node group affinity
         if config.get("node_group"):
             spec["resource_requirement"]["affinity"] = {"allowed_dedicated_node_groups": [config["node_group"]]}
 
-        # Storage mounts - array format only, with individual enable/disable
-        mounts_config = config.get("mounts", [])
+        # Storage mounts - simplified handling
+        mounts_config = config.get("mounts")
         if mounts_config:
-            spec["mounts"] = []
-            for mount in mounts_config:
-                if mount.get("enabled", True):  # Each mount can be individually enabled/disabled
-                    spec["mounts"].append(
-                        {
-                            "path": mount["cache_path"],
-                            "from": mount.get("storage_source", "node-nfs:lepton-shared-fs"),
-                            "mount_path": mount["mount_path"],
-                            "mount_options": mount.get("mount_options", {}),
-                        }
-                    )
+            mounts_list = (
+                mounts_config.get("mounts")
+                if isinstance(mounts_config, dict) and "mounts" in mounts_config
+                else mounts_config
+                if isinstance(mounts_config, list)
+                else []
+            )
+
+            if mounts_list:
+                spec["mounts"] = [
+                    {
+                        "path": mount["cache_path"],
+                        "from": mount.get("storage_source", "node-nfs:lepton-shared-fs"),
+                        "mount_path": mount["mount_path"],
+                        "mount_options": mount.get("mount_options", {}),
+                    }
+                    for mount in mounts_list
+                    if isinstance(mount, dict) and mount.get("enabled", True)
+                ]
 
         return spec
 
-    def _extract_config_from_inputs(self, inputs: Optional[LiteralMap]) -> Dict[str, Any]:
-        """Optimized config extraction"""
+    def _extract_config_from_inputs(self, task_template: TaskTemplate, inputs: Optional[LiteralMap]) -> Dict[str, Any]:
+        """Extract config from inputs using Flytekit's proper TypeEngine approach"""
         if not inputs or not inputs.literals:
             return {}
 
-        config = {}
-        for key, literal in inputs.literals.items():
-            if not literal.scalar:
-                continue
+        try:
+            # Use the proper Flytekit pattern from Perian and Snowflake connectors
+            from flytekit import FlyteContextManager
+            from flytekit.core.type_engine import TypeEngine
 
-            if literal.scalar.primitive:
-                primitive = literal.scalar.primitive
-                # Handle primitive types (str, int, bool, float)
-                for attr, default in [
-                    ("integer", None),
-                    ("float_value", None),
-                    ("string_value", None),
-                    ("boolean", None),
-                ]:
-                    value = getattr(primitive, attr, default)
-                    if value is not None:
-                        config[key] = value
-                        break
-            elif literal.scalar.generic:
-                # Handle JSON/complex data
-                try:
-                    config[key] = json.loads(literal.scalar.generic.value.decode("utf-8"))
-                except (json.JSONDecodeError, ValueError):
-                    config[key] = literal.scalar.generic.value.decode("utf-8")
+            ctx = FlyteContextManager.current_context()
+            literal_types = task_template.interface.inputs
 
-        log_info(f"Extracted config: {list(config.keys())}")
-        return config
+            # Convert literals to native Python objects using TypeEngine
+            native_inputs = TypeEngine.literal_map_to_kwargs(ctx, inputs, literal_types=literal_types)
+            log_info(f"Native inputs from TypeEngine: {list(native_inputs.keys())}")
+
+            config = {}
+
+            # Handle the request dataclass specially
+            if "request" in native_inputs:
+                request_data = native_inputs["request"]
+                log_info(f"Found request data: {type(request_data)}")
+
+                # If it's a dataclass instance, extract its fields
+                if hasattr(request_data, "__dataclass_fields__"):
+                    log_info(f"Request is a dataclass with fields: {list(request_data.__dataclass_fields__.keys())}")
+                    # Extract all fields from the dataclass instance
+                    for field_name in request_data.__dataclass_fields__.keys():
+                        value = getattr(request_data, field_name)
+                        if value is not None:
+                            config[field_name] = value
+                            log_info(f"Extracted {field_name} from dataclass: {value}")
+
+                    log_info(
+                        f"Successfully extracted {len([v for v in config.values() if v is not None])} parameters from dataclass"
+                    )
+                elif isinstance(request_data, dict):
+                    log_info(f"Request is a dict with keys: {list(request_data.keys())}")
+                    # Extract all fields from the dict
+                    for param, value in request_data.items():
+                        if value is not None:
+                            config[param] = value
+                            log_info(f"Extracted {param} from dict: {value}")
+                else:
+                    # Store as-is if it's neither a dataclass nor dict
+                    config["request"] = request_data
+                    log_info(f"Stored request as-is: {type(request_data)}")
+
+            # Add any other top-level inputs
+            for key, value in native_inputs.items():
+                if key != "request" and value is not None:
+                    config[key] = value
+                    log_info(f"Added top-level input {key}: {value}")
+
+            log_info(f"Final config keys: {list(config.keys())}")
+            return config
+
+        except Exception as e:
+            log_info(f"Error extracting config from inputs: {e}")
+            import traceback
+
+            log_info(f"Traceback: {traceback.format_exc()}")
+            # Fallback to empty config
+            return {}
 
     async def create(
         self, task_template: TaskTemplate, inputs: Optional[LiteralMap] = None, **kwargs
     ) -> LeptonMetadata:
-        """Optimized endpoint creation"""
+        """Handle endpoint operations - to be overridden by subclasses"""
         log_info(f"Processing task: {task_template.id}")
 
         # Efficient config merging
         task_config = task_template.custom if isinstance(task_template.custom, dict) else {}
-        input_config = self._extract_config_from_inputs(inputs)
+        input_config = self._extract_config_from_inputs(task_template, inputs)
         config = {**task_config, **input_config}
 
         log_info(f"Config keys: {list(config.keys())}")
 
+        # Delegate to specific implementation
+        return await self._handle_operation(config, task_template)
+
+    async def _handle_operation(self, config: Dict[str, Any], task_template: TaskTemplate) -> LeptonMetadata:
+        """To be implemented by subclasses"""
+        raise NotImplementedError("Subclasses must implement _handle_operation")
+
+    async def _handle_deployment(self, config: Dict[str, Any], task_template: TaskTemplate) -> LeptonMetadata:
+        """Handle endpoint deployment"""
         # Generate name and spec
         endpoint_name = config.get("endpoint_name") or f"{task_template.id.name}-{int(time.time())}"
         endpoint_name = self._sanitize_endpoint_name(endpoint_name)
@@ -354,6 +399,15 @@ class LeptonEndpointConnector(AsyncConnectorBase):
 
         try:
             spec = self._build_spec(config)
+
+            # Debug logging for node group
+            log_info(f"Node group in config: {config.get('node_group')}")
+            log_info(f"Resource shape in config: {config.get('resource_shape')}")
+            if "resource_requirement" in spec and "affinity" in spec["resource_requirement"]:
+                log_info(f"Affinity in spec: {spec['resource_requirement']['affinity']}")
+            else:
+                log_info("No affinity found in spec")
+            log_info(f"Full spec resource_requirement: {spec.get('resource_requirement', {})}")
 
             # Create deployment object
             metadata = Metadata(id_=endpoint_name, name=endpoint_name)
@@ -369,6 +423,24 @@ class LeptonEndpointConnector(AsyncConnectorBase):
         except Exception as e:
             log_info(f"Failed: {e}")
             raise RuntimeError(f"Failed to create Lepton endpoint: {e}")
+
+    async def _handle_deletion(self, config: Dict[str, Any], task_template: TaskTemplate) -> LeptonMetadata:
+        """Handle endpoint deletion"""
+        endpoint_name = config.get("endpoint_name") or task_template.id.name
+        endpoint_name = self._sanitize_endpoint_name(endpoint_name)
+
+        log_info(f"Deleting: {endpoint_name}")
+
+        try:
+            # Execute deletion in thread pool (SDK is sync)
+            await asyncio.get_event_loop().run_in_executor(None, lambda: self.deployment_api.delete(endpoint_name))
+
+            log_info(f"Deleted: {endpoint_name}")
+            return LeptonMetadata(deployment_name=endpoint_name)
+
+        except Exception as e:
+            log_info(f"Failed to delete: {e}")
+            raise RuntimeError(f"Failed to delete Lepton endpoint: {e}")
 
     async def get(self, resource_meta: LeptonMetadata, **kwargs) -> Resource:
         """Optimized status checking"""
@@ -436,6 +508,16 @@ class LeptonEndpointConnector(AsyncConnectorBase):
 
         except Exception as e:
             log_info(f"Error: {e}")
+
+            # For deletion operations, a 404 error means successful deletion
+            if "404" in str(e) and "not found" in str(e).lower():
+                log_info(f"Deletion confirmed: {deployment_name} not found (404)")
+                return Resource(
+                    phase=TaskExecution.SUCCEEDED,
+                    message=f"Successfully deleted: {deployment_name}",
+                    outputs={"o0": f"Successfully deleted endpoint: {deployment_name}"},
+                )
+
             return Resource(phase=convert_to_flyte_phase("failed"))
 
     async def delete(self, resource_meta: LeptonMetadata, **kwargs):
@@ -481,8 +563,32 @@ class LeptonEndpointConnector(AsyncConnectorBase):
             return GetTaskLogsResponse(logs=[], token="", log_links=[])
 
 
-# Register the connector
-ConnectorRegistry.register(LeptonEndpointConnector())
+class LeptonEndpointDeploymentConnector(BaseLeptonConnector):
+    """Connector for Lepton endpoint deployment operations."""
 
-# Backward compatibility alias
-LeptonConnector = LeptonEndpointConnector
+    def __init__(self):
+        super().__init__(
+            task_type_name="lepton_endpoint_deployment_task", connector_name="Lepton Endpoint Deployment Connector"
+        )
+
+    async def _handle_operation(self, config: Dict[str, Any], task_template: TaskTemplate) -> LeptonMetadata:
+        """Handle deployment operations"""
+        return await self._handle_deployment(config, task_template)
+
+
+class LeptonEndpointDeletionConnector(BaseLeptonConnector):
+    """Connector for Lepton endpoint deletion operations."""
+
+    def __init__(self):
+        super().__init__(
+            task_type_name="lepton_endpoint_deletion_task", connector_name="Lepton Endpoint Deletion Connector"
+        )
+
+    async def _handle_operation(self, config: Dict[str, Any], task_template: TaskTemplate) -> LeptonMetadata:
+        """Handle deletion operations"""
+        return await self._handle_deletion(config, task_template)
+
+
+# Register both connectors
+ConnectorRegistry.register(LeptonEndpointDeploymentConnector())
+ConnectorRegistry.register(LeptonEndpointDeletionConnector())

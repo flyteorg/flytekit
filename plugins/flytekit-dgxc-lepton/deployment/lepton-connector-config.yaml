@@ -11,7 +11,8 @@ data:
           container: container
           container_array: k8s-array
           sidecar: sidecar
-          lepton_endpoint_task: connector-service  # Route our task type to connector service
+          lepton_endpoint_deployment_task: connector-service  # Route deployment tasks to connector service
+          lepton_endpoint_deletion_task: connector-service     # Route deletion tasks to connector service
         enabled-plugins:
         - container
         - sidecar
@@ -43,8 +44,8 @@ data:
             GetTask: 10s
             ListAgents: 3s
         connectors:
-          # Route lepton tasks to our dedicated connector with extended timeouts
-          lepton_endpoint_task:
+          # Route lepton deployment tasks to our dedicated connector with extended timeouts
+          lepton_endpoint_deployment_task:
             endpoint: k8s://lepton-connector-service.flyte:8000
             insecure: true
             defaultTimeout: 600s  # 10 minutes default
@@ -52,3 +53,12 @@ data:
               GetTask: 300s      # 5 minutes for status checks
               CreateTask: 10800s # 3 hours for large model deployment (Nemotron Super)
               DeleteTask: 300s   # 5 minutes for deletion
+          # Route lepton deletion tasks to the same connector with appropriate timeouts
+          lepton_endpoint_deletion_task:
+            endpoint: k8s://lepton-connector-service.flyte:8000
+            insecure: true
+            defaultTimeout: 300s  # 5 minutes default for deletion
+            timeouts:
+              GetTask: 60s       # 1 minute for status checks
+              CreateTask: 300s   # 5 minutes for deletion operations
+              DeleteTask: 300s   # 5 minutes for cleanup

@@ -1,58 +1,52 @@
 """
-Example: NVIDIA NIM Nemotron Super Model Deployment
+Example: NVIDIA NIM using Task API
 
-This example demonstrates deploying the latest Nemotron Super model
-using NVIDIA NIM with comprehensive configuration similar to the reference spec.
+This example demonstrates deploying NVIDIA NIM models using the
+task API for maximum flexibility and type safety.
 """
 
-from flytekitplugins.dgxc_lepton import create_lepton_endpoint_task
+from flytekitplugins.dgxc_lepton import (
+    EndpointEngineConfig,
+    EnvironmentConfig,
+    LeptonEndpointConfig,
+    MountReader,
+    ScalingConfig,
+    lepton_endpoint_deployment_task,
+)
 
 from flytekit import workflow
-
-nemotron_nim_deployment = create_lepton_endpoint_task(
-    deployment_type="nim",
-    name="deploy_nemotron_super_v3",
-    image="nvcr.io/nim/nvidia/llama-3_3-nemotron-super-49b-v1_5:latest",
-    port=8000,
-    secrets={"NGC_API_KEY": "NGC_API_KEY", "HF_TOKEN": "HUGGING_FACE_HUB_TOKEN_read"},
-    scaling_mode="qpm",
-    target_qpm=2.5,
-    initial_delay_seconds=5000,
-    env_vars={
-        "OMPI_ALLOW_RUN_AS_ROOT": "1",
-        "OMPI_ALLOW_RUN_AS_ROOT_CONFIRM": "1",
-        "SERVED_MODEL_NAME": "nvidia/llama-3_3-nemotron-super-49b-v1_5",
-        "NIM_MODEL_NAME": "nvidia/llama-3_3-nemotron-super-49b-v1_5",
-    },
-    api_token="UNIQUE_ENDPOINT_TOKEN",
-    image_pull_secrets=["<your-ngc-secret>"],
-    mounts=[
-        {
-            "enabled": True,
-            "cache_path": "/shared-storage/model-cache/nim",
-            "mount_path": "/opt/nim/.cache",
-            "storage_source": "node-nfs:lepton-shared-fs",
-        }
-    ],
-)
 
 
 @workflow
 def nemotron_super_workflow() -> str:
-    """Deploy NVIDIA's Nemotron Super model for advanced AI reasoning."""
-    endpoint_url = nemotron_nim_deployment(
+    """Deploy Nemotron Super for advanced AI reasoning."""
+
+    # Complete configuration in one place
+    config = LeptonEndpointConfig(
         endpoint_name="nemotron-super-reasoning",
         resource_shape="gpu.1xh200",
-        min_replicas=1,
-        max_replicas=3,
-        node_group="<your-node-group>",
+        node_group="<your-gpu-node-group>",  # Replace with your actual GPU node group
+        endpoint_config=EndpointEngineConfig.nim(
+            image="nvcr.io/nim/nvidia/llama-3_3-nemotron-super-49b-v1_5:latest",
+        ),
+        api_token="UNIQUE_ENDPOINT_TOKEN",
+        scaling=ScalingConfig.qpm(target_qpm=2.5, min_replicas=1, max_replicas=3),
+        environment=EnvironmentConfig.create(
+            OMPI_ALLOW_RUN_AS_ROOT="1",
+            OMPI_ALLOW_RUN_AS_ROOT_CONFIRM="1",
+            NIM_MODEL_NAME="nvidia/llama-3_3-nemotron-super-49b-v1_5",
+            SERVED_MODEL_NAME="nvidia/llama-3_3-nemotron-super-49b-v1_5",
+            secrets={
+                "NGC_API_KEY": "<your-ngc-api-key-secret>",
+                "HF_TOKEN": "HUGGING_FACE_HUB_TOKEN_read",
+            },
+        ),
+        initial_delay_seconds=5000,
+        image_pull_secrets=["<your-ngc-pull-secret>"],
+        mounts=MountReader.node_nfs(
+            ("<your-shared-storage>/nim-cache", "/opt/nim/.cache"),
+            ("<your-shared-storage>/test-datasets", "/opt/nim/datasets"),
+        ),
     )
 
-    return endpoint_url
-
-
-if __name__ == "__main__":
-    # Local execution examples
-    print("=== Nemotron Super Reasoning Deployment ===")
-    result1 = nemotron_super_workflow()
-    print(f"Nemotron Super endpoint: {result1}")
+    return lepton_endpoint_deployment_task(config=config, task_name="nemotron_super_workflow")
