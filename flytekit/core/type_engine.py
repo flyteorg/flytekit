@@ -24,7 +24,7 @@ import msgpack
 from dataclasses_json import DataClassJsonMixin, dataclass_json
 from flyteidl.core import literals_pb2
 from fsspec.asyn import _run_coros_in_chunks  # pylint: disable=W0212
-from google.protobuf import json_format as _json_format
+from google.protobuf import json_format as _json_format, json_format
 from google.protobuf import struct_pb2 as _struct
 from google.protobuf.json_format import MessageToDict as _MessageToDict
 from google.protobuf.json_format import ParseDict as _ParseDict
@@ -1767,7 +1767,7 @@ def _type_essence(x: LiteralType) -> LiteralType:
 
     return x
 
-
+# UP: SD Down: SD
 def _are_types_castable(upstream: LiteralType, downstream: LiteralType) -> bool:
     if upstream.union_type is not None:
         # for each upstream variant, there must be a compatible type downstream
