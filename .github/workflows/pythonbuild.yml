@@ -301,6 +301,7 @@ jobs:
           - flytekit-data-fsspec
           - flytekit-dbt
           - flytekit-deck-standard
+          - flytekit-dgxc-lepton
           # TODO: remove dolt plugin - https://github.com/flyteorg/flyte/issues/5350
           # flytekit-dolt
           - flytekit-duckdb
