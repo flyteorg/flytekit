@@ -24,7 +24,7 @@ def wf(name: str):
 if __name__ == "__main__":
     """
     uv pip install -e .  # flytekit
-    uv pip install --pre flyte
+    uv pip install --pre flyte==2.0.0b22
     python migrate_examples/hello.py
     """
     import flyte
