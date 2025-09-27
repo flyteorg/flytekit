@@ -32,6 +32,7 @@ from flytekit.models import interface as interface_models
 from flytekit.models import launch_plan as _launch_plan_models
 from flytekit.models.admin import workflow as admin_workflow_models
 from flytekit.models.admin.workflow import WorkflowSpec
+from flytekit.models.concurrency import ConcurrencyPolicy
 from flytekit.models.core import identifier as _identifier_model
 from flytekit.models.core import workflow as _core_wf
 from flytekit.models.core import workflow as workflow_model
@@ -358,6 +359,12 @@ def get_serializable_launch_plan(
     else:
         lc = None
 
+    concurrency_policy = None
+    if entity.concurrency is not None:
+        concurrency_policy = ConcurrencyPolicy(
+            max_concurrency=entity.concurrency.max_concurrency, behavior=entity.concurrency.behavior
+        )
+
     lps = _launch_plan_models.LaunchPlanSpec(
         workflow_id=wf_id,
         entity_metadata=_launch_plan_models.LaunchPlanMetadata(
@@ -374,6 +381,7 @@ def get_serializable_launch_plan(
         max_parallelism=options.max_parallelism or entity.max_parallelism,
         security_context=options.security_context or entity.security_context,
         overwrite_cache=options.overwrite_cache or entity.overwrite_cache,
+        concurrency_policy=concurrency_policy,
     )
 
     lp_id = _identifier_model.Identifier(

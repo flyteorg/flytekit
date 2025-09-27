@@ -146,6 +146,7 @@ from flytekit.deck import Deck
 from flytekit.image_spec import ImageSpec
 from flytekit.loggers import LOGGING_RICH_FMT_ENV_VAR, logger
 from flytekit.models.common import Annotations, AuthRole, Labels
+from flytekit.models.concurrency import ConcurrencyLimitBehavior, ConcurrencyPolicy
 from flytekit.models.core.execution import WorkflowExecutionPhase
 from flytekit.models.core.types import BlobType
 from flytekit.models.documentation import Description, Documentation, SourceCode

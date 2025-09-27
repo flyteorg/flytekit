@@ -15,6 +15,7 @@ from flytekit.models.common import Annotations, AuthRole, Labels, RawOutputDataC
 from flytekit.models.core import execution as _execution_model
 from flytekit.models.core import identifier as identifier_models
 from flytekit.tools.translator import get_serializable
+from flytekit.models.concurrency import ConcurrencyPolicy, ConcurrencyLimitBehavior
 
 default_img = Image(name="default", fqn="test", tag="tag")
 serialization_settings = flytekit.configuration.SerializationSettings(
@@ -472,3 +473,54 @@ def test_lp_with_wf_with_default_options():
     assert lp.labels.values["label"] == "foo"
     assert len(lp.annotations.values) == 1
     assert lp.annotations.values["anno"] == "bar"
+
+
+def test_lp_with_concurrency():
+    @task
+    def t1(a: int) -> typing.NamedTuple("OutputsBC", t1_int_output=int, c=str):
+        a = a + 2
+        return a, "world-" + str(a)
+
+    @workflow
+    def wf(a: int, c: str) -> (int, str):
+        x, y = t1(a=a)
+        return x, y
+
+    # Test creation with concurrency policy
+    concurrency_policy = ConcurrencyPolicy(max_concurrency=1, behavior=ConcurrencyLimitBehavior.SKIP)
+
+    lp = launch_plan.LaunchPlan.get_or_create(
+        workflow=wf,
+        name="concurrency_test_lp",
+        default_inputs={"a": 3},
+        fixed_inputs={"c": "4"},
+        concurrency=concurrency_policy
+    )
+
+    # Verify concurrency policy was set
+    assert lp.concurrency is not None
+    assert lp.concurrency.max_concurrency == 1
+    assert lp.concurrency.behavior == ConcurrencyLimitBehavior.SKIP
+
+    # Verify that we can get the same LP back
+    lp2 = launch_plan.LaunchPlan.get_or_create(
+        workflow=wf,
+        name="concurrency_test_lp",
+        default_inputs={"a": 3},
+        fixed_inputs={"c": "4"},
+        concurrency=concurrency_policy
+    )
+    assert lp is lp2
+
+    # Test with a different concurrency policy
+    different_policy = ConcurrencyPolicy(max_concurrency=2, behavior=ConcurrencyLimitBehavior.SKIP)
+
+    # This should raise an AssertionError due to different concurrency policy
+    with pytest.raises(AssertionError):
+        launch_plan.LaunchPlan.get_or_create(
+            workflow=wf,
+            name="concurrency_test_lp",
+            default_inputs={"a": 3},
+            fixed_inputs={"c": "4"},
+            concurrency=different_policy
+        )
