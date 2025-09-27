@@ -24,11 +24,12 @@ def wf(name: str):
 if __name__ == "__main__":
     """
     uv pip install -e .  # flytekit
-    uv pip install flyte
+    uv pip install --pre flyte
     python migrate_examples/hello.py
     """
     import flyte
-    flyte.init_from_config(log_level=logging.DEBUG)
+
+    flyte.init_from_config(path_or_config="~/.flyte/config-demo.yaml", log_level=logging.DEBUG)
     run = flyte.with_runcontext(log_level=logging.DEBUG).run(wf, name="flyte")
     print(run.name)
     print(run.url)

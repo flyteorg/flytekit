@@ -41,3 +41,5 @@ coverage.xml
 flytekit/_version.py
 testing
 .flyte/
+flytekit/_migrate/__pycache__/*
+flytekit/_migrate/__pycache__/__init__.cpython-312.pyc
