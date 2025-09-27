@@ -366,3 +366,18 @@ def test_task_node_with_overrides():
 
     obj = _workflow.TaskNode.from_flyte_idl(task_node.to_flyte_idl())
     assert obj.overrides.pod_template is not None
+
+
+def test_array_node_no_bound_inputs():
+    nm = _get_sample_node_metadata()
+    task = _workflow.TaskNode(reference_id=_generic_id)
+    node = _workflow.Node(
+        id="some:node:id",
+        metadata=nm,
+        inputs=[],
+        upstream_node_ids=[],
+        output_aliases=[],
+        task_node=task,
+    )
+    array_node = _workflow.ArrayNode(node=node, parallelism=3)
+    assert len(array_node.to_flyte_idl().bound_inputs) == 0

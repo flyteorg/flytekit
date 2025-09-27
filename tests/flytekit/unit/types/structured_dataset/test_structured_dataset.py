@@ -751,3 +751,12 @@ def test_structured_dataset_pickleable():
     unpickled_input = pickle.loads(pickled_input)
 
     assert downstream_input == unpickled_input
+
+def test_optional_sd_with_serde():
+    ctx = FlyteContext.current_context()
+    lt_optional = TypeEngine.to_literal_type(typing.Optional[StructuredDataset])
+
+    lit = TypeEngine.to_literal(ctx, StructuredDataset(df), python_type=typing.Optional[StructuredDataset], expected=lt_optional)
+    lit2 = lit.from_flyte_idl(lit.to_flyte_idl())
+    pv = TypeEngine.to_python_value(ctx, lit2, typing.Optional[StructuredDataset])
+    assert pv is not None
