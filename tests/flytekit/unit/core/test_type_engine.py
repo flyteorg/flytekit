@@ -3993,3 +3993,44 @@ def test_type_engine_cache_with_flytefile():
         assert mock_async_to_literal.call_count == 1
 
         assert lv1 is lv2
+
+def test_literal_transformer_string_type():
+    # Python -> Flyte
+    t = typing.Literal["outcome", "income"]
+    lt = TypeEngine.get_transformer(t).get_literal_type(t)
+    assert lt.simple == SimpleType.STRING
+    assert lt.annotation.annotations["literal_values"] == ["outcome", "income"]
+    assert lt == LiteralType.from_flyte_idl(lt.to_flyte_idl())
+
+    lv = TypeEngine.to_literal(FlyteContext.current_context(), "outcome", t, lt)
+    assert lv.scalar.primitive.string_value == "outcome"
+
+    # Flyte -> Python (reconstruction)
+    pt = TypeEngine.get_transformer(t).guess_python_type(lt)
+    assert pt is typing.Literal["outcome", "income"]
+    pv = TypeEngine.get_transformer(pt).to_python_value(FlyteContext.current_context(), lv, pt)
+    TypeEngine.get_transformer(pt).assert_type(pt, pv)
+    assert pv == "outcome"
+
+def test_literal_transformer_int_type():
+    # Python -> Flyte
+    t = typing.Literal[1, 2, 3]
+    lt = TypeEngine.get_transformer(t).get_literal_type(t)
+    assert lt.simple == SimpleType.INTEGER
+    assert lt.annotation.annotations["literal_values"] == [1, 2, 3]
+    assert lt == LiteralType.from_flyte_idl(lt.to_flyte_idl())
+
+    lv = TypeEngine.to_literal(FlyteContext.current_context(), 1, t, lt)
+    assert lv.scalar.primitive.integer == 1
+
+    # Flyte -> Python (reconstruction)
+    pt = TypeEngine.get_transformer(t).guess_python_type(lt)
+    assert pt is typing.Literal[1, 2, 3]
+    pv = TypeEngine.get_transformer(pt).to_python_value(FlyteContext.current_context(), lv, pt)
+    TypeEngine.get_transformer(pt).assert_type(pt, pv)
+    assert pv == 1
+
+def test_literal_transformer_mixed_base_types():
+    t = typing.Literal["a", 1]
+    with pytest.raises(TypeTransformerFailedError):
+        TypeEngine.get_transformer(t).get_literal_type(t)
