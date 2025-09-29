@@ -26,6 +26,8 @@ BIGQUERY = "bq"
 
 def _write_to_bq(structured_dataset: StructuredDataset):
     # Structured dataset uri: bq://project:dataset.table
+    if structured_dataset.uri is None:
+        raise RuntimeError("StructuredDataset URI for BigQuery is missing. Expected format: bq://project:dataset.table")
     project = structured_dataset.uri.removeprefix("bq://").split(":", 1)[0]
     dst = typing.cast(str, structured_dataset.uri).split("://", 1)[1].replace(":", ".")
     client = bigquery.Client(project=project)
@@ -123,3 +125,4 @@ class BQToArrowDecodingHandler(StructuredDatasetDecoder):
         current_task_metadata: StructuredDatasetMetadata,
     ) -> pa.Table:
         return pa.Table.from_pandas(_read_from_bq(flyte_value, current_task_metadata))
+
