@@ -11,7 +11,7 @@ def test_concurrency_limit_behavior():
     assert ConcurrencyLimitBehavior.enum_to_string(999) == "<UNKNOWN>"
 
 
-def test_concurrency_policy():
+def test_concurrency_policy_serialization():
     policy = ConcurrencyPolicy(max_concurrency=1, behavior=ConcurrencyLimitBehavior.SKIP)
 
     assert policy.max_concurrency == 1
