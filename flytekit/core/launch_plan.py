@@ -229,9 +229,9 @@ class LaunchPlan(object):
             parallelism/concurrency of MapTasks is independent from this.
         :param trigger: [alpha] This is a new syntax for specifying schedules.
         :param overwrite_cache: If set to True, the execution will always overwrite cache
-        :param auto_activate: If set to True, the launch plan will be activated automatically on registration.
+        :param auto_activate: If set to True, the launch plan will be activated automatically on registration. 
+            Default is False.
         :param concurrency: Defines execution concurrency limits and policy when limit is reached
-         Default is False.
         """
         if name is None and (
             default_inputs is not None
