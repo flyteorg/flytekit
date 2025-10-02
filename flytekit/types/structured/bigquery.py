@@ -25,15 +25,25 @@ BIGQUERY = "bq"
 
 
 def _write_to_bq(structured_dataset: StructuredDataset):
-    # Structured dataset uri: bq://project:dataset.table
-    if structured_dataset.uri is None:
-        raise RuntimeError("StructuredDataset URI for BigQuery is missing. Expected format: bq://project:dataset.table")
-    project = structured_dataset.uri.removeprefix("bq://").split(":", 1)[0]
-    dst = typing.cast(str, structured_dataset.uri).split("://", 1)[1].replace(":", ".")
+    """Write a StructuredDataset to BigQuery using its URI (format: bq://project:dataset.table)."""
+    uri = structured_dataset.uri
+    if uri is None:
+        raise RuntimeError(
+            "Missing StructuredDataset URI for BigQuery. Expected format: bq://<project>:<dataset>.<table>"
+        )
+
+    # Extract project and BigQuery destination (dataset.table)
+    project = uri.removeprefix("bq://").split(":", 1)[0]
+    # Convert project:dataset.table -> project.dataset.table
+    dst = uri.split("://", 1)[1].replace(":", ".")
+
     client = bigquery.Client(project=project)
+
+    # Convert Arrow table to pandas DataFrame if needed
     df = structured_dataset.dataframe
     if isinstance(df, pa.Table):
         df = df.to_pandas()
+
     client.load_table_from_dataframe(df, dst)
 
 
@@ -125,4 +135,3 @@ class BQToArrowDecodingHandler(StructuredDatasetDecoder):
         current_task_metadata: StructuredDatasetMetadata,
     ) -> pa.Table:
         return pa.Table.from_pandas(_read_from_bq(flyte_value, current_task_metadata))
-
