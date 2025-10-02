@@ -4034,3 +4034,312 @@ def test_literal_transformer_mixed_base_types():
     t = typing.Literal["a", 1]
     with pytest.raises(TypeTransformerFailedError):
         TypeEngine.get_transformer(t).get_literal_type(t)
+
+
+@pytest.mark.skipif(sys.version_info < (3, 10), reason="PEP604 requires >=3.10.")
+def test_flyte_property_value_expanded():
+    """Test FlytePropertyValue expanded form: float | None | str | bool | datetime | date | list[str | float]"""
+    from datetime import date, datetime
+
+    # Define the type in expanded form
+    pt = float | None | str | bool | datetime | date | list[str | float]
+
+    # Convert Python type to Flyte literal type
+    lt = TypeEngine.to_literal_type(pt)
+
+    # Verify literal type is a union
+    assert lt.union_type is not None
+    assert len(lt.union_type.variants) == 7
+
+    # Verify all variants are present
+    variant_tags = {v.structure.tag for v in lt.union_type.variants}
+    expected_tags = {"float", "none", "str", "bool", "datetime", "date", "Typed List"}
+    assert variant_tags == expected_tags
+
+    ctx = FlyteContextManager.current_context()
+
+    # Test float variant
+    float_val = 3.14
+    lv_float = TypeEngine.to_literal(ctx, float_val, pt, lt)
+    assert lv_float.scalar.union.stored_type.structure.tag == "float"
+    assert lv_float.scalar.union.value.scalar.primitive.float_value == float_val
+    pv_float = TypeEngine.to_python_value(ctx, lv_float, pt)
+    assert pv_float == float_val
+
+    # Test None variant
+    none_val = None
+    lv_none = TypeEngine.to_literal(ctx, none_val, pt, lt)
+    assert lv_none.scalar.union.stored_type.structure.tag == "none"
+    assert lv_none.scalar.union.value.scalar.none_type == Void()
+    pv_none = TypeEngine.to_python_value(ctx, lv_none, pt)
+    assert pv_none is None
+
+    # Test str variant
+    str_val = "hello"
+    lv_str = TypeEngine.to_literal(ctx, str_val, pt, lt)
+    assert lv_str.scalar.union.stored_type.structure.tag == "str"
+    assert lv_str.scalar.union.value.scalar.primitive.string_value == str_val
+    pv_str = TypeEngine.to_python_value(ctx, lv_str, pt)
+    assert pv_str == str_val
+
+    # Test bool variant
+    bool_val = True
+    lv_bool = TypeEngine.to_literal(ctx, bool_val, pt, lt)
+    assert lv_bool.scalar.union.stored_type.structure.tag == "bool"
+    assert lv_bool.scalar.union.value.scalar.primitive.boolean == bool_val
+    pv_bool = TypeEngine.to_python_value(ctx, lv_bool, pt)
+    assert pv_bool == bool_val
+
+    # Test datetime variant
+    from datetime import timezone
+    datetime_val = datetime(2024, 1, 15, 10, 30, 0, tzinfo=timezone.utc)
+    lv_datetime = TypeEngine.to_literal(ctx, datetime_val, pt, lt)
+    assert lv_datetime.scalar.union.stored_type.structure.tag == "datetime"
+    assert lv_datetime.scalar.union.value.scalar.primitive.datetime is not None
+    pv_datetime = TypeEngine.to_python_value(ctx, lv_datetime, pt)
+    assert pv_datetime == datetime_val
+
+    # Test date variant
+    date_val = date(2024, 1, 15)
+    lv_date = TypeEngine.to_literal(ctx, date_val, pt, lt)
+    assert lv_date.scalar.union.stored_type.structure.tag == "date"
+    assert lv_date.scalar.union.value.scalar.primitive.datetime is not None  # dates are stored as datetime
+    pv_date = TypeEngine.to_python_value(ctx, lv_date, pt)
+    assert pv_date == date_val
+
+    # Test list[str | float] variant with strings
+    list_str_val = ["a", "b", "c"]
+    lv_list_str = TypeEngine.to_literal(ctx, list_str_val, pt, lt)
+    assert lv_list_str.scalar.union.stored_type.structure.tag == "Typed List"
+    pv_list_str = TypeEngine.to_python_value(ctx, lv_list_str, pt)
+    assert pv_list_str == list_str_val
+
+    # Test list[str | float] variant with floats
+    list_float_val = [1.5, 2.5, 3.5]
+    lv_list_float = TypeEngine.to_literal(ctx, list_float_val, pt, lt)
+    assert lv_list_float.scalar.union.stored_type.structure.tag == "Typed List"
+    pv_list_float = TypeEngine.to_python_value(ctx, lv_list_float, pt)
+    assert pv_list_float == list_float_val
+
+    # Test list[str | float] variant with mixed
+    list_mixed_val = ["a", 1.5, "b", 2.5]
+    lv_list_mixed = TypeEngine.to_literal(ctx, list_mixed_val, pt, lt)
+    assert lv_list_mixed.scalar.union.stored_type.structure.tag == "Typed List"
+    pv_list_mixed = TypeEngine.to_python_value(ctx, lv_list_mixed, pt)
+    assert pv_list_mixed == list_mixed_val
+
+
+@pytest.mark.skipif(sys.version_info < (3, 10), reason="PEP604 requires >=3.10.")
+def test_flyte_property_value_alias():
+    """Test FlytePropertyValue using a type alias"""
+    from datetime import date, datetime
+
+    # Define the type alias
+    FlytePropertyValue = float | None | str | bool | datetime | date | list[str | float]
+
+    # Convert Python type to Flyte literal type using the alias
+    lt = TypeEngine.to_literal_type(FlytePropertyValue)
+
+    # Verify literal type is a union
+    assert lt.union_type is not None
+    assert len(lt.union_type.variants) == 7
+
+    # Verify all variants are present
+    variant_tags = {v.structure.tag for v in lt.union_type.variants}
+    expected_tags = {"float", "none", "str", "bool", "datetime", "date", "Typed List"}
+    assert variant_tags == expected_tags
+
+    ctx = FlyteContextManager.current_context()
+
+    # Test float variant
+    float_val = 3.14
+    lv_float = TypeEngine.to_literal(ctx, float_val, FlytePropertyValue, lt)
+    assert lv_float.scalar.union.stored_type.structure.tag == "float"
+    assert lv_float.scalar.union.value.scalar.primitive.float_value == float_val
+    pv_float = TypeEngine.to_python_value(ctx, lv_float, FlytePropertyValue)
+    assert pv_float == float_val
+
+    # Test None variant
+    none_val = None
+    lv_none = TypeEngine.to_literal(ctx, none_val, FlytePropertyValue, lt)
+    assert lv_none.scalar.union.stored_type.structure.tag == "none"
+    assert lv_none.scalar.union.value.scalar.none_type == Void()
+    pv_none = TypeEngine.to_python_value(ctx, lv_none, FlytePropertyValue)
+    assert pv_none is None
+
+    # Test str variant
+    str_val = "hello"
+    lv_str = TypeEngine.to_literal(ctx, str_val, FlytePropertyValue, lt)
+    assert lv_str.scalar.union.stored_type.structure.tag == "str"
+    assert lv_str.scalar.union.value.scalar.primitive.string_value == str_val
+    pv_str = TypeEngine.to_python_value(ctx, lv_str, FlytePropertyValue)
+    assert pv_str == str_val
+
+    # Test bool variant
+    bool_val = True
+    lv_bool = TypeEngine.to_literal(ctx, bool_val, FlytePropertyValue, lt)
+    assert lv_bool.scalar.union.stored_type.structure.tag == "bool"
+    assert lv_bool.scalar.union.value.scalar.primitive.boolean == bool_val
+    pv_bool = TypeEngine.to_python_value(ctx, lv_bool, FlytePropertyValue)
+    assert pv_bool == bool_val
+
+    # Test datetime variant
+    from datetime import timezone
+    datetime_val = datetime(2024, 1, 15, 10, 30, 0, tzinfo=timezone.utc)
+    lv_datetime = TypeEngine.to_literal(ctx, datetime_val, FlytePropertyValue, lt)
+    assert lv_datetime.scalar.union.stored_type.structure.tag == "datetime"
+    assert lv_datetime.scalar.union.value.scalar.primitive.datetime is not None
+    pv_datetime = TypeEngine.to_python_value(ctx, lv_datetime, FlytePropertyValue)
+    assert pv_datetime == datetime_val
+
+    # Test date variant
+    date_val = date(2024, 1, 15)
+    lv_date = TypeEngine.to_literal(ctx, date_val, FlytePropertyValue, lt)
+    assert lv_date.scalar.union.stored_type.structure.tag == "date"
+    assert lv_date.scalar.union.value.scalar.primitive.datetime is not None  # dates are stored as datetime
+    pv_date = TypeEngine.to_python_value(ctx, lv_date, FlytePropertyValue)
+    assert pv_date == date_val
+
+    # Test list[str | float] variant with strings
+    list_str_val = ["a", "b", "c"]
+    lv_list_str = TypeEngine.to_literal(ctx, list_str_val, FlytePropertyValue, lt)
+    assert lv_list_str.scalar.union.stored_type.structure.tag == "Typed List"
+    pv_list_str = TypeEngine.to_python_value(ctx, lv_list_str, FlytePropertyValue)
+    assert pv_list_str == list_str_val
+
+    # Test list[str | float] variant with floats
+    list_float_val = [1.5, 2.5, 3.5]
+    lv_list_float = TypeEngine.to_literal(ctx, list_float_val, FlytePropertyValue, lt)
+    assert lv_list_float.scalar.union.stored_type.structure.tag == "Typed List"
+    pv_list_float = TypeEngine.to_python_value(ctx, lv_list_float, FlytePropertyValue)
+    assert pv_list_float == list_float_val
+
+    # Test list[str | float] variant with mixed
+    list_mixed_val = ["a", 1.5, "b", 2.5]
+    lv_list_mixed = TypeEngine.to_literal(ctx, list_mixed_val, FlytePropertyValue, lt)
+    assert lv_list_mixed.scalar.union.stored_type.structure.tag == "Typed List"
+    pv_list_mixed = TypeEngine.to_python_value(ctx, lv_list_mixed, FlytePropertyValue)
+    assert pv_list_mixed == list_mixed_val
+
+
+def test_dict_str_any():
+    """Test dict[str, Any] type - should use Pickle transformer for Any values"""
+    pt = dict[str, typing.Any]
+
+    # Convert Python type to Flyte literal type
+    lt = TypeEngine.to_literal_type(pt)
+
+    # Verify literal type is a map with Any values (which should be Binary/Pickle)
+    assert lt.map_value_type is not None
+    assert lt.map_value_type.blob is not None
+    assert lt.map_value_type.blob.format == FlytePickleTransformer.PYTHON_PICKLE_FORMAT
+
+    ctx = FlyteContextManager.current_context()
+
+    # Create example dict with various types (including non-standard types that need pickling)
+    class CustomObject:
+        def __init__(self, value):
+            self.value = value
+
+        def __eq__(self, other):
+            return isinstance(other, CustomObject) and self.value == other.value
+
+    dict_val = {
+        "int": 42,
+        "str": "hello",
+        "list": [1, 2, 3],
+        "custom": CustomObject(100),
+        "nested": {"a": 1, "b": 2}
+    }
+
+    # Convert to literal
+    lv = TypeEngine.to_literal(ctx, dict_val, pt, lt)
+    assert lv.map is not None
+
+    # Convert back to Python value
+    pv = TypeEngine.to_python_value(ctx, lv, pt)
+    assert pv == dict_val
+    assert isinstance(pv["custom"], CustomObject)
+    assert pv["custom"].value == 100
+
+
+@pytest.mark.skipif(sys.version_info < (3, 10), reason="PEP604 requires >=3.10.")
+def test_dict_str_any_or_none():
+    """Test dict[str, Any] | None type - union of dict with Any values and None"""
+    pt = dict[str, typing.Any] | None
+
+    # Convert Python type to Flyte literal type
+    lt = TypeEngine.to_literal_type(pt)
+
+    # Verify literal type is a union
+    assert lt.union_type is not None
+    assert len(lt.union_type.variants) == 2
+
+    # Verify variants
+    variant_tags = {v.structure.tag for v in lt.union_type.variants}
+    assert "Typed Dict" in variant_tags
+    assert "none" in variant_tags
+
+    # Find the dict variant and verify it has pickle format for values
+    dict_variant = next(v for v in lt.union_type.variants if v.structure.tag == "Typed Dict")
+    assert dict_variant.map_value_type is not None
+    assert dict_variant.map_value_type.blob is not None
+    assert dict_variant.map_value_type.blob.format == FlytePickleTransformer.PYTHON_PICKLE_FORMAT
+
+    ctx = FlyteContextManager.current_context()
+
+    # Test dict variant
+    class CustomObject:
+        def __init__(self, value):
+            self.value = value
+
+        def __eq__(self, other):
+            return isinstance(other, CustomObject) and self.value == other.value
+
+    dict_val = {
+        "int": 42,
+        "str": "hello",
+        "custom": CustomObject(100)
+    }
+
+    lv_dict = TypeEngine.to_literal(ctx, dict_val, pt, lt)
+    assert lv_dict.scalar.union.stored_type.structure.tag == "Typed Dict"
+    pv_dict = TypeEngine.to_python_value(ctx, lv_dict, pt)
+    assert pv_dict == dict_val
+    assert isinstance(pv_dict["custom"], CustomObject)
+    assert pv_dict["custom"].value == 100
+
+    # Test None variant
+    none_val = None
+    lv_none = TypeEngine.to_literal(ctx, none_val, pt, lt)
+    assert lv_none.scalar.union.stored_type.structure.tag == "none"
+    assert lv_none.scalar.union.value.scalar.none_type == Void()
+    pv_none = TypeEngine.to_python_value(ctx, lv_none, pt)
+    assert pv_none is None
+
+
+def test_datetime_date():
+    """Test datetime.date type standalone to ensure it works correctly"""
+    from datetime import date
+
+    pt = date
+
+    # Convert Python type to Flyte literal type
+    lt = TypeEngine.to_literal_type(pt)
+
+    # Verify literal type is DATETIME (dates are stored as datetime in Flyte)
+    assert lt.simple == SimpleType.DATETIME
+
+    ctx = FlyteContextManager.current_context()
+
+    # Create example date
+    date_val = date(2024, 1, 15)
+
+    # Convert to literal
+    lv = TypeEngine.to_literal(ctx, date_val, pt, lt)
+    assert lv.scalar.primitive.datetime is not None
+
+    # Convert back to Python value
+    pv = TypeEngine.to_python_value(ctx, lv, pt)
+    assert pv == date_val
+    assert isinstance(pv, date)
