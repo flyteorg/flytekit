@@ -63,19 +63,12 @@ jobs:
           key: ${{ format('{0}-pip-{1}', runner.os, hashFiles('dev-requirements.in', 'requirements.in')) }}
           restore-keys: |
             ${{ runner.os }}-pip-
-      - name: Cache uv
-        uses: actions/cache@v4
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
         with:
-          path: |
-            ~/.cache/uv
-            ~/Library/Caches/uv
-            ~\AppData\Local\uv\Cache
-          key: ${{ format('{0}-uv-{1}', runner.os, hashFiles('dev-requirements.in', 'requirements.in')) }}
-          restore-keys: |
-            ${{ runner.os }}-uv-
+          enable-cache: true
       - name: Install dependencies
         run: |
-          pip install uv
           make setup-global-uv
           uv pip uninstall --system pandas pyarrow
           uv pip freeze
@@ -121,19 +114,12 @@ jobs:
           key: ${{ format('{0}-pip-{1}', runner.os, hashFiles('dev-requirements.in', 'requirements.in')) }}
           restore-keys: |
             ${{ runner.os }}-pip-
-      - name: Cache uv
-        uses: actions/cache@v4
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
         with:
-          path: |
-            ~/.cache/uv
-            ~/Library/Caches/uv
-            ~\AppData\Local\uv\Cache
-          key: ${{ format('{0}-uv-{1}', runner.os, hashFiles('dev-requirements.in', 'requirements.in')) }}
-          restore-keys: |
-            ${{ runner.os }}-uv-
+          enable-cache: true
       - name: Install dependencies
         run: |
-          pip install uv
           make setup-global-uv
           uv pip uninstall --system pandas pyarrow
           uv pip freeze
@@ -480,19 +466,12 @@ jobs:
           key: ${{ format('{0}-pip-{1}', runner.os, hashFiles('dev-requirements.txt', format('plugins/{0}/requirements.txt', matrix.plugin-names ))) }}
           restore-keys: |
             ${{ runner.os }}-pip-
-      - name: Cache uv
-        uses: actions/cache@v4
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
         with:
-          path: |
-            ~/.cache/uv
-            ~/Library/Caches/uv
-            ~\AppData\Local\uv\Cache
-          key: ${{ format('{0}-uv-plugins-{1}', runner.os, hashFiles('dev-requirements.txt', format('plugins/{0}/requirements.txt', matrix.plugin-names ))) }}
-          restore-keys: |
-            ${{ runner.os }}-uv-plugins-
+          enable-cache: true
       - name: Install dependencies
         run: |
-          pip install uv
           # TODO: double-check if checking out all tags solves the issue
           export SETUPTOOLS_SCM_PRETEND_VERSION="1.999.999"
           make setup-global-uv
@@ -527,19 +506,25 @@ jobs:
       - name: Fetch the code
         uses: actions/checkout@v4
       - name: Set up Python 3.12
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: 3.12
-      - uses: actions/cache@v4
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
         with:
-          path: ~/.cache/pip
+          enable-cache: true
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/pip
+            ~/Library/Caches/pip
+            ~\AppData\Local\pip\Cache
           key: ${{ runner.os }}-pip-${{ hashFiles('**/dev-requirements.in') }}
           restore-keys: |
             ${{ runner.os }}-pip-
       - name: Install dependencies
         run: |
-          python -m pip install --upgrade pip
-          pip install uv
           make setup-global-uv
           uv pip freeze
       - name: Lint
