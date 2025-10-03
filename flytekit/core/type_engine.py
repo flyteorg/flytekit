@@ -1630,19 +1630,22 @@ class TypeEngine(typing.Generic[T]):
                 f" than allowed by the input spec {len(python_interface_inputs)}"
             )
         kwargs = {}
-        try:
-            for i, k in enumerate(lm.literals):
-                kwargs[k] = asyncio.create_task(
-                    TypeEngine.async_to_python_value(ctx, lm.literals[k], python_interface_inputs[k])
-                )
-            await asyncio.gather(*kwargs.values())
-        except Exception as e:
-            raise TypeTransformerFailedError(
-                f"Error converting input '{k}' at position {i}:\n"
-                f"Literal value: {lm.literals[k]}\n"
-                f"Expected Python type: {python_interface_inputs[k]}\n"
-                f"Exception: {e}"
+        for i, k in enumerate(lm.literals):
+            kwargs[k] = asyncio.create_task(
+                TypeEngine.async_to_python_value(ctx, lm.literals[k], python_interface_inputs[k])
             )
+        await asyncio.wait(*kwargs.values())
+
+        for k, t in kwargs.items():
+            try:
+                kwargs[k] = t.result()
+            except Exception as e:
+                raise TypeTransformerFailedError(
+                    f"Error converting input '{k}':\n"
+                    f"Literal value: {lm.literals[k]!r}\n"
+                    f"Expected Python type: {python_interface_inputs[k]!r}\n"
+                    f"Exception: {e}"
+                )
 
         kwargs = {k: v.result() for k, v in kwargs.items() if v is not None}
         return kwargs
@@ -2096,7 +2099,7 @@ class UnionTransformer(AsyncTypeTransformer[T]):
                 res_tag = trans.name
                 found_res = True
             except Exception as e:
-                logger.debug(f"Failed to convert from {lv} to {v} with error: {e}")
+                logger.debug(f"Failed to convert from {repr(lv)} to {v} with error: {e}")
 
         if is_ambiguous:
             raise TypeError(
@@ -2107,7 +2110,7 @@ class UnionTransformer(AsyncTypeTransformer[T]):
         if found_res:
             return res
 
-        raise TypeError(f"Cannot convert from {lv} to {expected_python_type} (using tag {union_tag})")
+        raise TypeError(f"Cannot convert from {repr(lv)} to {expected_python_type} (using tag {union_tag})")
 
     def guess_python_type(self, literal_type: LiteralType) -> type:
         if literal_type.union_type is not None:
