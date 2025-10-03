@@ -41,3 +41,4 @@ coverage.xml
 flytekit/_version.py
 testing
 .flyte/
+.claude/
