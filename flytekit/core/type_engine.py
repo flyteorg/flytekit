@@ -1647,7 +1647,6 @@ class TypeEngine(typing.Generic[T]):
                     f"Exception: {e}"
                 )
 
-        kwargs = {k: v.result() for k, v in kwargs.items() if v is not None}
         return kwargs
 
     @classmethod
