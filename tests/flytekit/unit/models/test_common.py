@@ -159,7 +159,7 @@ def test_short_string_entities_ExecutionClosure():
         seconds: 10
       updated_at:
         seconds: 1640995200""")
-    
+
     repr_expected = textwrap.dedent("""\
     outputs {
       uri: "http://foo/"
@@ -185,7 +185,7 @@ def test_short_string_entities_Primitive():
     short_string_expected = textwrap.dedent("""\
     Flyte Serialized object (Primitive):
       integer: 1""")
-    
+
     repr_expected = "integer: 1\n"
 
     assert repr(obj) == repr_expected
@@ -222,7 +222,7 @@ def test_short_string_entities_TaskMetadata():
       interruptible: True
       cache_serializable: True
       pod_template_name: A""")
-    
+
     repr_expected = ('discoverable: true\n'
                      'runtime {\n'
                      '  type: FLYTE_SDK\n'
@@ -242,7 +242,7 @@ def test_short_string_entities_TaskMetadata():
                      'pod_template_name: "A"\n'
                      'generates_deck {\n'
                      '}\n')
-    
+
     assert repr(obj) == repr_expected
     assert obj.short_string() == short_string_expected
 
@@ -254,7 +254,7 @@ def test_short_string_entities_Project():
       id: project_id
       name: project_name
       description: project_description""")
-    
+
     repr_expected = textwrap.dedent("""\
     id: "project_id"
     name: "project_name"
