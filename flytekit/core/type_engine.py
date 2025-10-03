@@ -1634,7 +1634,7 @@ class TypeEngine(typing.Generic[T]):
             kwargs[k] = asyncio.create_task(
                 TypeEngine.async_to_python_value(ctx, lm.literals[k], python_interface_inputs[k])
             )
-        await asyncio.wait(*kwargs.values())
+        await asyncio.wait(kwargs.values())
 
         for k, t in kwargs.items():
             try:
