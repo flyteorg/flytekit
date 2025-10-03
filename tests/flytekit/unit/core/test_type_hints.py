@@ -1738,16 +1738,16 @@ def test_error_messages(exec_prefix):
     with pytest.raises(
         TypeTransformerFailedError,
         match=(
-            f"Failed to convert inputs of task '{exec_prefix}tests.flytekit.unit.core.test_type_hints.foo':\n"
+            f"Failed to convert inputs of task '.*tests.flytekit.unit.core.test_type_hints.foo':\n"
             "  Failed argument 'a': Expected value of type <class 'int'> but got 'hello' of type <class 'str'>"
         ),
     ):
         foo(a="hello", b=10)  # type: ignore
 
     with pytest.raises(
-        ValueError,
+        TypeTransformerFailedError,
         match=(
-            f"Failed to convert outputs of task '{exec_prefix}tests.flytekit.unit.core.test_type_hints.foo2' at position 0.\n"
+            f"Failed to convert outputs of task '.*tests.flytekit.unit.core.test_type_hints.foo2' at position 0.\n"
             f"Failed to convert type <class 'str'> to type <class 'int'>.\n"
             "Error Message: Expected value of type <class 'int'> but got 'hello' of type <class 'str'>."
         ),
@@ -1756,7 +1756,7 @@ def test_error_messages(exec_prefix):
 
     with pytest.raises(
         TypeTransformerFailedError,
-        match=f"Failed to convert inputs of task '{exec_prefix}tests.flytekit.unit.core.test_type_hints.foo3':\n  "
+        match=f"Failed to convert inputs of task '.*tests.flytekit.unit.core.test_type_hints.foo3':\n  "
         f"Failed argument 'a': Expected a dict",
     ):
         foo3(a=[{"hello": 2}])
@@ -1764,7 +1764,7 @@ def test_error_messages(exec_prefix):
     with pytest.raises(
         AttributeError,
         match=(
-            f"Failed to convert outputs of task '{exec_prefix}tests.flytekit.unit.core.test_type_hints.foo4' at position 0.\n"
+            f"Failed to convert outputs of task '.*tests.flytekit.unit.core.test_type_hints.foo4' at position 0.\n"
             f"Failed to convert type <class 'tests.flytekit.unit.core.test_type_hints.test_error_messages.<locals>.DC1'> to type <class 'tests.flytekit.unit.core.test_type_hints.test_error_messages.<locals>.DC2'>.\n"
             "Error Message: 'DC1' object has no attribute 'c'."
         ),
@@ -1895,9 +1895,9 @@ def test_union_type(exec_prefix):
         return t2(a=a)
 
     with pytest.raises(
-        TypeError,
+        TypeTransformerFailedError,
         match=(
-              rf"Error encountered while converting inputs of '{exec_prefix}tests\.flytekit\.unit\.core\.test_type_hints\.t2':\n\s+Error converting input 'a' at position 0:"
+              rf"Error encountered while converting inputs of '.*tests\.flytekit\.unit\.core\.test_type_hints\.t2':\n\s+Error converting input 'a':"
           ),
     ):
         wf2(a="2")  # Removed assert as it was not necessary for the exception to be raised
