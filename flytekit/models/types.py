@@ -238,8 +238,8 @@ class StructuredDatasetType(_common.FlyteIdlEntity):
         return cls(
             columns=[StructuredDatasetType.DatasetColumn.from_flyte_idl(c) for c in proto.columns],
             format=proto.format,
-            external_schema_type=proto.external_schema_type,
-            external_schema_bytes=proto.external_schema_bytes,
+            external_schema_type=proto.external_schema_type if proto.external_schema_type else None,
+            external_schema_bytes=proto.external_schema_bytes if proto.external_schema_bytes else None,
         )
 
 

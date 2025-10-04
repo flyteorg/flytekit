@@ -43,7 +43,7 @@ def test_serialization():
     assert "@version" in task_spec.template.sql.statement
     assert task_spec.template.sql.dialect == task_spec.template.sql.Dialect.ANSI
     s = Struct()
-    s.update({"ProjectID": "Flyte", "Location": "Asia", "allowLargeResults": True})
+    s.update({"Domain": "dom", "ProjectID": "Flyte", "Location": "Asia", "allowLargeResults": True})
     assert task_spec.template.custom == json_format.MessageToDict(s)
     assert len(task_spec.template.interface.inputs) == 1
     assert len(task_spec.template.interface.outputs) == 1

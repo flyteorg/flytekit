@@ -11,7 +11,9 @@ from flytekit.core.resources import (
     convert_resources_to_resource_model,
     construct_extended_resources,
 )
-from flytekit.extras.accelerators import T4
+from flytekit.core.context_manager import FlyteContextManager
+from flytekit.core.type_engine import TypeEngine
+from flyteidl.core.types_pb2 import SimpleType
 
 _ResourceName = _task_models.Resources.ResourceName
 
@@ -232,3 +234,14 @@ def test_pod_spec_from_resources_error(kwargs):
     msg = "can not be a list or tuple"
     with pytest.raises(ValueError, match=msg):
         pod_spec_from_resources(primary_container_name="primary", **kwargs)
+
+
+def test_serialization():
+    ctx = FlyteContextManager.current_context()
+    r = Resources(cpu=[1, 2])
+
+    lt = TypeEngine.to_literal_type(Resources)
+    assert lt.simple == SimpleType.STRUCT
+
+    lit = TypeEngine.to_literal(ctx, r, Resources, lt)
+    assert lit.scalar.binary.tag == "msgpack"

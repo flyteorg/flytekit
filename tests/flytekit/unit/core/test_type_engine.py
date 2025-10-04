@@ -2713,7 +2713,7 @@ def test_union_in_dataclass():
     lv = tf.to_literal(ctx, o, pt, lt)
     ot = tf.to_python_value(ctx, lv=lv, expected_python_type=pt)
 
-    return o == ot
+    assert o == ot
     assert o.result.schema.remote_path == ot.result.schema.remote_path
     assert o.result.number == ot.result.number
     assert o.schema.remote_path == ot.schema.remote_path
@@ -3851,3 +3851,425 @@ async def test_dict_transformer_annotated_type():
 
     literal3 = await TypeEngine.async_to_literal(ctx, nested_dict, nested_dict_type, expected_type)
     assert literal3.map.literals["outer"].map.literals["inner"].scalar.primitive.integer == 42
+
+@pytest.fixture(autouse=True)
+def clear_type_engine_cache():
+    """Clear TypeEngine cache before and after each test"""
+    TypeEngine._LITERAL_CACHE.clear()
+    yield
+    TypeEngine._LITERAL_CACHE.clear()
+
+def test_type_engine_cache_with_list():
+    ctx = FlyteContext.current_context()
+    python_val = [1, 2, 3, 4, 5]
+    python_type = typing.List[int]
+    expected = TypeEngine.to_literal_type(python_type)
+    list_transformer = TypeEngine.get_transformer(typing.List[int])
+    with mock.patch.object(list_transformer, 'async_to_literal',
+                          wraps=list_transformer.async_to_literal) as mock_async_to_literal:
+
+        # First call
+        literal1 = TypeEngine.to_literal(ctx, python_val, python_type, expected)
+
+        key = TypeEngine._get_literal_cache_key(python_val, python_type)
+        assert key is not None
+        assert key in TypeEngine._LITERAL_CACHE
+
+        # Second call with same DataFrame
+        literal2 = TypeEngine.to_literal(ctx, python_val, python_type, expected)
+
+        # Verify async_to_literal was only called once
+        assert mock_async_to_literal.call_count == 1
+
+        assert literal1 is literal2
+
+    # Test with different data - should not use cache
+    different_val = [2, 1, 3, 4, 5]
+    literal3 = TypeEngine.to_literal(ctx, different_val, python_type, expected)
+    key_different = TypeEngine._get_literal_cache_key(different_val, python_type)
+
+    assert key_different is not key
+    assert key_different is not None
+    assert key_different in TypeEngine._LITERAL_CACHE
+
+    # Verify different literals are different objects
+    assert literal1 is not literal3
+
+    # Add many different values to test cache size limit
+    for i in range(200):  # More than the default maxsize of 128
+        test_val = [i, i+1, i+2]
+        test_type = typing.List[int]
+        test_expected = TypeEngine.to_literal_type(test_type)
+        TypeEngine.to_literal(ctx, test_val, test_type, test_expected)
+
+    # Cache should not exceed maxsize
+    assert len(TypeEngine._LITERAL_CACHE) == 128
+
+def test_type_engine_cache_with_dict():
+    ctx = FlyteContext.current_context()
+    python_val = {"a": [1, 2, 3]}
+    python_type = typing.Dict[str, typing.List[int]]
+    expected = TypeEngine.to_literal_type(python_type)
+    dict_transformer = TypeEngine.get_transformer(typing.Dict[str, typing.List[int]])
+    with mock.patch.object(dict_transformer, 'async_to_literal',
+                          wraps=dict_transformer.async_to_literal) as mock_async_to_literal:
+
+        # First call
+        literal1 = TypeEngine.to_literal(ctx, python_val, python_type, expected)
+
+        key = TypeEngine._get_literal_cache_key(python_val, python_type)
+        assert key is not None
+        assert key in TypeEngine._LITERAL_CACHE
+
+        # Second call with same DataFrame
+        literal2 = TypeEngine.to_literal(ctx, python_val, python_type, expected)
+
+        # Verify async_to_literal was only called once
+        assert mock_async_to_literal.call_count == 1
+
+        assert literal1 is literal2
+
+def test_make_key_with_annotated_types():
+    # Test with Annotated type
+    annotated_val = [1, 2, 3]
+    annotated_type = typing.Annotated[typing.List[int], "test_annotation"]
+
+    key = TypeEngine._get_literal_cache_key(annotated_val, annotated_type)
+    key_without_annotation = TypeEngine._get_literal_cache_key(annotated_val, typing.List[int])
+    # Should handle Annotated types correctly
+    assert key is not None
+    assert key_without_annotation is not None
+    assert key != key_without_annotation
+
+def test_type_engine_cache_with_pandas():
+    pd = pytest.importorskip("pandas")
+    ctx = FlyteContext.current_context()
+    # Create DataFrame
+    df = pd.DataFrame({"a": [1, 2, 3], "b": [4, 5, 6]})
+    df_type = pd.DataFrame
+    df_expected = TypeEngine.to_literal_type(df_type)
+
+    # Get the transformer for DataFrame
+    df_transformer = TypeEngine._REGISTRY[pd.DataFrame]
+
+    # Mock the async_to_literal method with wraps to track calls
+    with mock.patch.object(df_transformer, 'async_to_literal',
+                          wraps=df_transformer.async_to_literal) as mock_async_to_literal:
+
+        # First call
+        literal1 = TypeEngine.to_literal(ctx, df, df_type, df_expected)
+
+        # Second call with same DataFrame
+        literal2 = TypeEngine.to_literal(ctx, df, df_type, df_expected)
+
+        # Verify async_to_literal was called
+        assert mock_async_to_literal.call_count == 1
+
+        assert literal1 is literal2
+
+def test_type_engine_cache_with_flytefile():
+
+    transformer = TypeEngine.get_transformer(FlyteFile)
+    ctx = FlyteContext.current_context()
+
+    temp_dir = tempfile.mkdtemp(prefix="temp_example_")
+    file_path = os.path.join(temp_dir, "file.txt")
+    with open(file_path, "w") as file1:
+        file1.write("hello world")
+
+    lt = TypeEngine.to_literal_type(FlyteFile)
+
+    # Mock the file upload
+    with mock.patch.object(transformer, 'async_to_literal',
+                          wraps=transformer.async_to_literal) as mock_async_to_literal:
+
+        # Test 1: Upload local file to remote
+        lv1 = TypeEngine.to_literal(ctx, file_path, FlyteFile, lt)
+
+        # Second call with same DataFrame
+        lv2 = TypeEngine.to_literal(ctx, file_path, FlyteFile, lt)
+
+        # Verify async_to_literal was called
+        assert mock_async_to_literal.call_count == 1
+
+        assert lv1 is lv2
+
+def test_literal_transformer_string_type():
+    # Python -> Flyte
+    t = typing.Literal["outcome", "income"]
+    lt = TypeEngine.get_transformer(t).get_literal_type(t)
+    assert lt.simple == SimpleType.STRING
+    assert lt.annotation.annotations["literal_values"] == ["outcome", "income"]
+    assert lt == LiteralType.from_flyte_idl(lt.to_flyte_idl())
+
+    lv = TypeEngine.to_literal(FlyteContext.current_context(), "outcome", t, lt)
+    assert lv.scalar.primitive.string_value == "outcome"
+
+    # Flyte -> Python (reconstruction)
+    pt = TypeEngine.get_transformer(t).guess_python_type(lt)
+    assert pt is typing.Literal["outcome", "income"]
+    pv = TypeEngine.get_transformer(pt).to_python_value(FlyteContext.current_context(), lv, pt)
+    TypeEngine.get_transformer(pt).assert_type(pt, pv)
+    assert pv == "outcome"
+
+def test_literal_transformer_int_type():
+    # Python -> Flyte
+    t = typing.Literal[1, 2, 3]
+    lt = TypeEngine.get_transformer(t).get_literal_type(t)
+    assert lt.simple == SimpleType.INTEGER
+    assert lt.annotation.annotations["literal_values"] == [1, 2, 3]
+    assert lt == LiteralType.from_flyte_idl(lt.to_flyte_idl())
+
+    lv = TypeEngine.to_literal(FlyteContext.current_context(), 1, t, lt)
+    assert lv.scalar.primitive.integer == 1
+
+    # Flyte -> Python (reconstruction)
+    pt = TypeEngine.get_transformer(t).guess_python_type(lt)
+    assert pt is typing.Literal[1, 2, 3]
+    pv = TypeEngine.get_transformer(pt).to_python_value(FlyteContext.current_context(), lv, pt)
+    TypeEngine.get_transformer(pt).assert_type(pt, pv)
+    assert pv == 1
+
+def test_literal_transformer_mixed_base_types():
+    t = typing.Literal["a", 1]
+    with pytest.raises(TypeTransformerFailedError):
+        TypeEngine.get_transformer(t).get_literal_type(t)
+
+
+def test_literal_map_to_kwargs_empty_inputs():
+    """
+    Test that literal_map_to_kwargs handles empty input correctly without
+    raising ValueError about empty coroutines/futures set.
+
+    This test specifically addresses the bug where asyncio.wait() was called
+    with an empty collection when there are no inputs to convert.
+    """
+    from flytekit.models import literals as _literal_models
+
+    ctx = FlyteContextManager.current_context()
+
+    # Test with completely empty literal map and empty python types
+    empty_literal_map = _literal_models.LiteralMap(literals={})
+    empty_python_types = {}
+
+    # This should not raise a ValueError about empty coroutines/futures
+    result = TypeEngine.literal_map_to_kwargs(ctx, empty_literal_map, empty_python_types)
+    assert result == {}
+
+    # Test with empty literal map but non-empty python types (task with defaults)
+    python_types_with_defaults = {"a": int, "b": str}
+    result = TypeEngine.literal_map_to_kwargs(ctx, empty_literal_map, python_types_with_defaults)
+    assert result == {}
+
+    # Test with some inputs to ensure normal functionality still works
+    literal_map_with_data = _literal_models.LiteralMap(literals={
+        "x": _literal_models.Literal(
+            scalar=_literal_models.Scalar(
+                primitive=_literal_models.Primitive(integer=42)
+            )
+        )
+    })
+    python_types_with_data = {"x": int}
+    result = TypeEngine.literal_map_to_kwargs(ctx, literal_map_with_data, python_types_with_data)
+    assert result == {"x": 42}
+
+
+def test_task_with_no_inputs_execution():
+    """
+    Test that tasks with no inputs (using default arguments) execute correctly.
+
+    This is an integration test that ensures the fix for empty kwargs in
+    literal_map_to_kwargs works end-to-end with actual task execution.
+    """
+    @task
+    def task_with_defaults(a: int = 10, b: str = "hello") -> str:
+        return f"{a}_{b}"
+
+    @task
+    def task_no_params() -> int:
+        return 42
+
+    # These should not raise ValueError about empty coroutines/futures
+    result1 = task_with_defaults()
+    assert result1 == "10_hello"
+
+    result2 = task_no_params()
+    assert result2 == 42
+
+    # Test with partial parameters
+    result3 = task_with_defaults(a=20)
+    assert result3 == "20_hello"
+
+    result4 = task_with_defaults(b="world")
+    assert result4 == "10_world"
+
+
+def test_asyncio_wait_empty_kwargs_regression():
+    """
+    Regression test for the specific bug where asyncio.wait() was called with empty kwargs.
+
+    This test simulates the exact scenario that was causing the
+    "Set of Tasks/Futures is empty" ValueError.
+    """
+    import asyncio
+    from flytekit.models import literals as _literal_models
+    from flytekit.core.type_engine import TypeEngine
+
+    async def simulate_original_bug():
+        """
+        Simulate what would happen with the original buggy code.
+        This test documents the exact fix we applied.
+        """
+        ctx = FlyteContextManager.current_context()
+        empty_literal_map = _literal_models.LiteralMap(literals={})
+        python_interface_inputs = {}
+
+        # Simulate the original buggy code path
+        kwargs = {}
+        for i, k in enumerate(empty_literal_map.literals):
+            # This loop wouldn't execute for empty literals
+            kwargs[k] = asyncio.create_task(
+                TypeEngine.async_to_python_value(ctx, empty_literal_map.literals[k], python_interface_inputs[k])
+            )
+
+        # Before our fix, this would raise ValueError: Set of Tasks/Futures is empty
+        # After our fix, we check if kwargs is not empty before calling asyncio.wait
+        if kwargs:  # This is the fix we added
+            await asyncio.wait(kwargs.values())
+
+        # The loop to get results should also handle empty kwargs
+        for k, t in kwargs.items():
+            kwargs[k] = t.result()
+
+        return kwargs
+
+    # This should complete without error
+    result = asyncio.run(simulate_original_bug())
+    assert result == {}
+
+
+def test_error_message_improvements_literal_map_to_kwargs():
+    """
+    Test that error messages in literal_map_to_kwargs use proper repr formatting
+    for better debugging experience.
+    """
+    from flytekit.models import literals as _literal_models
+    from flytekit.core.type_engine import TypeTransformerFailedError
+
+    ctx = FlyteContextManager.current_context()
+
+    # Create a literal map with a value that will cause a conversion error
+    # Using a string literal but expecting an int type
+    literal_map = _literal_models.LiteralMap(literals={
+        "bad_input": _literal_models.Literal(
+            scalar=_literal_models.Scalar(
+                primitive=_literal_models.Primitive(string_value="not_a_number")
+            )
+        )
+    })
+
+    python_types = {"bad_input": int}
+
+    # This should raise a TypeTransformerFailedError with improved formatting
+    with pytest.raises(TypeTransformerFailedError) as exc_info:
+        TypeEngine.literal_map_to_kwargs(ctx, literal_map, python_types)
+
+    error_message = str(exc_info.value)
+
+    # Verify the error message contains proper repr formatting
+    assert "Error converting input 'bad_input'" in error_message
+    assert "Literal value:" in error_message
+    assert "Expected Python type:" in error_message
+    assert "<class 'int'>" in error_message  # repr of int type
+
+    # Verify the literal value is properly formatted with repr
+    # The exact format may vary, but it should be more readable than a raw object string
+
+
+def test_error_message_improvements_union_transformer():
+    """
+    Test that UnionTransformer error messages use proper repr formatting
+    for better debugging when conversion fails.
+    """
+    from typing import Union
+    from flytekit.models import literals as _literal_models
+
+    ctx = FlyteContextManager.current_context()
+
+    # Create a union type that will fail conversion
+    union_type = Union[int, str]
+
+    # Create a literal that cannot be converted to either int or str
+    # Using a complex nested structure that should fail
+    complex_literal = _literal_models.Literal(
+        map=_literal_models.LiteralMap(literals={
+            "nested": _literal_models.Literal(
+                scalar=_literal_models.Scalar(
+                    primitive=_literal_models.Primitive(integer=42)
+                )
+            )
+        })
+    )
+
+    # This should raise a TypeError with improved formatting
+    with pytest.raises(TypeError) as exc_info:
+        TypeEngine.to_python_value(ctx, complex_literal, union_type)
+
+    error_message = str(exc_info.value)
+
+    # Verify the error message uses repr formatting and is more readable
+    assert "Cannot convert from" in error_message
+    assert "using tag" in error_message
+    # The error should show a repr of the literal value, making it more readable
+
+
+def test_debug_logging_union_transformer(caplog):
+    """
+    Test that UnionTransformer debug logging uses proper repr formatting.
+    """
+    import logging
+    from typing import Union
+    from flytekit.models import literals as _literal_models
+
+    # Set logging level to capture debug messages
+    caplog.set_level(logging.DEBUG)
+
+    ctx = FlyteContextManager.current_context()
+
+    # Create a union type and a literal that will cause conversion to fail for all types
+    # This will trigger debug logging for each failed conversion attempt
+    union_type = Union[int, str]  # Both will fail for a map literal
+
+    # Create a literal that cannot be converted to int or str
+    literal_value = _literal_models.Literal(
+        map=_literal_models.LiteralMap(literals={
+            "key": _literal_models.Literal(
+                scalar=_literal_models.Scalar(
+                    primitive=_literal_models.Primitive(integer=42)
+                )
+            )
+        })
+    )
+
+    # This should fail and log debug messages for each failed conversion attempt
+    with pytest.raises(TypeError) as exc_info:
+        TypeEngine.to_python_value(ctx, literal_value, union_type)
+
+    # Verify the final error message uses repr formatting
+    error_message = str(exc_info.value)
+    assert "Cannot convert from" in error_message
+    assert "using tag" in error_message
+
+    # Check that debug logging includes proper repr formatting
+    debug_logs = [record.message for record in caplog.records if record.levelname == "DEBUG"]
+
+    # Look for debug messages that show conversion failures with improved formatting
+    conversion_failure_logs = [log for log in debug_logs if "Failed to convert from" in log]
+
+    # There should be debug logs for the failed conversion attempts
+    if conversion_failure_logs:
+        # Verify that the log message uses proper formatting
+        log_message = conversion_failure_logs[0]
+        assert "Failed to convert from" in log_message
+        # The log should be more readable due to repr formatting - it should contain
+        # the literal representation which is now formatted with repr()

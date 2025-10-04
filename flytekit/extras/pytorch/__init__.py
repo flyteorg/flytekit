@@ -1,14 +1,5 @@
 """
-.. currentmodule:: flytekit.extras.pytorch
-
-.. autosummary::
-   :template: custom.rst
-   :toctree: generated/
-
-    PyTorchCheckpoint
-    PyTorchCheckpointTransformer
-    PyTorchModuleTransformer
-    PyTorchTensorTransformer
+This module provides functionality related tp PyTorch
 """
 
 from flytekit.loggers import logger

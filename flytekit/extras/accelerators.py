@@ -1,8 +1,7 @@
 """
-Specifying Accelerators
-==========================
+## Specifying Accelerators
 
-.. tags:: MachineLearning, Advanced, Hardware
+tags: MachineLearning, Advanced, Hardware
 
 Flyte allows you to specify `gpu` resources for a given task. However, in some cases, you may want to use a different
 accelerator type, such as TPU, specific variations of GPUs, or fractional GPUs. You can configure the Flyte backend to
@@ -12,85 +11,53 @@ to specify an accelerator in the task decorator.
 
 If you want to use a specific GPU device, you can pass the device name directly to the task decorator, e.g.:
 
-.. code-block::
+```python
+@task(
+    limits=Resources(gpu="1"),
+    accelerator=GPUAccelerator("nvidia-tesla-v100"),
+)
+def my_task() -> None:
+    ...
+```
 
-    @task(
-        limits=Resources(gpu="1"),
-        accelerator=GPUAccelerator("nvidia-tesla-v100"),
-    )
-    def my_task() -> None:
-        ...
+### Base Classes
 
-
-Base Classes
-------------
 These classes can be used to create custom accelerator type constants. For example, you can create a TPU accelerator.
-
-
-
-.. currentmodule:: flytekit.extras.accelerators
-
-.. autosummary::
-   :template: custom.rst
-   :toctree: generated/
-   :nosignatures:
-
-   BaseAccelerator
-   GPUAccelerator
-   MultiInstanceGPUAccelerator
 
 But, often, you may want to use a well known accelerator type, and to simplify this, flytekit provides a set of
 predefined accelerator constants, as described in the next section.
 
 
-Predefined Accelerator Constants
---------------------------------
+### Predefined Accelerator Constants
+
 
 The `flytekit.extras.accelerators` module provides some constants for known accelerators, listed below, but this is not
 a complete list. If you know the name of the accelerator, you can pass the string name to the task decorator directly.
 
 If using the constants, you can import them directly from the module, e.g.:
 
-.. code-block::
+```python
+from flytekit.extras.accelerators import T4
 
-    from flytekit.extras.accelerators import T4
-
-    @task(
-        limits=Resources(gpu="1"),
-        accelerator=T4,
-    )
-    def my_task() -> None:
-        ...
-
+@task(
+    limits=Resources(gpu="1"),
+    accelerator=T4,
+)
+def my_task() -> None:
+    ...
+```
 if you want to use a fractional GPU, you can use the ``partitioned`` method on the accelerator constant, e.g.:
 
-.. code-block::
+```python
+from flytekit.extras.accelerators import A100
 
-    from flytekit.extras.accelerators import A100
-
-    @task(
-        limits=Resources(gpu="1"),
-        accelerator=A100.partition_2g_10gb,
-    )
-    def my_task() -> None:
-        ...
-
-.. currentmodule:: flytekit.extras.accelerators
-
-.. autosummary::
-   :toctree: generated/
-   :nosignatures:
-
-   A10G
-   L4
-   K80
-   M60
-   P4
-   P100
-   T4
-   V100
-   A100
-   A100_80GB
+@task(
+    limits=Resources(gpu="1"),
+    accelerator=A100.partition_2g_10gb,
+)
+def my_task() -> None:
+    ...
+```
 
 """
 
@@ -128,40 +95,52 @@ class GPUAccelerator(BaseAccelerator):
 
 
 #: use this constant to specify that the task should run on an
-#: `NVIDIA A10 Tensor Core GPU <https://www.nvidia.com/en-us/data-center/products/a10-gpu/>`_
+#: `NVIDIA A10 Tensor Core GPU https://www.nvidia.com/en-us/data-center/products/a10-gpu`_
 A10G = GPUAccelerator("nvidia-a10g")
 
 #: use this constant to specify that the task should run on an
-#: `NVIDIA L4 Tensor Core GPU <https://www.nvidia.com/en-us/data-center/l4/>`_
+#: `NVIDIA L4 Tensor Core GPU https://www.nvidia.com/en-us/data-center/l4
 L4 = GPUAccelerator("nvidia-l4")
 
 #: use this constant to specify that the task should run on an
-#: `NVIDIA L4 Tensor Core GPU <https://www.nvidia.com/en-us/data-center/l4/>`_
+#: `NVIDIA L4 Tensor Core GPU https://www.nvidia.com/en-us/data-center/l4
 L4_VWS = GPUAccelerator("nvidia-l4-vws")
 
 #: use this constant to specify that the task should run on an
-#: `NVIDIA Tesla K80 GPU <https://www.nvidia.com/en-gb/data-center/tesla-k80/>`_
+#: `NVIDIA L40S Tensor Core GPU https://www.nvidia.com/en-us/data-center/l40s
+L40S = GPUAccelerator("nvidia-l40s")
+
+#: use this constant to specify that the task should run on an
+#: `NVIDIA Tesla K80 GPU https://www.nvidia.com/en-gb/data-center/tesla-k80
 K80 = GPUAccelerator("nvidia-tesla-k80")
 
 #: use this constant to specify that the task should run on an
-#: `NVIDIA Tesla M60 GPU <https://images.nvidia.com/content/tesla/pdf/188417-Tesla-M60-DS-A4-fnl-Web.pdf/>`_
+#: `NVIDIA Tesla M60 GPU https://images.nvidia.com/content/tesla/pdf/188417-Tesla-M60-DS-A4-fnl-Web.pdf
 M60 = GPUAccelerator("nvidia-tesla-m60")
 
 #: use this constant to specify that the task should run on an
-#: `NVIDIA Tesla P4 GPU <https://images.nvidia.com/content/pdf/tesla/184457-Tesla-P4-Datasheet-NV-Final-Letter-Web.pdf/>`_
+#: `NVIDIA Tesla P4 GPU https://images.nvidia.com/content/pdf/tesla/184457-Tesla-P4-Datasheet-NV-Final-Letter-Web.pdf
 P4 = GPUAccelerator("nvidia-tesla-p4")
 
 #: use this constant to specify that the task should run on an
-#: `NVIDIA Tesla P100 GPU <https://images.nvidia.com/content/tesla/pdf/nvidia-tesla-p100-datasheet.pdf/>`_
+#: `NVIDIA Tesla P100 GPU https://images.nvidia.com/content/tesla/pdf/nvidia-tesla-p100-datasheet.pdf
 P100 = GPUAccelerator("nvidia-tesla-p100")
 
 #: use this constant to specify that the task should run on an
-#: `NVIDIA Tesla T4 GPU <https://www.nvidia.com/en-us/data-center/tesla-t4/>`_
+#: `NVIDIA Tesla T4 GPU https://www.nvidia.com/en-us/data-center/tesla-t4
 T4 = GPUAccelerator("nvidia-tesla-t4")
 
 #: use this constant to specify that the task should run on an
-#: `NVIDIA Tesla V100 GPU <https://images.nvidia.com/content/technologies/volta/pdf/tesla-volta-v100-datasheet-letter-fnl-web.pdf/>`_
+#: `NVIDIA Tesla V100 GPU https://images.nvidia.com/content/technologies/volta/pdf/tesla-volta-v100-datasheet-letter-fnl-web.pdf
 V100 = GPUAccelerator("nvidia-tesla-v100")
+
+#: use this constant to specify that the task should run on an
+#: `NVIDIA H100 GPU https://www.nvidia.com/en-us/data-center/h100
+H100 = GPUAccelerator("nvidia-h100")
+
+#: use this constant to specify that the task should run on an
+#: `NVIDIA H200 GPU https://www.nvidia.com/en-us/data-center/h200
+H200 = GPUAccelerator("nvidia-h200")
 
 
 class MultiInstanceGPUAccelerator(BaseAccelerator):
@@ -204,10 +183,10 @@ class _A100_Base(MultiInstanceGPUAccelerator):
 
 class _A100(_A100_Base):
     """
-    Class that represents an `NVIDIA A100 GPU <https://www.nvidia.com/en-us/data-center/a100/>`_. It is possible
+    Class that represents an `NVIDIA A100 GPU https://www.nvidia.com/en-us/data-center/a100. It is possible
     to specify a partition of an A100 GPU by using the provided partitions on the class. For example, to specify a
     10GB partition, use ``A100.partition_2g_10gb``.
-    Refer to `Partitioned GPUs <https://docs.nvidia.com/datacenter/tesla/mig-user-guide/index.html#partitioning>`_
+    Refer to `Partitioned GPUs https://docs.nvidia.com/datacenter/tesla/mig-user-guide/index.html#partitioning
     """
 
     partition_1g_5gb = _A100_Base.partitioned("1g.5gb")
@@ -233,7 +212,7 @@ class _A100(_A100_Base):
 
 
 #: Use this constant to specify that the task should run on an entire
-#: `NVIDIA A100 GPU <https://www.nvidia.com/en-us/data-center/a100/>`_. Fractional partitions are also available.
+#: `NVIDIA A100 GPU https://www.nvidia.com/en-us/data-center/a100. Fractional partitions are also available.
 #:
 #: Use pre-defined partitions (as instance attributes). For example, to specify a 10GB partition, use
 #: ``A100.partition_2g_10gb``.
@@ -250,7 +229,7 @@ class _A100_80GB_Base(MultiInstanceGPUAccelerator):
 
 class _A100_80GB(_A100_80GB_Base):
     """
-    Partitions of an `NVIDIA A100 80GB GPU <https://www.nvidia.com/en-us/data-center/a100/>`_.
+    Partitions of an [`NVIDIA A100 80GB GPU`](https://www.nvidia.com/en-us/data-center/a100).
     """
 
     partition_1g_10gb = _A100_80GB_Base.partitioned("1g.10gb")
@@ -276,7 +255,7 @@ class _A100_80GB(_A100_80GB_Base):
 
 
 #: use this constant to specify that the task should run on an entire
-#: `NVIDIA A100 80GB GPU <https://www.nvidia.com/en-us/data-center/a100/>`_. Fractional partitions are also available.
+#: `NVIDIA A100 80GB GPU https://www.nvidia.com/en-us/data-center/a100. Fractional partitions are also available.
 #:
 #: Use pre-defined partitions (as instance attributes). For example, to specify a 10GB partition, use
 #: ``A100.partition_2g_10gb``.
@@ -293,7 +272,7 @@ class _V5E_Base(MultiInstanceGPUAccelerator):
 
 class _V5E(_V5E_Base):
     """
-    Slices of a `Google Cloud TPU v5e <https://cloud.google.com/tpu/docs/v5e>`_.
+    Slices of a [`Google Cloud TPU v5e](https://cloud.google.com/tpu/docs/v5e).
     """
 
     slice_1x1 = _V5E_Base.partitioned("1x1")
@@ -331,7 +310,7 @@ class _V5E(_V5E_Base):
 
 
 #: use this constant to specify that the task should run on V5E TPU.
-#: `Google V5E Cloud TPU <https://cloud.google.com/tpu/docs/v5e>`_.
+#: `Google V5E Cloud TPU https://cloud.google.com/tpu/docs/v5e>`_.
 #:
 #: Use pre-defined slices (as instance attributes). For example, to specify a 2x4 slice, use
 #: ``V5E.slice_2x4``.
@@ -348,7 +327,7 @@ class _V5P_Base(MultiInstanceGPUAccelerator):
 
 class _V5P(_V5P_Base):
     """
-    Slices of a `Google Cloud TPU v5p <https://cloud.google.com/tpu/docs/v5p>`_.
+    Slices of a [`Google Cloud TPU v5p`](https://cloud.google.com/tpu/docs/v5p).
     """
 
     slice_2x2x1 = _V5P_Base.partitioned("2x2x1")
@@ -408,7 +387,7 @@ class _V5P(_V5P_Base):
 
 
 #: Use this constant to specify that the task should run on V5P TPU.
-#: `Google V5P Cloud TPU <https://cloud.google.com/tpu/docs/v5p>`_.
+#: `Google V5P Cloud TPU https://cloud.google.com/tpu/docs/v5p.
 #:
 #: Use pre-defined slices (as instance attributes). For example, to specify a 2x4x4 slice, use
 #: ``V5P.slice_2x4x4``.
@@ -425,7 +404,7 @@ class _V6E_Base(MultiInstanceGPUAccelerator):
 
 class _V6E(_V6E_Base):
     """
-    Slices of a `Google Cloud TPU v6e <https://cloud.google.com/tpu/docs/v6e>`_.
+    Slices of a [`Google Cloud TPU v6e`](https://cloud.google.com/tpu/docs/v6e).
     """
 
     slice_1x1 = _V6E_Base.partitioned("1x1")
@@ -470,7 +449,7 @@ class _V6E(_V6E_Base):
 
 
 #: Use this constant to specify that the task should run on V6E TPU.
-#: `Google V6E Cloud TPU <https://cloud.google.com/tpu/docs/v6e>`_.
+#: `Google V6E Cloud TPU https://cloud.google.com/tpu/docs/v6e.
 #:
 #: Use pre-defined slices (as instance attributes). For example, to specify a 2x4 slice, use
 #: ``V6E.slice_2x4``.

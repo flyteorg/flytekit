@@ -7,7 +7,6 @@ import pathlib
 import typing
 from contextlib import contextmanager
 from dataclasses import dataclass, field
-from functools import partial
 from typing import Dict, cast
 from urllib.parse import unquote
 
@@ -40,6 +39,22 @@ from flytekit.types.pickle.pickle import FlytePickleTransformer
 def noop(): ...
 
 
+class _FlyteFileDownloader:
+    """Downloader for FlyteFile that uses current context when called."""
+
+    def __init__(self, remote_path: str, local_path: str, is_multipart: bool = False):
+        self.remote_path = remote_path
+        self.local_path = local_path
+        self.is_multipart = is_multipart
+
+    def __call__(self):
+        """Download the file using current context's synced get_data method."""
+        current_ctx = FlyteContextManager.current_context()
+        return current_ctx.file_access.get_data(
+            remote_path=self.remote_path, local_path=self.local_path, is_multipart=self.is_multipart
+        )
+
+
 T = typing.TypeVar("T")
 
 
@@ -56,7 +71,7 @@ class FlyteFile(SerializableType, os.PathLike, typing.Generic[T], DataClassJSONM
     Files (and directories) differ from the primitive types like floats and string in that Flytekit typically uploads
     the contents of the files to the blob store connected with your Flyte installation. That is, the Python native
     literal that represents a file is typically just the path to the file on the local filesystem. However in Flyte,
-    an instance of a file is represented by a :py:class:`Blob <flytekit.models.literals.Blob>` literal,
+    an instance of a file is represented by a {{< py_class_ref Blob <flytekit.models.literals.Blob> >}} literal,
     with the ``uri`` field set to the location in the Flyte blob store (AWS/GCS etc.). Take a look at the
     :std:ref:`data handling doc <flyte:divedeep-data-management>` for a deeper discussion.
 
@@ -74,7 +89,7 @@ class FlyteFile(SerializableType, os.PathLike, typing.Generic[T], DataClassJSONM
 
     You can also make it so that the upload does not happen. There are different types of
     task/workflow signatures. Keep in mind that in the backend, in Admin and in the blob store, there is only one type
-    that represents files, the :py:class:`Blob <flytekit.models.core.types.BlobType>` type.
+    that represents files, the {{< py_class_ref Blob <flytekit.models.core.types.BlobType> >}} type.
 
     Whether the uploading happens or not, the behavior of the translation between Python native values and Flyte
     literal values depends on a few attributes:
@@ -84,9 +99,9 @@ class FlyteFile(SerializableType, os.PathLike, typing.Generic[T], DataClassJSONM
       * :class:`python:os.PathLike`
       Note that ``os.PathLike`` is only a type in Python, you can't instantiate it.
     * The type of the Python native value we're returning. These can be
-      * :py:class:`flytekit.FlyteFile`
-      * :py:class:`pathlib.Path`
-      * :py:class:`str`
+      * {{< py_class_ref flytekit.FlyteFile >}}
+      * {{< py_class_ref pathlib.Path >}}
+      * {{< py_class_ref str >}}
     * Whether the value being converted is a "remote" path or not. For instance, if a task returns a value of
       "http://www.google.com" as a ``FlyteFile``, obviously it doesn't make sense for us to try to upload that to the
       Flyte blob store. So no remote paths are uploaded. Flytekit considers a path remote if it starts with ``s3://``,
@@ -318,11 +333,9 @@ class FlyteFile(SerializableType, os.PathLike, typing.Generic[T], DataClassJSONM
         if ctx.file_access.is_remote(self.path):
             self._remote_source = self.path
             self._local_path = ctx.file_access.get_random_local_path(self._remote_source)
-            self._downloader = partial(
-                ctx.file_access.get_data,
-                ctx=ctx,
-                remote_path=self._remote_source,  # type: ignore
-                local_path=self._local_path,
+            self._downloader = _FlyteFileDownloader(
+                remote_path=str(self._remote_source),  # type: ignore
+                local_path=str(self._local_path),
             )
 
     def __fspath__(self):
@@ -399,15 +412,15 @@ class FlyteFile(SerializableType, os.PathLike, typing.Generic[T], DataClassJSONM
     ):
         """Returns a streaming File handle
 
-        .. code-block:: python
-
-            @task
-            def copy_file(ff: FlyteFile) -> FlyteFile:
-                new_file = FlyteFile.new_remote_file()
-                with ff.open("rb", cache_type="readahead") as r:
-                    with new_file.open("wb") as w:
-                        w.write(r.read())
-                return new_file
+        ```python
+        @task
+        def copy_file(ff: FlyteFile) -> FlyteFile:
+            new_file = FlyteFile.new_remote_file()
+            with ff.open("rb", cache_type="readahead") as r:
+                with new_file.open("wb") as w:
+                    w.write(r.read())
+            return new_file
+        ```
 
         :param mode: Open mode. For example: 'r', 'w', 'rb', 'rt', 'wb', etc.
         :type mode: str
@@ -755,7 +768,7 @@ class FlyteFilePathTransformer(AsyncTypeTransformer[FlyteFile]):
         # For the remote case, return an FlyteFile object that can download
         local_path = ctx.file_access.get_random_local_path(uri)
 
-        _downloader = partial(ctx.file_access.get_data, remote_path=uri, local_path=local_path, is_multipart=False)
+        _downloader = _FlyteFileDownloader(remote_path=uri, local_path=local_path, is_multipart=False)
 
         expected_format = FlyteFilePathTransformer.get_format(expected_python_type)
         ff = FlyteFile.__class_getitem__(expected_format)(path=local_path, downloader=_downloader, metadata=metadata)

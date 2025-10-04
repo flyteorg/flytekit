@@ -1,68 +1,78 @@
 """
-=====================
-Configuration
-=====================
+# Configuration
 
-.. currentmodule:: flytekit.configuration
-
-Flytekit Configuration Sources
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+## Flytekit Configuration Sources
 
 There are multiple ways to configure flytekit settings:
 
-**Command Line Arguments**: This is the recommended way of setting configuration values for many cases.
-For example, see `pyflyte package <pyflyte.html#pyflyte-package>`_ command.
+### Command Line Arguments
+This is the recommended way of setting configuration values for many cases. For example, see `pyflyte package` command.
 
-**Python Config Object**: A :py:class:`~flytekit.configuration.Config` object can by used directly, e.g. when
-initializing a :py:class:`~flytefit.remote.remote.FlyteRemote` object. See :doc:`here <design/control_plane>` for examples on
-how to specify a ``Config`` object.
+### Python Config Object
+A `Config` object can be used directly, e.g. when initializing a `FlyteRemote` object. See the Control Plane design docs for examples on how to specify a `Config` object.
 
-**Environment Variables**: Users can specify these at compile time, but when your task is run, Flyte Propeller will
-also set configuration to ensure correct interaction with the platform. The environment variables must be specified
-with the format ``FLYTE_{SECTION}_{OPTION}``, all in upper case. For example, to specify the
-:py:class:`PlatformConfig.endpoint <flytekit.configuration.PlatformConfig>` setting, the environment variable would
-be ``FLYTE_PLATFORM_URL``.
+### Environment Variables
+Users can specify these at compile time, but when your task is run, Flyte Propeller will also set configuration to ensure correct interaction with the platform. The environment variables must be specified with the format `FLYTE_{SECTION}_{OPTION}`, all in upper case. For example, to specify the `PlatformConfig.endpoint` setting, the environment variable would be `FLYTE_PLATFORM_URL`.
 
-.. note::
+> [!NOTE]
+> Environment variables won't work for image configuration, which need to be specified with the `pyflyte package --image ...` option or in a configuration file.
 
-   Environment variables won't work for image configuration, which need to be specified with the
-   `pyflyte package --image ... <pyflyte.html#cmdoption-pyflyte-package-i>`_ option or in a configuration
-   file.
+### YAML Format Configuration File
+A configuration file that contains settings for both `flytectl` and `flytekit`. This is the recommended configuration file format. Invoke the `flytectl config init` command to create a boilerplate `~/.flyte/config.yaml` file, and `flytectl --help` to learn about all of the configuration yaml options.
 
-**YAML Format Configuration File**: A configuration file that contains settings for both
-`flytectl <https://docs.flyte.org/en/latest/flytectl/api/overview.html>`__ and ``flytekit``. This is the recommended configuration
-file format. Invoke the :ref:`flytectl config init <flytectl_config_init>` command to create a boilerplate
-``~/.flyte/config.yaml`` file, and  ``flytectl --help`` to learn about all of the configuration yaml options.
+Example `config.yaml` file:
 
-.. dropdown:: See example ``config.yaml`` file
-   :animate: fade-in-slide-down
+```YAML
+# Sample config file
 
-   .. literalinclude:: ../../tests/flytekit/unit/configuration/configs/sample.yaml
-      :language: yaml
-      :caption: config.yaml
+admin:
+  # For GRPC endpoints you might want to use dns:///flyte.myexample.com
+  endpoint: dns:///localhost:8089
+  authType: Pkce
+  insecure: true
 
-**INI Format Configuration File**: A configuration file for ``flytekit``. By default, ``flytekit`` will look for a
-file in two places:
+logger:
+  show-source: true
+  level: 0
 
-1. First, a file named ``flytekit.config`` in the Python interpreter's working directory.
-2. A file in ``~/.flyte/config`` in the home directory as detected by Python.
+console:
+  endpoint: http://localhost:8080
+  insecure: true
 
-.. dropdown:: See example ``flytekit.config`` file
-   :animate: fade-in-slide-down
+# This section is used only in the control plane to trigger a remote execution
+storage:
+  type: minio
+  stow:
+    kind: s3
+    config:
+      auth_type: accesskey
+      access_key_id: minio
+      secret_key: miniostorage
+      endpoint: http://localhost:9000
+      region: us-east-1
+      disable_ssl: true
+      addressing_style: "path"
+```
 
-   .. literalinclude:: ../../tests/flytekit/unit/configuration/configs/images.config
-      :language: ini
-      :caption: flytekit.config
+### INI Format Configuration File
+A configuration file for `flytekit`. By default, `flytekit` will look for a file in two places:
 
-.. warning::
+1. First, a file named `flytekit.config` in the Python interpreter's working directory.
+2. A file in `~/.flyte/config` in the home directory as detected by Python.
 
-   The INI format configuration is considered a legacy configuration format. We recommend using the yaml format
-   instead if you're using a configuration file.
+Example `flytekit.config` file:
 
-How is configuration used?
-^^^^^^^^^^^^^^^^^^^^^^^^^^
+```ini
+[sdk]
+workflow_packages=my_cool_workflows, other_workflows
+```
 
-Configuration usage can roughly be bucketed into the following areas,
+> [!WARNING]
+> The INI format configuration is considered a legacy configuration format. We recommend using the yaml format instead if you're using a configuration file.
+
+## How is configuration used?
+
+Configuration usage can roughly be bucketed into the following areas:
 
 - **Compile-time settings**: these are settings like the default image and named images, where to look for Flyte code, etc.
 - **Platform settings**: Where to find the Flyte backend (Admin DNS, whether to use SSL)
@@ -70,60 +80,31 @@ Configuration usage can roughly be bucketed into the following areas,
 - **Data access settings**: Is there a custom S3 endpoint in use? Backoff/retry behavior for accessing S3/GCS, key and password, etc.
 - **Other settings** - Statsd configuration, which is a run-time applicable setting but is not necessarily relevant to the Flyte platform.
 
-Configuration Objects
----------------------
+## Configuration Objects
 
-The following objects are encapsulated in a parent object called ``Config``.
+The following objects are encapsulated in a parent object called `Config`:
 
-.. autosummary::
-   :template: custom.rst
-   :toctree: generated/
-   :nosignatures:
+### Serialization Time Settings
 
-   ~Config
+These are serialization/compile-time settings that are used when using commands like `pyflyte package` or `pyflyte register`. These configuration settings are typically passed in as flags to the above CLI commands.
 
-.. _configuration-compile-time-settings:
+The image configurations are typically either passed in via an `--image` flag, or can be specified in the `yaml` or `ini` configuration files (see examples above).
 
-Serialization Time Settings
-^^^^^^^^^^^^^^^^^^^^^^^^^^^
+- **Image**: Represents a container image with optional configuration overrides.
+- **ImageConfig**: Represents an image configuration for a given project/domain combination.
+- **SerializationSettings**: Controls how to serialize Flyte entities when registering with Admin.
+- **FastSerializationSettings**: Configuration for faster serialization settings.
 
-These are serialization/compile-time settings that are used when using commands like
-`pyflyte package <pyflyte.html#pyflyte-package>`_ or `pyflyte register <pyflyte.html#pyflyte-register>`_. These
-configuration settings are typically passed in as flags to the above CLI commands.
+### Execution Time Settings
 
-The image configurations are typically either passed in via an `--image <pyflyte.html#cmdoption-pyflyte-package-i>`_ flag,
-or can be specified in the ``yaml`` or ``ini`` configuration files (see examples above).
+Users typically shouldn't be concerned with these configurations, as they are typically set by FlytePropeller or FlyteAdmin. The configurations below are useful for authenticating to a Flyte backend, configuring data access credentials, secrets, and statsd metrics.
 
-.. autosummary::
-   :template: custom.rst
-   :toctree: generated/
-   :nosignatures:
-
-   ~Image
-   ~ImageConfig
-   ~SerializationSettings
-   ~FastSerializationSettings
-
-.. _configuration-execution-time-settings:
-
-Execution Time Settings
-^^^^^^^^^^^^^^^^^^^^^^^
-
-Users typically shouldn't be concerned with these configurations, as they are typically set by FlytePropeller or
-FlyteAdmin. The configurations below are useful for authenticating to a Flyte backend, configuring data access
-credentials, secrets, and statsd metrics.
-
-.. autosummary::
-   :template: custom.rst
-   :toctree: generated/
-   :nosignatures:
-
-   ~PlatformConfig
-   ~StatsConfig
-   ~SecretsConfig
-   ~S3Config
-   ~GCSConfig
-   ~DataConfig
+- **PlatformConfig**: Configuration for how to connect to the Flyte platform.
+- **StatsConfig**: Configuration for how to emit statsd metrics.
+- **SecretsConfig**: Configuration for how to access secrets.
+- **S3Config**: Amazon S3 specific configuration.
+- **GCSConfig**: Google Cloud Storage specific configuration.
+- **DataConfig**: Configuration for data access.
 
 """
 
@@ -148,6 +129,7 @@ from dataclasses_json import DataClassJsonMixin
 from flytekit.configuration import internal as _internal
 from flytekit.configuration.default_images import DefaultImages
 from flytekit.configuration.file import ConfigEntry, ConfigFile, get_config_file, read_file_if_exists, set_if_exists
+from flytekit.core.resources import ResourceSpec
 from flytekit.image_spec import ImageSpec
 from flytekit.image_spec.image_spec import ImageBuildEngine
 from flytekit.loggers import logger
@@ -358,15 +340,15 @@ class ImageConfig(DataClassJsonMixin):
             Allows you to programmatically create an ImageConfig. Usually only the default_image is required, unless
             your workflow uses multiple images
 
-            .. code:: python
-
-              ImageConfig.from_dict(
-                  "ghcr.io/flyteorg/flytecookbook:v1.0.0",
-                   {
-                        "spark": "ghcr.io/flyteorg/myspark:...",
-                        "other": "...",
-                   }
-              )
+            ```python
+            ImageConfig.from_dict(
+                "ghcr.io/flyteorg/flytecookbook:v1.0.0",
+                {
+                    "spark": "ghcr.io/flyteorg/myspark:...",
+                    "other": "...",
+                }
+            )
+            ```
 
         :return:
         """
@@ -682,6 +664,26 @@ class LocalConfig(object):
 
 
 @dataclass(init=True, repr=True, eq=True, frozen=True)
+class TaskConfig(object):
+    """
+    Any Project/Domain/Org configuration.
+    """
+
+    project: Optional[str] = field(default="flytesnacks")
+    domain: Optional[str] = field(default="development")
+    org: Optional[str] = field(default="None")
+
+    @classmethod
+    def auto(cls, config_file: typing.Union[str, ConfigFile] = None) -> TaskConfig:
+        config_file = get_config_file(config_file)
+        kwargs = {}
+        kwargs = set_if_exists(kwargs, "project", _internal.Local.USER_PROJECT.read(config_file))
+        kwargs = set_if_exists(kwargs, "domain", _internal.Local.USER_DOMAIN.read(config_file))
+        kwargs = set_if_exists(kwargs, "org", _internal.Local.USER_ORG.read(config_file))
+        return TaskConfig(**kwargs)
+
+
+@dataclass(init=True, repr=True, eq=True, frozen=True)
 class Config(object):
     """
     This the parent configuration object and holds all the underlying configuration object types. An instance of
@@ -691,10 +693,12 @@ class Config(object):
     2. Some parts are required for Serialization, for example Platform Config is not required
     3. Runtime of a task
 
-    Args:
-        entrypoint_settings: EntrypointSettings object for use with Spark tasks. If supplied, this will be
-          used when serializing Spark tasks, which need to know the path to the flytekit entrypoint.py file,
-          inside the container.
+    Attributes:
+        platform (PlatformConfig): Settings to connect to a Flyte backend.
+        secrets (SecretsConfig): Configuration for secrets management.
+        stats (StatsConfig): Configuration for statsd metrics.
+        data_config (DataConfig): Data storage configuration.
+        local_sandbox_path (str): Path for local sandbox runs.
     """
 
     platform: PlatformConfig = PlatformConfig()
@@ -824,6 +828,8 @@ class SerializationSettings(DataClassJsonMixin):
         version (str): The version (if any) with which to register entities under.
         image_config (ImageConfig): The image config used to define task container images.
         env (Optional[Dict[str, str]]): Environment variables injected into task container definitions.
+        default_resources (Optional[ResourceSpec]): The resources to request for the task - this is useful
+            if users need to override the default resource spec of an entity at registration time.
         flytekit_virtualenv_root (Optional[str]):  During out of container serialize the absolute path of the flytekit
             virtualenv at serialization time won't match the in-container value at execution time. This optional value
             is used to provide the in-container virtualenv path
@@ -842,6 +848,7 @@ class SerializationSettings(DataClassJsonMixin):
     domain: typing.Optional[str] = None
     version: typing.Optional[str] = None
     env: Optional[Dict[str, str]] = None
+    default_resources: Optional[ResourceSpec] = None
     git_repo: Optional[str] = None
     python_interpreter: str = DEFAULT_RUNTIME_PYTHON_INTERPRETER
     flytekit_virtualenv_root: Optional[str] = None
@@ -916,6 +923,7 @@ class SerializationSettings(DataClassJsonMixin):
             version=self.version,
             image_config=self.image_config,
             env=self.env.copy() if self.env else None,
+            default_resources=self.default_resources,
             git_repo=self.git_repo,
             flytekit_virtualenv_root=self.flytekit_virtualenv_root,
             python_interpreter=self.python_interpreter,
@@ -967,6 +975,7 @@ class SerializationSettings(DataClassJsonMixin):
         version: str
         image_config: ImageConfig
         env: Optional[Dict[str, str]] = None
+        default_resources: Optional[ResourceSpec] = None
         git_repo: Optional[str] = None
         flytekit_virtualenv_root: Optional[str] = None
         python_interpreter: Optional[str] = None
@@ -984,6 +993,7 @@ class SerializationSettings(DataClassJsonMixin):
                 version=self.version,
                 image_config=self.image_config,
                 env=self.env,
+                default_resources=self.default_resources,
                 git_repo=self.git_repo,
                 flytekit_virtualenv_root=self.flytekit_virtualenv_root,
                 python_interpreter=self.python_interpreter,

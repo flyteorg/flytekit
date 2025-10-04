@@ -4,6 +4,7 @@ import dataclasses
 import hashlib
 import os
 import pathlib
+import platform
 import re
 import sys
 import typing
@@ -11,7 +12,7 @@ from abc import abstractmethod
 from dataclasses import asdict, dataclass
 from functools import cached_property, lru_cache
 from importlib import metadata
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import click
 import requests
@@ -23,6 +24,9 @@ from flytekit.exceptions.user import FlyteAssertion
 DOCKER_HUB = "docker.io"
 _F_IMG_ID = "_F_IMG_ID"
 FLYTE_FORCE_PUSH_IMAGE_SPEC = "FLYTE_FORCE_PUSH_IMAGE_SPEC"
+# If the FLYTE_IMG_FAST_FAIL env variable is set to TRUE, ImageSpec will fail the registration rather than assuming
+# an image exists if the image cannot be found or built.
+FLYTE_IMG_FAST_FAIL = "FLYTE_IMG_FAST_FAIL"
 
 
 @dataclass
@@ -30,50 +34,58 @@ class ImageSpec:
     """
     This class is used to specify the docker image that will be used to run the task.
 
-    Args:
-        name: name of the image.
-        python_version: python version of the image. Use default python in the base image if None.
-        builder: Type of plugin to build the image. Use envd by default.
-        source_root: source root of the image.
-        env: environment variables of the image.
-        registry: registry of the image.
-        packages: list of python packages to install.
-        conda_packages: list of conda packages to install.
-        conda_channels: list of conda channels.
-        requirements: path to the requirements.txt file.
-        apt_packages: list of apt packages to install.
-        cuda: version of cuda to install.
-        cudnn: version of cudnn to install.
-        base_image: base image of the image.
-        platform: Specify the target platforms for the build output (for example, windows/amd64 or linux/amd64,darwin/arm64
-        pip_index: Specify the custom pip index url
-        pip_extra_index_url: Specify one or more pip index urls as a list
-        pip_secret_mounts: Specify a list of tuples to mount secret for pip install. Each tuple should contain the path to
+    Attributes:
+        name (str): Name of the image.
+        python_version (str): Python version of the image. Use default python in the base image if None.
+        builder (Optional[str]): Type of plugin to build the image. Use envd by default.
+        source_root (Optional[str]): Source root of the image.
+        env (Optional[Dict[str, str]]): Environment variables of the image.
+        registry (Optional[str]): Registry of the image.
+        packages (Optional[List[str]]): List of python packages to install.
+        conda_packages (Optional[List[str]]): List of conda packages to install.
+        conda_channels (Optional[List[str]]): List of conda channels.
+        requirements (Optional[str]): Path to the requirements.txt file.
+        apt_packages (Optional[List[str]]): List of apt packages to install.
+        cuda (Optional[str]): Version of cuda to install.
+        cudnn (Optional[str]): Version of cudnn to install.
+        base_image (Optional[Union[str, 'ImageSpec']]): Base image of the image.
+        platform (Optional[str]): Specify the target platforms for the build output (for example, windows/amd64 or linux/amd64,darwin/arm64).
+        pip_index (Optional[str]): Specify the custom pip index url.
+        pip_extra_index_url (Optional[List[str]]): Specify one or more pip index urls as a list.
+        pip_secret_mounts (Optional[List[Tuple[str, str]]]): Specify a list of tuples to mount secret for pip install. Each tuple should contain the path to
             the secret file and the mount path. For example, [(".gitconfig", "/etc/gitconfig")]. This is experimental and
             the interface may change in the future. Configuring this should not change the built image.
-        pip_extra_args: Specify one or more extra pip install arguments as a space-delimited string
-        registry_config: Specify the path to a JSON registry config file
-        entrypoint: List of strings to overwrite the entrypoint of the base image with, set to [] to remove the entrypoint.
-        commands: Command to run during the building process
-        tag_format: Custom string format for image tag. The ImageSpec hash passed in as `spec_hash`. For example,
-            to add a "dev" suffix to the image tag, set `tag_format="{spec_hash}-dev"`
-        source_copy_mode: This option allows the user to specify which source files to copy from the local host, into the image.
+        pip_extra_args (Optional[str]): Specify one or more extra pip install arguments as a space-delimited string.
+        registry_config (Optional[str]): Specify the path to a JSON registry config file.
+        entrypoint (Optional[List[str]]): List of strings to overwrite the entrypoint of the base image with, set to [] to remove the entrypoint.
+        commands (Optional[List[str]]): Command to run during the building process.
+        tag_format (Optional[str]): Custom string format for image tag. The ImageSpec hash passed in as `spec_hash`. For example,
+            to add a "dev" suffix to the image tag, set `tag_format="{spec_hash}-dev"`.
+        source_copy_mode (Optional[CopyFileDetection]): This option allows the user to specify which source files to copy from the local host, into the image.
             Not setting this option means to use the default flytekit behavior. The default behavior is:
                 - if fast register is used, source files are not copied into the image (because they're already copied
                   into the fast register tar layer).
                 - if fast register is not used, then the LOADED_MODULES (aka 'auto') option is used to copy loaded
                   Python files into the image.
-
             If the option is set by the user, then that option is of course used.
-        copy: List of files/directories to copy to /root. e.g. ["src/file1.txt", "src/file2.txt"]
-        python_exec: Python executable to use for install packages
+        copy (Optional[List[str]]): List of files/directories to copy to /root. e.g. ["src/file1.txt", "src/file2.txt"].
+        python_exec (Optional[str]): Python executable to use for install packages.
+        runtime_packages (Optional[List[str]]): List of packages to be installed during runtime. `runtime_packages` requires `pip` to be installed
+            in your base image.
+                - If you are using an ImageSpec as your base image, please include `pip` into your packages:
+                  `ImageSpec(..., packages=["pip"])`.
+                - If you want to install runtime packages into a fixed base_image and not use an image builder, you can
+                  use `builder="noop"`: `ImageSpec(base_image="ghcr.io/name/my-custom-image", builder="noop").with_runtime_packages(["numpy"])`.
+        builder_options (Optional[Dict[str, Any]]): Additional options for the builder. This is a dictionary that will be passed to the builder.
+            The options are builder-specific and may not be supported by all builders.
+        builder_config (Optional[typing.Dict[str, typing.Any]]): Custom builder images configuration, such as uv and micromamba images.
     """
 
     name: str = "flytekit"
     python_version: str = None  # Use default python in the base image if None.
     builder: Optional[str] = None
     source_root: Optional[str] = None  # a.txt:auto
-    env: Optional[typing.Dict[str, str]] = None
+    env: Optional[Dict[str, str]] = None
     registry: Optional[str] = None
     packages: Optional[List[str]] = None
     conda_packages: Optional[List[str]] = None
@@ -83,7 +95,7 @@ class ImageSpec:
     cuda: Optional[str] = None
     cudnn: Optional[str] = None
     base_image: Optional[Union[str, "ImageSpec"]] = None
-    platform: str = "linux/amd64"
+    platform: Optional[str] = None
     pip_index: Optional[str] = None
     pip_extra_index_url: Optional[List[str]] = None
     pip_secret_mounts: Optional[List[Tuple[str, str]]] = None
@@ -95,10 +107,16 @@ class ImageSpec:
     source_copy_mode: Optional[CopyFileDetection] = None
     copy: Optional[List[str]] = None
     python_exec: Optional[str] = None
+    runtime_packages: Optional[List[str]] = None
+    builder_options: Optional[Dict[str, Any]] = None
+    builder_config: Optional[typing.Dict[str, typing.Any]] = None
 
     def __post_init__(self):
+        from flytekit.clis.helpers import str2bool
+
         self.name = self.name.lower()
-        self._is_force_push = os.environ.get(FLYTE_FORCE_PUSH_IMAGE_SPEC, False)  # False by default
+        self._is_force_push = str2bool(os.environ.get(FLYTE_FORCE_PUSH_IMAGE_SPEC, "FALSE"))  # False by default
+        self._fast_fail = str2bool(os.environ.get(FLYTE_IMG_FAST_FAIL, "FALSE"))  # False by default
         if self.registry:
             self.registry = self.registry.lower()
             if not validate_container_registry_name(self.registry):
@@ -108,6 +126,17 @@ class ImageSpec:
                     f"- 'ghcr.io/username' (for GitHub Container Registry)\n"
                     f"- 'docker.io/username' (for docker hub)\n"
                 )
+
+        if self.platform is None:
+            if (
+                self.registry
+                and self.registry.lower().startswith("localhost:")
+                and platform.machine().lower() in ("arm64", "aarch64")
+            ):
+                # Only change platform to ARM64 if platform is not set and pushing to local registry on ARM64 machine
+                self.platform = "linux/arm64"
+            else:
+                self.platform = "linux/amd64"
 
         # If not set, help the user set this option as well, to support the older default behavior where existence
         # of the source root implied that copying of files was needed.
@@ -127,6 +156,7 @@ class ImageSpec:
             "pip_extra_index_url",
             "entrypoint",
             "commands",
+            "runtime_packages",
         ]
         for parameter in parameters_str_list:
             attr = getattr(self, parameter)
@@ -145,6 +175,9 @@ class ImageSpec:
                 error_msg = "pip_secret_mounts must be a list of tuples of two strings or None"
                 raise ValueError(error_msg)
 
+        if self.builder_options is not None and not isinstance(self.builder_options, dict):
+            raise ValueError("builder_options must be a dictionary or None")
+
     @cached_property
     def id(self) -> str:
         """
@@ -160,7 +193,7 @@ class ImageSpec:
 
         :return: a unique identifier of the ImageSpec
         """
-        parameters_to_exclude = ["pip_secret_mounts", "builder"]
+        parameters_to_exclude = ["pip_secret_mounts", "builder", "runtime_packages"]
         # Only get the non-None values in the ImageSpec to ensure the hash is consistent across different Flytekit versions.
         image_spec_dict = asdict(
             self, dict_factory=lambda x: {k: v for (k, v) in x if v is not None and k not in parameters_to_exclude}
@@ -171,7 +204,7 @@ class ImageSpec:
     def __hash__(self):
         return hash(self.id)
 
-    @property
+    @cached_property
     def tag(self) -> str:
         """
         Calculate a hash from the image spec. The hash will be the tag of the image.
@@ -310,16 +343,30 @@ class ImageSpec:
             click.secho(f"Failed to check if the image exists with error:\n {e}", fg="red")
             return None
 
-    def _update_attribute(self, attr_name: str, values: Union[str, List[str]]) -> "ImageSpec":
+    def _update_attribute(self, attr_name: str, values: Union[str, List[str], Dict[str, Any]]) -> "ImageSpec":
         """
-        Generic method to update a specified list attribute, either appending or extending.
+        Generic method to update a specified attribute, handling strings, lists, and dictionaries.
         """
-        current_value = copy.deepcopy(getattr(self, attr_name)) or []
+        current_value = copy.deepcopy(getattr(self, attr_name))
+
+        if current_value is None:
+            if isinstance(values, dict):
+                current_value = {}
+            else:
+                current_value = []
 
         if isinstance(values, str):
+            if not isinstance(current_value, list):
+                raise TypeError(f"Cannot append string to non-list attribute {attr_name}")
             current_value.append(values)
         elif isinstance(values, list):
+            if not isinstance(current_value, list):
+                raise TypeError(f"Cannot extend non-list attribute {attr_name}")
             current_value.extend(values)
+        elif isinstance(values, dict):
+            if not isinstance(current_value, dict):
+                raise TypeError(f"Cannot update non-dict attribute {attr_name}")
+            current_value.update(values)
 
         return dataclasses.replace(self, **{attr_name: current_value})
 
@@ -357,6 +404,18 @@ class ImageSpec:
         copied_image_spec._is_force_push = True
 
         return copied_image_spec
+
+    def with_runtime_packages(self, runtime_packages: List[str]) -> "ImageSpec":
+        """
+        Builder that returns a new image spec with runtime packages. Dev packages will be installed during runtime.
+        """
+        return self._update_attribute("runtime_packages", runtime_packages)
+
+    def with_builder_options(self, builder_options: Dict[str, Any]) -> "ImageSpec":
+        """
+        Builder that returns a new image spec with additional builder options.
+        """
+        return self._update_attribute("builder_options", builder_options)
 
     @classmethod
     def from_env(cls, *, pinned_packages: Optional[List[str]] = None, **kwargs) -> "ImageSpec":
@@ -413,6 +472,11 @@ class ImageSpecBuilder:
 
         Returns:
             True if the image should be built, otherwise it returns False.
+
+        Raises:
+            RuntimeError: If FLYTE_IMG_FAST_FAIL is set to True and ImageSpec
+                          fails to check if the image exists due to a permission
+                          issue or other reason.
         """
         img_name = image_spec.image_name()
         exist = image_spec.exist()
@@ -425,6 +489,14 @@ class ImageSpecBuilder:
                 return True
             click.secho(f"Image {img_name} found. Skip building.", fg="blue")
         else:
+            if image_spec._fast_fail:
+                click.secho(f"FLYTE_IMG_FAST_FAIL set to {image_spec._fast_fail}.", fg="red")
+                raise RuntimeError(
+                    "Build failed as ImageSpec failed to check if the image exists due to a "
+                    "permission issue or other reason. \n"
+                    "Note, this fast failure is configured with the env var `FLYTE_IMG_FAST_FAIL`."
+                )
+
             click.secho(f"Flytekit assumes the image {img_name} already exists.", fg="blue")
         return False
 

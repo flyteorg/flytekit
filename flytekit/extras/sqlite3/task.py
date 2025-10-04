@@ -57,19 +57,33 @@ class SQLite3Task(PythonCustomizedContainerTask[SQLite3Config], SQLTask[SQLite3C
     """
     Run client side SQLite3 queries that optionally return a FlyteSchema object.
 
-    .. note::
-
-       This is a pre-built container task. That is, your user container will not be used at task execution time.
+    > [!NOTE]
+    > This is a pre-built container task. That is, your user container will not be used at task execution time.
        Instead the image defined in this task definition will be used instead.
 
+    <!--
     .. literalinclude:: ../../../tests/flytekit/unit/extras/sqlite3/test_task.py
        :start-after: # sqlite3_start
        :end-before: # sqlite3_end
        :language: python
        :dedent: 4
+    -->
+    ```python
+    sql_task = SQLite3Task(
+            "test",
+            query_template="select TrackId, Name from tracks limit {{.inputs.limit}}",
+            inputs=kwtypes(limit=int),
+            output_schema_type=FlyteSchema[kwtypes(TrackId=int, Name=str)],
+            task_config=SQLite3Config(
+                uri=EXAMPLE_DB,
+                compressed=True,
+            ),
+    )
+    ```
+
 
     See the :ref:`integrations guide <cookbook:integrations_sql_sqlite3>` for additional usage examples and
-    the base class :py:class:`flytekit.extend.PythonCustomizedContainerTask` as well.
+    the base class {{< py_class_ref flytekit.extend.PythonCustomizedContainerTask >}} as well.
     """
 
     _SQLITE_TASK_TYPE = "sqlite"

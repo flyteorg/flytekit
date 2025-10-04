@@ -43,6 +43,7 @@ from flytekit.core import context_manager
 from flytekit.core.artifact import ArtifactQuery
 from flytekit.core.base_task import PythonTask
 from flytekit.core.data_persistence import FileAccessProvider
+from flytekit.core.resources import Resources, ResourceSpec
 from flytekit.core.type_engine import TypeEngine
 from flytekit.core.workflow import PythonFunctionWorkflow, WorkflowBase
 from flytekit.exceptions.system import FlyteSystemException
@@ -51,6 +52,7 @@ from flytekit.interaction.click_types import (
     FlyteLiteralConverter,
     key_value_callback,
     labels_callback,
+    resource_callback,
 )
 from flytekit.interaction.string_literals import literal_string_repr
 from flytekit.loggers import logger
@@ -158,7 +160,7 @@ class RunLevelParams(PyFlyteParams):
     )
     poll_interval: int = make_click_option_field(
         click.Option(
-            param_decls=["-i", "--poll-interval", "poll_interval"],
+            param_decls=["--poll-interval", "poll_interval"],
             required=False,
             type=int,
             default=None,
@@ -186,6 +188,17 @@ class RunLevelParams(PyFlyteParams):
             help="Whether to overwrite the cache if it already exists",
         )
     )
+    interruptible: typing.Optional[bool] = make_click_option_field(
+        click.Option(
+            param_decls=["--interruptible"],
+            type=bool,
+            required=False,
+            default=None,
+            help="Specify if the execution should be forced to run with an interruptible flag of true or false."
+            " Use '--interruptible true' or '--interruptible false' to explicitly enable/disable."
+            " If this option is not provided, the default interruptible behavior of the remote Flyte entity is used.",
+        )
+    )
     envvars: typing.Dict[str, str] = make_click_option_field(
         click.Option(
             param_decls=["--envvars", "--env"],
@@ -195,6 +208,28 @@ class RunLevelParams(PyFlyteParams):
             show_default=True,
             callback=key_value_callback,
             help="Environment variables to set in the container, of the format `ENV_NAME=ENV_VALUE`",
+        )
+    )
+    resource_requests: typing.Optional[Resources] = make_click_option_field(
+        click.Option(
+            param_decls=["--resource-requests"],
+            required=False,
+            show_default=True,
+            type=str,
+            callback=resource_callback,
+            help="This overrides default task resource requests for tasks that have no statically defined resource requests in their task decorator. "
+            "Example usage: --resource-requests 'cpu=1,mem=2Gi,gpu=1'",
+        )
+    )
+    resource_limits: typing.Optional[Resources] = make_click_option_field(
+        click.Option(
+            param_decls=["--resource-limits"],
+            required=False,
+            show_default=True,
+            type=str,
+            callback=resource_callback,
+            help="This overrides default task resource limits for tasks that have no statically defined resource limits in their task decorator. "
+            "Example usage: --resource-limits 'cpu=1,mem=2Gi,gpu=1'",
         )
     )
     tags: typing.List[str] = make_click_option_field(
@@ -461,10 +496,8 @@ def to_click_option(
         python_type=python_type,
         is_remote=run_level_params.is_remote,
     )
-
     if literal_converter.is_bool() and not default_val:
         default_val = False
-
     description_extra = ""
     if literal_var.type.simple == SimpleType.STRUCT:
         if default_val and not isinstance(default_val, ArtifactQuery):
@@ -506,6 +539,7 @@ def to_click_option(
         required=required,
         help=literal_var.description + description_extra,
         callback=literal_converter.convert,
+        is_flag=literal_converter.is_bool(),
     )
 
 
@@ -557,6 +591,7 @@ def run_remote(
             options=options_from_run_params(run_level_params),
             type_hints=type_hints,
             overwrite_cache=run_level_params.overwrite_cache,
+            interruptible=run_level_params.interruptible,
             envs=run_level_params.envvars,
             tags=run_level_params.tags,
             cluster_pool=run_level_params.cluster_pool,
@@ -745,6 +780,10 @@ def run_command(ctx: click.Context, entity: typing.Union[PythonFunctionWorkflow,
                     source_path=run_level_params.computed_params.project_root,
                     module_name=run_level_params.computed_params.module,
                     fast_package_options=fast_package_options,
+                    default_resources=ResourceSpec(
+                        requests=run_level_params.resource_requests or Resources(),
+                        limits=run_level_params.resource_limits or Resources(),
+                    ),
                 )
 
                 run_remote(
@@ -858,12 +897,17 @@ class DynamicEntityLaunchCommand(click.RichCommand):
         run_level_params: RunLevelParams = ctx.obj
         r = run_level_params.remote_instance()
         entity = self._fetch_entity(ctx)
+
+        param_defaults = {param.name: param.default for param in ctx.command.params}
+
+        filtered_inputs = {k: param_defaults.get(k, v) if v is None else v for k, v in ctx.params.items()}
+
         run_remote(
             r,
             entity,
             run_level_params.project,
             run_level_params.domain,
-            ctx.params,
+            filtered_inputs,
             run_level_params,
             type_hints=entity.python_interface.inputs if entity.python_interface else None,
         )

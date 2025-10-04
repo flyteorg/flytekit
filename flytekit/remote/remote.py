@@ -33,13 +33,14 @@ from flyteidl.admin.signal_pb2 import Signal, SignalListRequest, SignalSetReques
 from flyteidl.core import literals_pb2
 from rich.progress import Progress, TextColumn, TimeElapsedColumn
 
-from flytekit import ImageSpec
+from flytekit import ImageSpec, PodTemplate
 from flytekit.clients.friendly import SynchronousFlyteClient
 from flytekit.clients.helpers import iterate_node_executions, iterate_task_executions
 from flytekit.configuration import Config, DataConfig, FastSerializationSettings, ImageConfig, SerializationSettings
 from flytekit.configuration.file import ConfigFile
 from flytekit.constants import CopyFileDetection
 from flytekit.core import constants, utils
+from flytekit.core.array_node import ArrayNode
 from flytekit.core.array_node_map_task import ArrayNodeMapTask
 from flytekit.core.artifact import Artifact
 from flytekit.core.base_task import PythonTask
@@ -56,6 +57,7 @@ from flytekit.core.python_auto_container import (
 )
 from flytekit.core.python_function_task import PythonFunctionTask
 from flytekit.core.reference_entity import ReferenceEntity, ReferenceSpec
+from flytekit.core.resources import ResourceSpec
 from flytekit.core.task import ReferenceTask
 from flytekit.core.tracker import extract_task_module
 from flytekit.core.type_engine import LiteralsResolver, TypeEngine, strict_type_hint_matching
@@ -210,6 +212,7 @@ def _get_git_repo_url(source_path: str):
         return ""
 
 
+@functools.lru_cache
 def _get_pickled_target_dict(
     root_entity: typing.Union[WorkflowBase, PythonTask],
 ) -> typing.Tuple[bytes, PickledEntity]:
@@ -238,6 +241,10 @@ def _get_pickled_target_dict(
                 raise FlyteAssertion(
                     f"Eager tasks are not supported in interactive mode. {entity.name} is an eager task."
                 )
+
+        if isinstance(entity, ArrayNode):
+            # extract WorkflowBase from ArrayNode
+            entity = entity.target.workflow
 
         if isinstance(entity, PythonTask):
             if isinstance(entity, (PythonAutoContainerTask, ArrayNodeMapTask)):
@@ -830,7 +837,11 @@ class FlyteRemote(object):
         if version is None and self.interactive_mode_enabled:
             md5_bytes, pickled_target_dict = _get_pickled_target_dict(entity)
             return self._version_from_hash(
-                md5_bytes, ss, entity.python_interface.default_inputs_as_kwargs, *self._get_image_names(entity)
+                md5_bytes,
+                ss,
+                entity.python_interface.default_inputs_as_kwargs,
+                *FlyteRemote._get_image_names(entity),
+                *FlyteRemote._get_pod_template_hash(entity),
             ), pickled_target_dict
         elif version is not None:
             return version, None
@@ -1057,6 +1068,22 @@ class FlyteRemote(object):
                 domain=self.default_domain,
             )
 
+        if self.interactive_mode_enabled:
+            md5_bytes, pickled_target_dict = _get_pickled_target_dict(entity)
+            if version is None:
+                version = self._version_from_hash(
+                    md5_bytes,
+                    serialization_settings,
+                    entity.python_interface.default_inputs_as_kwargs,
+                    *FlyteRemote._get_image_names(entity),
+                    *FlyteRemote._get_pod_template_hash(entity),
+                )
+
+            serialization_settings.fast_serialization_settings = self._pickle_and_upload_entity(
+                entity,
+                pickled_target_dict,
+            )
+
         ident = run_sync(self._serialize_and_register, entity=entity, settings=serialization_settings, version=version)
 
         ft = self.fetch_task(
@@ -1090,6 +1117,22 @@ class FlyteRemote(object):
                 image_config=ImageConfig.auto_default_image(),
                 project=self.default_project,
                 domain=self.default_domain,
+            )
+
+        if self.interactive_mode_enabled:
+            md5_bytes, pickled_target_dict = _get_pickled_target_dict(entity)
+            if version is None:
+                version = self._version_from_hash(
+                    md5_bytes,
+                    serialization_settings,
+                    entity.python_interface.default_inputs_as_kwargs,
+                    *FlyteRemote._get_image_names(entity),
+                    *FlyteRemote._get_pod_template_hash(entity),
+                )
+
+            serialization_settings.fast_serialization_settings = self._pickle_and_upload_entity(
+                entity,
+                pickled_target_dict,
             )
 
         version, _ = self._resolve_version(version, entity, serialization_settings)
@@ -1286,13 +1329,30 @@ class FlyteRemote(object):
         # and does not increase entropy of the hash while making it very inconvenient to copy-and-paste.
         return base64.urlsafe_b64encode(h.digest()).decode("ascii").rstrip("=")
 
-    def _get_image_names(self, entity: typing.Union[PythonAutoContainerTask, WorkflowBase]) -> typing.List[str]:
+    @staticmethod
+    def _get_image_names(entity: typing.Union[PythonAutoContainerTask, WorkflowBase]) -> typing.List[str]:
         if isinstance(entity, PythonAutoContainerTask) and isinstance(entity.container_image, ImageSpec):
             return [entity.container_image.image_name()]
         if isinstance(entity, WorkflowBase):
             image_names = []
             for n in entity.nodes:
-                image_names.extend(self._get_image_names(n.flyte_entity))
+                image_names.extend(FlyteRemote._get_image_names(n.flyte_entity))
+            return image_names
+        if isinstance(entity, LaunchPlan):
+            image_names = []
+            for n in entity.workflow.nodes:
+                image_names.extend(FlyteRemote._get_image_names(n.flyte_entity))
+            return image_names
+        return []
+
+    @staticmethod
+    def _get_pod_template_hash(entity: typing.Union[PythonAutoContainerTask, WorkflowBase]) -> typing.List[str]:
+        if isinstance(entity, PythonAutoContainerTask) and isinstance(entity.pod_template, PodTemplate):
+            return [entity.pod_template.version_hash()]
+        if isinstance(entity, WorkflowBase):
+            image_names = []
+            for n in entity.nodes:
+                image_names.extend(FlyteRemote._get_pod_template_hash(n.flyte_entity))
             return image_names
         return []
 
@@ -1310,6 +1370,7 @@ class FlyteRemote(object):
         source_path: typing.Optional[str] = None,
         module_name: typing.Optional[str] = None,
         envs: typing.Optional[typing.Dict[str, str]] = None,
+        default_resources: typing.Optional[ResourceSpec] = None,
         fast_package_options: typing.Optional[FastPackageOptions] = None,
     ) -> typing.Union[FlyteWorkflow, FlyteTask, FlyteLaunchPlan, ReferenceEntity]:
         """
@@ -1326,6 +1387,7 @@ class FlyteRemote(object):
         :param source_path: The root of the project path
         :param module_name: the name of the module
         :param envs: Environment variables to be passed to the serialization
+        :param default_resources: Default resources to be passed to the serialization. These override the resource spec for any tasks that have no statically defined resource requests and limits.
         :param fast_package_options: Options to customize copy_all behavior, ignored when copy_all is False.
         :return:
         """
@@ -1364,6 +1426,7 @@ class FlyteRemote(object):
             image_config=image_config,
             git_repo=_get_git_repo_url(source_path),
             env=envs,
+            default_resources=default_resources,
             fast_serialization_settings=FastSerializationSettings(
                 enabled=True,
                 destination_dir=destination_dir,
@@ -1381,9 +1444,14 @@ class FlyteRemote(object):
             # but we don't have to use it when registering with the Flyte backend.
             # For that add the hash of the compilation settings to hash of file
             version = self._version_from_hash(
-                md5_bytes, serialization_settings, default_inputs, *self._get_image_names(entity)
+                md5_bytes,
+                serialization_settings,
+                default_inputs,
+                *FlyteRemote._get_image_names(entity),
+                *FlyteRemote._get_pod_template_hash(entity),
             )
 
+        serialization_settings.version = version
         if isinstance(entity, PythonTask):
             return self.register_task(entity, serialization_settings, version)
         if isinstance(entity, WorkflowBase):
@@ -1445,31 +1513,24 @@ class FlyteRemote(object):
 
         version, _ = self._resolve_version(version, entity, serialization_settings)
 
-        if self._wf_exists(
+        if not self._wf_exists(
             name=entity.workflow.name,
             version=version,
             project=serialization_settings.project,
             domain=serialization_settings.domain,
         ):
-            # Underlying workflow, exists, only register the launch plan itself
-            launch_plan_model = get_serializable(
-                OrderedDict(), settings=serialization_settings, entity=entity, options=options
+            # If workflow doesn't exist, register it first
+            self.register_workflow(
+                entity.workflow, serialization_settings, version, default_launch_plan=False, options=options
             )
-            ident = self.raw_register(
-                launch_plan_model, serialization_settings, version, create_default_launchplan=False
-            )
-            if ident is None:
-                raise ValueError("Failed to register launch plan, identifier returned was empty...")
-        else:
-            # Register the launch and everything under it
-            ident = run_sync(
-                self._serialize_and_register,
-                entity,
-                serialization_settings,
-                version,
-                options,
-                False,
-            )
+
+        # Underlying workflow, exists, only register the launch plan itself
+        launch_plan_model = get_serializable(
+            OrderedDict(), settings=serialization_settings, entity=entity, options=options
+        )
+        ident = self.raw_register(launch_plan_model, serialization_settings, version, create_default_launchplan=False)
+        if ident is None:
+            raise ValueError("Failed to register launch plan, identifier returned was empty...")
 
         flp = self.fetch_launch_plan(ident.project, ident.domain, ident.name, ident.version)
         flp.python_interface = entity.python_interface
@@ -1482,7 +1543,7 @@ class FlyteRemote(object):
     def _execute(
         self,
         entity: typing.Union[FlyteTask, FlyteWorkflow, FlyteLaunchPlan],
-        inputs: typing.Dict[str, typing.Any],
+        inputs: typing.Optional[typing.Dict[str, typing.Any]] = None,
         project: str = None,
         domain: str = None,
         execution_name: typing.Optional[str] = None,
@@ -1517,6 +1578,9 @@ class FlyteRemote(object):
         :param execution_cluster_label: Specify label of cluster(s) on which newly created execution should be placed.
         :returns: :class:`~flytekit.remote.workflow_execution.FlyteWorkflowExecution`
         """
+        if inputs is None:
+            inputs = {}
+
         if execution_name is not None and execution_name_prefix is not None:
             raise ValueError("Only one of execution_name and execution_name_prefix can be set, but got both set")
         # todo: The prefix should be passed to the backend
@@ -1651,7 +1715,7 @@ class FlyteRemote(object):
         entity: typing.Union[
             FlyteTask, FlyteLaunchPlan, FlyteWorkflow, PythonTask, WorkflowBase, LaunchPlan, ReferenceEntity
         ],
-        inputs: typing.Dict[str, typing.Any],
+        inputs: typing.Optional[typing.Dict[str, typing.Any]] = None,
         project: str = None,
         domain: str = None,
         name: str = None,
@@ -1714,9 +1778,8 @@ class FlyteRemote(object):
         :param serialization_settings: Optionally provide serialization settings, in case the entity being run needs
           to first be registered. If not provided, a default will be used.
 
-        .. note:
-
-            The ``name`` and ``version`` arguments do not apply to ``FlyteTask``, ``FlyteLaunchPlan``, and
+        > [!NOTE]
+        > The ``name`` and ``version`` arguments do not apply to ``FlyteTask``, ``FlyteLaunchPlan``, and
             ``FlyteWorkflow`` entity inputs. These values are determined by referencing the entity identifier values.
         """
         if entity.python_interface:
@@ -1875,7 +1938,7 @@ class FlyteRemote(object):
     def execute_remote_task_lp(
         self,
         entity: typing.Union[FlyteTask, FlyteLaunchPlan],
-        inputs: typing.Dict[str, typing.Any],
+        inputs: typing.Optional[typing.Dict[str, typing.Any]] = None,
         project: str = None,
         domain: str = None,
         execution_name: typing.Optional[str] = None,
@@ -1915,7 +1978,7 @@ class FlyteRemote(object):
     def execute_remote_wf(
         self,
         entity: FlyteWorkflow,
-        inputs: typing.Dict[str, typing.Any],
+        inputs: typing.Optional[typing.Dict[str, typing.Any]] = None,
         project: str = None,
         domain: str = None,
         execution_name: typing.Optional[str] = None,
@@ -1958,7 +2021,7 @@ class FlyteRemote(object):
     def execute_reference_task(
         self,
         entity: ReferenceTask,
-        inputs: typing.Dict[str, typing.Any],
+        inputs: typing.Optional[typing.Dict[str, typing.Any]] = None,
         execution_name: typing.Optional[str] = None,
         execution_name_prefix: typing.Optional[str] = None,
         options: typing.Optional[Options] = None,
@@ -2007,7 +2070,7 @@ class FlyteRemote(object):
     def execute_reference_workflow(
         self,
         entity: ReferenceWorkflow,
-        inputs: typing.Dict[str, typing.Any],
+        inputs: typing.Optional[typing.Dict[str, typing.Any]] = None,
         execution_name: typing.Optional[str] = None,
         execution_name_prefix: typing.Optional[str] = None,
         options: typing.Optional[Options] = None,
@@ -2070,7 +2133,7 @@ class FlyteRemote(object):
     def execute_reference_launch_plan(
         self,
         entity: ReferenceLaunchPlan,
-        inputs: typing.Dict[str, typing.Any],
+        inputs: typing.Optional[typing.Dict[str, typing.Any]] = None,
         execution_name: typing.Optional[str] = None,
         execution_name_prefix: typing.Optional[str] = None,
         options: typing.Optional[Options] = None,
@@ -2122,7 +2185,7 @@ class FlyteRemote(object):
     def execute_local_task(
         self,
         entity: PythonTask,
-        inputs: typing.Dict[str, typing.Any],
+        inputs: typing.Optional[typing.Dict[str, typing.Any]] = None,
         project: str = None,
         domain: str = None,
         name: str = None,
@@ -2170,7 +2233,7 @@ class FlyteRemote(object):
             domain=domain or self._default_domain,
             version=version,
         )
-        version, pickled_target_dict = self._resolve_version(version, entity, ss)
+        version, _ = self._resolve_version(version, entity, ss)
 
         resolved_identifiers = self._resolve_identifier_kwargs(entity, project, domain, name, version)
         resolved_identifiers_dict = asdict(resolved_identifiers)
@@ -2178,9 +2241,6 @@ class FlyteRemote(object):
             flyte_task: FlyteTask = self.fetch_task(**resolved_identifiers_dict)
             flyte_task.python_interface = entity.python_interface
         except FlyteEntityNotExistException:
-            if self.interactive_mode_enabled:
-                ss.fast_serialization_settings = self._pickle_and_upload_entity(entity, pickled_target_dict)
-
             flyte_task: FlyteTask = self.register_task(entity, ss, version)
 
         return self.execute(
@@ -2204,7 +2264,7 @@ class FlyteRemote(object):
     def execute_local_workflow(
         self,
         entity: WorkflowBase,
-        inputs: typing.Dict[str, typing.Any],
+        inputs: typing.Optional[typing.Dict[str, typing.Any]] = None,
         project: str = None,
         domain: str = None,
         name: str = None,
@@ -2254,12 +2314,8 @@ class FlyteRemote(object):
             domain=domain or self._default_domain,
             version=version,
         )
-        pickled_target_dict = None
         if version is None and self.interactive_mode_enabled:
-            md5_bytes, pickled_target_dict = _get_pickled_target_dict(entity)
-            version = self._version_from_hash(
-                md5_bytes, ss, entity.python_interface.default_inputs_as_kwargs, *self._get_image_names(entity)
-            )
+            version, _ = self._resolve_version(version, entity, ss)
 
         resolved_identifiers = self._resolve_identifier_kwargs(entity, project, domain, name, version)
         resolved_identifiers_dict = asdict(resolved_identifiers)
@@ -2270,9 +2326,12 @@ class FlyteRemote(object):
             self.fetch_workflow(**resolved_identifiers_dict)
         except FlyteEntityNotExistException:
             logger.info("Registering workflow because it wasn't found in Flyte Admin.")
-            if self.interactive_mode_enabled:
-                ss.fast_serialization_settings = self._pickle_and_upload_entity(entity, pickled_target_dict)
-            self.register_workflow(entity, ss, version=version, options=options)
+            self.register_workflow(
+                entity,
+                ss,
+                version=version,
+                options=options,
+            )
 
         try:
             flyte_lp = self.fetch_launch_plan(**resolved_identifiers_dict)
@@ -2310,7 +2369,8 @@ class FlyteRemote(object):
     def execute_local_launch_plan(
         self,
         entity: LaunchPlan,
-        inputs: typing.Dict[str, typing.Any],
+        inputs: typing.Optional[typing.Dict[str, typing.Any]] = None,
+        *,
         version: str,
         project: typing.Optional[str] = None,
         domain: typing.Optional[str] = None,
@@ -2939,6 +2999,12 @@ class FlyteRemote(object):
         Given a launchplan, activate it, all previous versions are deactivated.
         """
         self.client.update_launch_plan(id=ident, state=LaunchPlanState.ACTIVE)
+
+    def deactivate_launchplan(self, ident: Identifier):
+        """
+        Given a launchplan, deactivate it, all previous versions are deactivated.
+        """
+        self.client.update_launch_plan(id=ident, state=LaunchPlanState.INACTIVE)
 
     def download(
         self, data: typing.Union[LiteralsResolver, Literal, LiteralMap], download_to: str, recursive: bool = True

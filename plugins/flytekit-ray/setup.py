@@ -9,6 +9,8 @@ plugin_requires = ["ray[default]", "flytekit>1.14.5", "flyteidl>=1.13.6"]
 __version__ = "0.0.0+develop"
 
 setup(
+    title="Ray",
+    title_expanded="Flytekit Ray Plugin",
     name=microlib_name,
     version=__version__,
     author="flyteorg",

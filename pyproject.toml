@@ -20,14 +20,14 @@ dependencies = [
     "diskcache>=5.2.1",
     "docker>=4.0.0",
     "docstring-parser>=0.9.0",
-    "flyteidl>=1.15.1",
+    "flyteidl>=1.15.4b0,<2.0.0a0",
     "fsspec>=2023.3.0",
-    "gcsfs>=2023.3.0",
+    # Bug in 2025.5.0, 2025.5.0post1 https://github.com/fsspec/gcsfs/issues/687
+    # Bug in 2024.2.0 https://github.com/fsspec/gcsfs/pull/643
+    "gcsfs>=2023.3.0,!=2024.2.0,!=2025.5.0,!=2025.5.0post1",
     "googleapis-common-protos>=1.57",
-    # Skipping those versions to account for the unwanted output coming from grpcio and grpcio-status.
-    # Issue being tracked in https://github.com/flyteorg/flyte/issues/6082.
-    "grpcio<=1.68.0",
-    "grpcio-status<=1.68.0",
+    "grpcio",
+    "grpcio-status",
     "importlib-metadata",
     "joblib",
     "jsonlines",

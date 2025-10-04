@@ -15,7 +15,8 @@ from flytekit.clis.sdk_in_container.utils import domain_option_dec, project_opti
 from flytekit.configuration import ImageConfig
 from flytekit.configuration.default_images import DefaultImages
 from flytekit.constants import CopyFileDetection
-from flytekit.interaction.click_types import key_value_callback
+from flytekit.core.resources import Resources, ResourceSpec
+from flytekit.interaction.click_types import key_value_callback, resource_callback
 from flytekit.loggers import logger
 from flytekit.tools import repo
 
@@ -138,6 +139,22 @@ _original_log_level = logger.level
     help="Environment variables to set in the container, of the format `ENV_NAME=ENV_VALUE`",
 )
 @click.option(
+    "--resource-requests",
+    required=False,
+    type=str,
+    callback=resource_callback,
+    help="Override default task resource requests for tasks that have no statically defined resource requests in their task decorator. "
+    "Example usage: --resource-requests 'cpu=1,mem=2Gi,gpu=1'",
+)
+@click.option(
+    "--resource-limits",
+    required=False,
+    type=str,
+    callback=resource_callback,
+    help="Override default task resource limits for tasks that have no statically defined resource limits in their task decorator. "
+    "Example usage: --resource-limits 'cpu=1,mem=2Gi,gpu=1'",
+)
+@click.option(
     "--skip-errors",
     "--skip-error",
     default=False,
@@ -178,6 +195,8 @@ def register(
     dry_run: bool,
     activate_launchplans: bool,
     env: typing.Optional[typing.Dict[str, str]],
+    resource_requests: typing.Optional[Resources],
+    resource_limits: typing.Optional[Resources],
     skip_errors: bool,
     summary_format: typing.Optional[str],
     quiet: bool,
@@ -258,6 +277,9 @@ def register(
             env=env,
             summary_format=summary_format,
             quiet=quiet,
+            default_resources=ResourceSpec(
+                requests=resource_requests or Resources(), limits=resource_limits or Resources()
+            ),
             dry_run=dry_run,
             activate_launchplans=activate_launchplans,
             skip_errors=skip_errors,

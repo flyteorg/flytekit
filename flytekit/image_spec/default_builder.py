@@ -29,7 +29,8 @@ RUN --mount=type=cache,sharing=locked,mode=0777,target=/root/.cache/uv,id=uv \
     --mount=type=bind,target=uv.lock,src=uv.lock \
     --mount=type=bind,target=pyproject.toml,src=pyproject.toml \
     $PIP_SECRET_MOUNT \
-    uv sync $PIP_INSTALL_ARGS
+    uv sync $PIP_INSTALL_ARGS && \
+    chown -R flytekit /root/.venv
 WORKDIR /
 
 # Update PATH and UV_PYTHON to point to the venv created by uv sync
@@ -54,12 +55,12 @@ RUN --mount=type=cache,sharing=locked,mode=0777,target=/tmp/poetry_cache,id=poet
     --mount=type=bind,target=poetry.lock,src=poetry.lock \
     --mount=type=bind,target=pyproject.toml,src=pyproject.toml \
     $PIP_SECRET_MOUNT \
-    poetry install $PIP_INSTALL_ARGS
-
+    poetry install $PIP_INSTALL_ARGS && \
+    chown -R flytekit /root/.venv
 WORKDIR /
 
 # Update PATH and UV_PYTHON to point to venv
-ENV PATH="/root/.venv/bin:$$PATH" \
+ENV PATH="/root/.venv/bin:$$PATH"  \
     UV_PYTHON=/root/.venv/bin/python
 """
 )
@@ -81,23 +82,29 @@ RUN --mount=type=cache,sharing=locked,mode=0777,target=/var/cache/apt,id=apt \
     $APT_PACKAGES
 """)
 
+# make sure that micromamba python installation is owned by flytekit user
 MICROMAMBA_INSTALL_COMMAND_TEMPLATE = Template("""\
 RUN --mount=type=cache,sharing=locked,mode=0777,target=/opt/micromamba/pkgs,\
 id=micromamba \
     --mount=from=micromamba,source=/usr/bin/micromamba,target=/usr/bin/micromamba \
     micromamba config set use_lockfiles False && \
-    micromamba create -n runtime --root-prefix /opt/micromamba \
+    ( micromamba create -n runtime --root-prefix /opt/micromamba \
     -c conda-forge $CONDA_CHANNELS \
-    python=$PYTHON_VERSION $CONDA_PACKAGES
+    python=$PYTHON_VERSION $CONDA_PACKAGES \
+    || micromamba install -n runtime --root-prefix /opt/micromamba \
+    -c conda-forge $CONDA_CHANNELS \
+    python=$PYTHON_VERSION $CONDA_PACKAGES ) && \
+    chown -R flytekit /opt/micromamba
 """)
 
 DOCKER_FILE_TEMPLATE = Template("""\
 #syntax=docker/dockerfile:1.5
-FROM ghcr.io/astral-sh/uv:0.5.1 as uv
-FROM mambaorg/micromamba:2.0.3-debian12-slim as micromamba
+FROM $UV_IMAGE as uv
+FROM $MICROMAMBA_IMAGE as micromamba
 
 FROM $BASE_IMAGE
 
+WORKDIR /
 USER root
 $APT_INSTALL_COMMAND
 RUN --mount=from=micromamba,source=/etc/ssl/certs/ca-certificates.crt,target=/tmp/ca-certificates.crt \
@@ -118,7 +125,7 @@ ENV PATH="$EXTRA_PATH:$$PATH" \
     SSL_CERT_DIR=/etc/ssl/certs \
     $ENV
 
-$UV_PYTHON_INSTALL_COMMAND
+$PYTHON_INSTALL_COMMAND
 
 # Adds nvidia just in case it exists
 ENV PATH="$$PATH:/usr/local/nvidia/bin:/usr/local/cuda/bin" \
@@ -139,7 +146,15 @@ SHELL ["/bin/bash", "-c"]
 USER flytekit
 RUN mkdir -p $$HOME && \
     echo "export PATH=$$PATH" >> $$HOME/.profile
+
+# NOTE: Important to set this env var all the way at the bottom
+# Otherwise the slightest change to an imagespec's ID would unnecessarily invalidate
+# too many layers in the build cache.
+ENV $_F_IMG_ID_ENV
 """)
+
+DEFAULT_UV_IMAGE = "ghcr.io/astral-sh/uv:0.5.1"
+DEFAULT_MICROMAMBA_IMAGE = "mambaorg/micromamba:2.0.3-debian12-slim"
 
 
 def get_flytekit_for_pypi():
@@ -328,8 +343,8 @@ def create_docker_context(image_spec: ImageSpec, tmp_dir: Path):
         )
         raise ValueError(msg)
 
-    uv_python_install_command = prepare_python_install(image_spec, tmp_dir)
-    env_dict = {"PYTHONPATH": "/root", _F_IMG_ID: image_spec.id}
+    python_install_command = prepare_python_install(image_spec, tmp_dir)
+    env_dict = {"PYTHONPATH": "/root"}
 
     if image_spec.env:
         env_dict.update(image_spec.env)
@@ -405,18 +420,29 @@ def create_docker_context(image_spec: ImageSpec, tmp_dir: Path):
     else:
         extra_copy_cmds = ""
 
+    uv_image = DEFAULT_UV_IMAGE
+    micromamba_image = DEFAULT_MICROMAMBA_IMAGE
+    if image_spec.builder_config is not None:
+        uv_image = image_spec.builder_config.get("uv_image", uv_image)
+        micromamba_image = image_spec.builder_config.get("micromamba_image", micromamba_image)
+
+    _f_img_id_env = f"{_F_IMG_ID}={image_spec.id}"
+
     docker_content = DOCKER_FILE_TEMPLATE.substitute(
-        UV_PYTHON_INSTALL_COMMAND=uv_python_install_command,
-        APT_INSTALL_COMMAND=apt_install_command,
         INSTALL_PYTHON_TEMPLATE=python_install_template.template,
         EXTRA_PATH=python_install_template.extra_path,
         PYTHON_EXEC=python_install_template.python_exec,
+        APT_INSTALL_COMMAND=apt_install_command,
+        PYTHON_INSTALL_COMMAND=python_install_command,
         BASE_IMAGE=base_image,
         ENV=env,
+        _F_IMG_ID_ENV=_f_img_id_env,
         COPY_COMMAND_RUNTIME=copy_command_runtime,
         ENTRYPOINT=entrypoint,
         RUN_COMMANDS=run_commands,
         EXTRA_COPY_CMDS=extra_copy_cmds,
+        UV_IMAGE=uv_image,
+        MICROMAMBA_IMAGE=micromamba_image,
     )
 
     dockerfile_path = tmp_dir / "Dockerfile"
@@ -452,6 +478,7 @@ class DefaultImageBuilder(ImageSpecBuilder):
         # "registry_config",
         "commands",
         "copy",
+        "builder_config",
     }
 
     def build_image(self, image_spec: ImageSpec) -> str:
@@ -474,7 +501,18 @@ class DefaultImageBuilder(ImageSpecBuilder):
 
         with tempfile.TemporaryDirectory() as tmp_dir:
             tmp_path = Path(tmp_dir)
+
+            initial_image_tag = image_spec.tag
             create_docker_context(image_spec, tmp_path)
+
+            # Check that hash-based image tag didn't change while creating the context.
+            # This doesn't cover all the cases, but this is a good check.
+            del image_spec.tag
+            if image_spec.tag != initial_image_tag:
+                raise ValueError(
+                    f"Hash-based image tag changed from {initial_image_tag} to {image_spec.tag} while creating the context,"
+                    f"indicating the content has been modified. Aborting because image tag may not match what is built."
+                )
 
             command = [
                 "docker",

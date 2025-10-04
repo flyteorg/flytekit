@@ -1,7 +1,5 @@
 """
-.. autoclass:: flytekit.core.schedule.CronSchedule
-   :noindex:
-
+These classes provide functionality related to schedules.
 """
 
 import datetime
@@ -23,14 +21,15 @@ class LaunchPlanTriggerBase(Protocol):
 class CronSchedule(_schedule_models.Schedule):
     """
     Use this when you have a launch plan that you want to run on a cron expression.
-    This uses standard `cron format <https://docs.flyte.org/en/latest/concepts/schedules.html#cron-expression-table>`__
+    This uses standard [`cron format`](https://docs.flyte.org/en/latest/concepts/schedules.html#cron-expression-table)
     in case where you are using default native scheduler using the schedule attribute.
 
-    .. code-block::
+    ```
 
         CronSchedule(
             schedule="*/1 * * * *",  # Following schedule runs every min
         )
+    ```
 
     See the :std:ref:`User Guide <cookbook:cron schedules>` for further examples.
     """
@@ -68,7 +67,7 @@ class CronSchedule(_schedule_models.Schedule):
         """
         :param str cron_expression: This should be a cron expression in AWS style.Shouldn't be used in case of native scheduler.
         :param str schedule: This takes a cron alias (see ``_VALID_CRON_ALIASES``) or a croniter parseable schedule.
-          Only one of this or ``cron_expression`` can be set, not both. This uses standard `cron format <https://docs.flyte.org/en/latest/concepts/schedules.html#cron-expression>`_
+          Only one of this or ``cron_expression`` can be set, not both. This uses standard [`cron format`](https://docs.flyte.org/en/latest/concepts/schedules.html#cron-expression)
           and is supported by native scheduler
         :param str offset:
         :param str kickoff_time_input_arg: This is a convenient argument to use when your code needs to know what time
@@ -143,12 +142,12 @@ class CronSchedule(_schedule_models.Schedule):
     def _validate_schedule(schedule: str):
         if schedule.lower() not in CronSchedule._VALID_CRON_ALIASES:
             try:
-                croniter.croniter(schedule)
-            except Exception:
-                raise ValueError(
-                    "Schedule is invalid. It must be set to either a cron alias or valid cron expression."
-                    f" Provided schedule: {schedule}"
-                )
+                # Validate the cron expression
+                cron = croniter.croniter(schedule)
+                # Try to get the next occurrence to validate the schedule
+                cron.get_next(datetime.datetime)
+            except Exception as e:
+                raise ValueError(f"Schedule is invalid. Provided schedule: {schedule} Error: {str(e)}")
 
     @staticmethod
     def _validate_offset(offset: str):
@@ -160,11 +159,11 @@ class FixedRate(_schedule_models.Schedule):
     """
     Use this class to schedule a fixed-rate interval for a launch plan.
 
-    .. code-block:: python
+    ```python
+    from datetime import timedelta
 
-        from datetime import timedelta
-
-        FixedRate(duration=timedelta(minutes=10))
+    FixedRate(duration=timedelta(minutes=10))
+    ```
 
     See the :std:ref:`fixed rate intervals` chapter in the cookbook for additional usage examples.
     """

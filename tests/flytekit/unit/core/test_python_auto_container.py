@@ -386,3 +386,25 @@ def test_pod_template_with_image_spec(default_serialization_settings, mock_image
 def test_set_resolver():
     task.set_resolver(default_notebook_task_resolver)
     assert task._task_resolver == default_notebook_task_resolver
+
+
+k8s_metadata_task = DummyAutoContainerTask(
+    name="x",
+    task_config=None,
+    task_type="t",
+    labels={"lkey": "lval"},
+    annotations={"akey": "aval"},
+)
+
+
+def test_task_k8s_metadata(default_serialization_settings):
+    assert k8s_metadata_task.metadata.labels == {"lkey": "lval"}
+    assert k8s_metadata_task.metadata.annotations == {"akey": "aval"}
+
+    #################
+    # Test Serialization
+    #################
+    ts = get_serializable_task(OrderedDict(), default_serialization_settings, k8s_metadata_task)
+
+    assert ts.template.metadata.k8s_object_metadata.labels == {"lkey": "lval"}
+    assert ts.template.metadata.k8s_object_metadata.annotations == {"akey": "aval"}

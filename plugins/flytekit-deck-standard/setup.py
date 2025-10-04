@@ -13,12 +13,22 @@ extras = {
     "markdown": ["markdown"],
     "plotly": ["plotly"],
     "pygments": ["pygments"],
-    "all": ["pandas", "pillow", "ydata-profiling", "markdown", "plotly", "pygments"],
+    "all": [
+        "pandas<=2.2.3; python_version < '3.10'",
+        "pandas; python_version > '3.9'",
+        "pillow",
+        "ydata-profiling",
+        "markdown",
+        "plotly",
+        "pygments",
+    ],
 }
 
 __version__ = "0.0.0+develop"
 
 setup(
+    title="Deck",
+    title_expanded="Flytekit Deck Plugin",
     name=microlib_name,
     version=__version__,
     author="flyteorg",

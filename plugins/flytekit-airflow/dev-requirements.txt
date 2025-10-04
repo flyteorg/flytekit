@@ -41,7 +41,7 @@ apache-airflow-providers-common-compat==1.2.0
     #   apache-airflow-providers-google
 apache-airflow-providers-common-io==1.4.1
     # via apache-airflow
-apache-airflow-providers-common-sql==1.17.1
+apache-airflow-providers-common-sql==1.25.0rc1
     # via
     #   apache-airflow
     #   apache-airflow-providers-google
@@ -73,6 +73,10 @@ asgiref==3.8.1
     #   apache-airflow
     #   apache-airflow-providers-google
     #   apache-airflow-providers-http
+async-timeout==4.0.3
+    # via
+    #   aiohttp
+    #   redis
 attrs==24.2.0
     # via
     #   aiohttp
@@ -165,6 +169,10 @@ docutils==0.21.2
     # via python-daemon
 email-validator==2.2.0
     # via flask-appbuilder
+exceptiongroup==1.2.2
+    # via
+    #   anyio
+    #   cattrs
 fastavro==1.9.7
     # via apache-beam
 fasteners==0.19
@@ -571,6 +579,10 @@ idna==3.10
     #   yarl
 immutabledict==4.2.0
     # via apache-airflow-providers-google
+importlib-metadata==8.6.1
+    # via
+    #   apache-airflow
+    #   flask
 importlib-resources==6.4.5
     # via limits
 inflection==0.5.1
@@ -581,7 +593,7 @@ itsdangerous==2.2.0
     #   connexion
     #   flask
     #   flask-wtf
-jinja2==3.1.4
+jinja2==3.1.6
     # via
     #   apache-airflow
     #   flask
@@ -589,6 +601,8 @@ jinja2==3.1.4
     #   python-nvd3
 jmespath==1.0.1
     # via apache-airflow-providers-fab
+js2py==0.74
+    # via apache-beam
 json-merge-patch==0.2
     # via apache-airflow-providers-google
 jsonpickle==3.3.0
@@ -641,7 +655,9 @@ mdit-py-plugins==0.4.2
 mdurl==0.1.2
     # via markdown-it-py
 methodtools==0.4.7
-    # via apache-airflow
+    # via
+    #   apache-airflow
+    #   apache-airflow-providers-common-sql
 more-itertools==10.5.0
     # via apache-airflow-providers-common-sql
 multidict==6.1.0
@@ -858,6 +874,8 @@ pygments==2.18.0
     # via
     #   apache-airflow
     #   rich
+pyjsparser==2.7.1
+    # via js2py
 pyjwt==2.9.0
     # via
     #   apache-airflow
@@ -958,6 +976,7 @@ six==1.16.0
     # via
     #   google-apitools
     #   hdfs
+    #   js2py
     #   oauth2client
     #   prison
     #   python-dateutil
@@ -1005,17 +1024,24 @@ time-machine==2.16.0
 typing-extensions==4.12.2
     # via
     #   alembic
+    #   anyio
     #   apache-beam
+    #   asgiref
+    #   cattrs
     #   flask-limiter
     #   limits
     #   looker-sdk
+    #   multidict
     #   opentelemetry-sdk
     #   pydantic
     #   pydantic-core
+    #   rich
 tzdata==2024.2
     # via
     #   pandas
     #   pendulum
+tzlocal==5.3.1
+    # via js2py
 uc-micro-py==1.0.3
     # via linkify-it-py
 universal-pathlib==0.2.5
@@ -1042,5 +1068,9 @@ wtforms==3.1.2
     #   flask-wtf
 yarl==1.14.0
     # via aiohttp
+zipp==3.21.0
+    # via
+    #   importlib-metadata
+    #   importlib-resources
 zstandard==0.23.0
     # via apache-beam

@@ -7,17 +7,17 @@ from ..sidecar_template import ModelInferenceTemplate
 @dataclass
 class NIMSecrets:
     """
-    :param ngc_image_secret: The name of the Kubernetes secret containing the NGC image pull credentials.
     :param ngc_secret_key: The key name for the NGC API key.
     :param secrets_prefix: The secrets prefix that Flyte appends to all mounted secrets.
+    :param ngc_image_secret: The name of the Kubernetes secret containing the NGC image pull credentials.
     :param ngc_secret_group: The group name for the NGC API key.
     :param hf_token_group: The group name for the HuggingFace token.
     :param hf_token_key: The key name for the HuggingFace token.
     """
 
-    ngc_image_secret: str  # kubernetes secret
     ngc_secret_key: str
     secrets_prefix: str  # _UNION_ or _FSEC_
+    ngc_image_secret: Optional[str] = None  # image pull kubernetes secret
     ngc_secret_group: Optional[str] = None
     hf_token_group: Optional[str] = None
     hf_token_key: Optional[str] = None
@@ -33,6 +33,7 @@ class NIM(ModelInferenceTemplate):
         cpu: int = 1,
         gpu: int = 1,
         mem: str = "20Gi",
+        ephemeral_storage: str = "20Gi",
         shm_size: str = "16Gi",
         env: Optional[
             dict[str, str]
@@ -49,14 +50,13 @@ class NIM(ModelInferenceTemplate):
         :param cpu: The number of CPU cores requested for the model server container. Default is 1.
         :param gpu: The number of GPU cores requested for the model server container. Default is 1.
         :param mem: The amount of memory requested for the model server container. Default is "20Gi".
+        :param ephemeral_storage: The amount of ephemeral storage requested for the model server container. Default is "20Gi".
         :param shm_size: The size of the shared memory volume. Default is "16Gi".
         :param env: A dictionary of environment variables to be set in the model server container.
         :param hf_repo_ids: A list of Hugging Face repository IDs for LoRA adapters to be downloaded.
         :param lora_adapter_mem: The amount of memory requested for the init container that downloads LoRA adapters.
         :param secrets: Instance of NIMSecrets for managing secrets.
         """
-        if secrets.ngc_image_secret is None:
-            raise ValueError("NGC image pull secret must be provided.")
         if secrets.ngc_secret_key is None:
             raise ValueError("NGC secret key must be provided.")
         if secrets.secrets_prefix is None:
@@ -74,6 +74,7 @@ class NIM(ModelInferenceTemplate):
             cpu=cpu,
             gpu=gpu,
             mem=mem,
+            ephemeral_storage=ephemeral_storage,
             env=env,
         )
 
@@ -97,7 +98,11 @@ class NIM(ModelInferenceTemplate):
                 empty_dir=V1EmptyDirVolumeSource(medium="Memory", size_limit=self._shm_size),
             )
         ]
-        self.pod_template.pod_spec.image_pull_secrets = [V1LocalObjectReference(name=self._secrets.ngc_image_secret)]
+
+        if self._secrets.ngc_image_secret:
+            self.pod_template.pod_spec.image_pull_secrets = [
+                V1LocalObjectReference(name=self._secrets.ngc_image_secret)
+            ]
 
         model_server_container = self.pod_template.pod_spec.init_containers[0]
 

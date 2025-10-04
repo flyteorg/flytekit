@@ -4,12 +4,13 @@ from unittest import mock
 import pandas as pd
 import pyspark
 import pytest
+import tempfile
 
 from google.protobuf.json_format import MessageToDict
 from flytekit import PodTemplate
 from flytekit.core import context_manager
 from flytekitplugins.spark import Spark
-from flytekitplugins.spark.task import Databricks, new_spark_session
+from flytekitplugins.spark.task import Databricks, DatabricksV2, new_spark_session
 from pyspark.sql import SparkSession
 
 import flytekit
@@ -134,6 +135,46 @@ def test_spark_task(reset_spark_session):
     assert my_databricks(a=3) == 3
 
 
+@pytest.mark.parametrize("spark_conf", [None, {"spark": "2"}])
+def test_databricks_v2(reset_spark_session, spark_conf):
+    databricks_conf = {
+        "name": "flytekit databricks plugin example",
+        "new_cluster": {
+            "spark_version": "11.0.x-scala2.12",
+            "node_type_id": "r3.xlarge",
+            "aws_attributes": {"availability": "ON_DEMAND"},
+            "num_workers": 4,
+            "docker_image": {"url": "pingsutw/databricks:latest"},
+        },
+        "timeout_seconds": 3600,
+        "max_retries": 1,
+        "spark_python_task": {
+            "python_file": "dbfs:///FileStore/tables/entrypoint-1.py",
+            "parameters": "ls",
+        },
+    }
+
+    databricks_instance = "account.cloud.databricks.com"
+
+    @task(
+        task_config=DatabricksV2(
+            databricks_conf=databricks_conf,
+            databricks_instance=databricks_instance,
+            spark_conf=spark_conf,
+        )
+    )
+    def my_databricks(a: int) -> int:
+        session = flytekit.current_context().spark_session
+        assert session.sparkContext.appName == "FlyteSpark: ex:local:local:local"
+        return a
+
+    assert my_databricks.task_config is not None
+    assert my_databricks.task_config.databricks_conf == databricks_conf
+    assert my_databricks.task_config.databricks_instance == databricks_instance
+    assert my_databricks.task_config.spark_conf == (spark_conf or {})
+    assert my_databricks(a=3) == 3
+
+
 def test_new_spark_session():
     name = "SessionName"
     spark_conf = {"spark1": "1", "spark2": "2"}
@@ -157,8 +198,10 @@ def test_to_html():
     assert pd.DataFrame(df.schema, columns=["StructField"]).to_html() == output
 
 
+@mock.patch("tempfile.mkdtemp", return_value="/tmp/123")
+@mock.patch("shutil.make_archive")
 @mock.patch("pyspark.context.SparkContext.addPyFile")
-def test_spark_addPyFile(mock_add_pyfile):
+def test_spark_addPyFile(mock_add_pyfile, mock_shutil_make_archive, mock_tempfile_mkdtemp):
     @task(
         task_config=Spark(
             spark_conf={"spark": "1"},
@@ -190,9 +233,10 @@ def test_spark_addPyFile(mock_add_pyfile):
         ).with_serialization_settings(serialization_settings)
     ) as new_ctx:
         my_spark.pre_execute(new_ctx.user_space_params)
-        mock_add_pyfile.assert_called_once()
-        os.remove(os.path.join(os.getcwd(), "flyte_wf.zip"))
 
+        mock_tempfile_mkdtemp.assert_called_once()
+        mock_shutil_make_archive.assert_called_once_with("/tmp/123/flyte_wf", "zip", os.getcwd())
+        mock_add_pyfile.assert_called_once_with("/tmp/123/flyte_wf.zip")
 
 def test_spark_with_image_spec():
     custom_image = ImageSpec(

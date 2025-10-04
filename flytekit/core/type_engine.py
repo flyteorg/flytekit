@@ -16,11 +16,12 @@ import threading
 import typing
 from abc import ABC, abstractmethod
 from collections import OrderedDict
-from functools import lru_cache
+from functools import lru_cache, reduce
 from types import GenericAlias
 from typing import Any, Dict, List, NamedTuple, Optional, Type, cast
 
 import msgpack
+from cachetools import LRUCache
 from dataclasses_json import DataClassJsonMixin, dataclass_json
 from flyteidl.core import literals_pb2
 from fsspec.asyn import _run_coros_in_chunks  # pylint: disable=W0212
@@ -452,56 +453,55 @@ class RestrictedTypeTransformer(TypeTransformer[T], ABC):
 
 class DataclassTransformer(TypeTransformer[object]):
     """
-    The Dataclass Transformer provides a type transformer for dataclasses.
+        The Dataclass Transformer provides a type transformer for dataclasses.
 
-    The dataclass is converted to and from MessagePack Bytes by the mashumaro library
-    and is transported between tasks using the Binary IDL representation.
-    Also, the type declaration will try to extract the JSON Schema for the
-    object, if possible, and pass it with the definition.
+        The dataclass is converted to and from MessagePack Bytes by the mashumaro library
+        and is transported between tasks using the Binary IDL representation.
+        Also, the type declaration will try to extract the JSON Schema for the
+        object, if possible, and pass it with the definition.
 
-    The lifecycle of the dataclass in the Flyte type system is as follows:
+        The lifecycle of the dataclass in the Flyte type system is as follows:
 
-    1. Serialization: The dataclass transformer converts the dataclass to MessagePack Bytes.
-        (1) Handle dataclass attributes to make them serializable with mashumaro.
-        (2) Use the mashumaro API to serialize the dataclass to MessagePack Bytes.
-        (3) Use MessagePack Bytes to create a Flyte Literal.
-        (4) Serialize the Flyte Literal to a Binary IDL Object.
+        1. Serialization: The dataclass transformer converts the dataclass to MessagePack Bytes.
+            (1) Handle dataclass attributes to make them serializable with mashumaro.
+            (2) Use the mashumaro API to serialize the dataclass to MessagePack Bytes.
+            (3) Use MessagePack Bytes to create a Flyte Literal.
+            (4) Serialize the Flyte Literal to a Binary IDL Object.
 
-    2. Deserialization: The dataclass transformer converts the MessagePack Bytes back to a dataclass.
-        (1) Convert MessagePack Bytes to a dataclass using mashumaro.
-        (2) Handle dataclass attributes to ensure they are of the correct types.
+        2. Deserialization: The dataclass transformer converts the MessagePack Bytes back to a dataclass.
+            (1) Convert MessagePack Bytes to a dataclass using mashumaro.
+            (2) Handle dataclass attributes to ensure they are of the correct types.
 
-    For Json Schema, we use https://github.com/fuhrysteve/marshmallow-jsonschema library.
+        For Json Schema, we use https://github.com/fuhrysteve/marshmallow-jsonschema library.
 
-    Example
+        Example
 
-    .. code-block:: python
-
+        ```python
         @dataclass
         class Test(DataClassJsonMixin):
-           a: int
-           b: str
+            a: int
+            b: str
 
         from marshmallow_jsonschema import JSONSchema
         t = Test(a=10,b="e")
         JSONSchema().dump(t.schema())
+        ```
 
-    Output will look like
+        Output will look like
 
-    .. code-block:: json
-
+        ```python
         {'$schema': 'http://json-schema.org/draft-07/schema#',
-         'definitions': {'TestSchema': {'properties': {'a': {'title': 'a',
-             'type': 'number',
-             'format': 'integer'},
+            'definitions': {'TestSchema': {'properties': {'a': {'title': 'a',
+                'type': 'number',
+                'format': 'integer'},
             'b': {'title': 'b', 'type': 'string'}},
-           'type': 'object',
-           'additionalProperties': False}},
-         '$ref': '#/definitions/TestSchema'}
+            'type': 'object',
+            'additionalProperties': False}},
+            '$ref': '#/definitions/TestSchema'}
+    ```
 
-    .. note::
-
-        The schema support is experimental and is useful for auto-completing in the UI/CLI
+        > [!NOTE]
+        > The schema support is experimental and is useful for auto-completing in the UI/CLI
 
     """
 
@@ -661,10 +661,8 @@ class DataclassTransformer(TypeTransformer[object]):
                 python_type = hints.get(name, field.type)
                 literal_type[name] = TypeEngine.to_literal_type(python_type)
             except Exception as e:
-                logger.warning(
-                    "Field {} of type {} cannot be converted to a literal type. Error: {}".format(
-                        field.name, field.type, e
-                    )
+                logger.debug(
+                    f"Field {field.name} of type {field.type} cannot be converted to a literal type. Error: {e}"
                 )
 
         # This is for attribute access in FlytePropeller.
@@ -1090,56 +1088,135 @@ class EnumTransformer(TypeTransformer[enum.Enum]):
             raise TypeTransformerFailedError(f"Value {v} is not in Enum {t}")
 
 
-def generate_attribute_list_from_dataclass_json_mixin(schema: dict, schema_name: typing.Any):
+class LiteralTypeTransformer(TypeTransformer[object]):
+    def __init__(self):
+        super().__init__("LiteralTypeTransformer", object)
+
+    @classmethod
+    def get_base_type(cls, t: Type) -> Type:
+        args = get_args(t)
+        if not args:
+            raise TypeTransformerFailedError("Literal must have at least one value")
+
+        base_type = type(args[0])
+        if not all(type(a) == base_type for a in args):
+            raise TypeTransformerFailedError("All values must be of the same type")
+
+        return base_type
+
+    def get_literal_type(self, t: Type) -> LiteralType:
+        base_type = self.get_base_type(t)
+        vals = list(get_args(t))
+        ann = TypeAnnotationModel(annotations={"literal_values": vals})
+        if base_type is str:
+            simple = SimpleType.STRING
+        elif base_type is int:
+            simple = SimpleType.INTEGER
+        elif base_type is float:
+            simple = SimpleType.FLOAT
+        elif base_type is bool:
+            simple = SimpleType.BOOLEAN
+        elif base_type is datetime.datetime:
+            simple = SimpleType.DATETIME
+        elif base_type is datetime.timedelta:
+            simple = SimpleType.DURATION
+        else:
+            raise TypeTransformerFailedError(f"Unsupported type: {base_type}")
+        return LiteralType(simple=simple, annotation=ann)
+
+    def to_literal(self, ctx: FlyteContext, python_val: T, python_type: Type, expected: LiteralType) -> Literal:
+        base_type = self.get_base_type(python_type)
+        base_transformer: TypeTransformer[object] = TypeEngine.get_transformer(base_type)
+        return base_transformer.to_literal(ctx, python_val, python_type, expected)
+
+    def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type) -> object:
+        base_type = self.get_base_type(expected_python_type)
+        base_transformer: TypeTransformer[object] = TypeEngine.get_transformer(base_type)
+        return base_transformer.to_python_value(ctx, lv, base_type)
+
+    def guess_python_type(self, literal_type: LiteralType) -> Type:
+        if literal_type.annotation and literal_type.annotation.annotations:
+            return typing.Literal[tuple(literal_type.annotation.annotations.get("literal_values"))]  # type: ignore
+        raise ValueError(f"LiteralType transformer cannot reverse {literal_type}")
+
+    def assert_type(self, python_type: Type, python_val: T):
+        base_type = self.get_base_type(python_type)
+        base_transformer: TypeTransformer[object] = TypeEngine.get_transformer(base_type)
+        return base_transformer.assert_type(base_type, python_val)
+
+
+def _handle_json_schema_property(
+    property_key: str,
+    property_val: dict,
+) -> typing.Tuple[str, typing.Any]:
+    """
+    A helper to handle the properties of a JSON schema and returns their equivalent Flyte attribute name and type.
+    """
+
+    # Handle Optional[T] or Union[T1, T2, ...] at the top level for proper recursion
+    if property_val.get("anyOf"):
+        # Sanity check 'anyOf' is not empty
+        assert len(property_val["anyOf"]) > 0
+        # Check that there are no nested Optional or Union types - no need to support that pattern
+        # as it would just add complexity without much benefit
+        # A few examples: Optional[Optional[T]] or Union[T1, T2, Union[T3, T4], etc...]
+        if any(item.get("anyOf") for item in property_val["anyOf"]):
+            raise ValueError(
+                f"The property with name {property_key} has a nested Optional or Union type, this is not allowed for dataclass JSON deserialization."
+            )
+        attr_types = []
+        for item in property_val["anyOf"]:
+            _, attr_type = _handle_json_schema_property(property_key, item)
+            attr_types.append(attr_type)
+
+        # Gather all the types and return a Union[T1, T2, ...]
+        attr_union_type = reduce(lambda x, y: typing.Union[x, y], attr_types)
+        return (property_key, attr_union_type)  # type: ignore
+
+    # Handle enum
+    if property_val.get("enum"):
+        property_type = "enum"
+    else:
+        property_type = property_val["type"]
+
+    # Handle list
+    if property_type == "array":
+        return (property_key, typing.List[_get_element_type(property_val["items"])])  # type: ignore
+    # Handle null types (i.e. None)
+    elif property_type == "null":
+        return (property_key, type(None))  # type: ignore
+    # Handle dataclass and dict
+    elif property_type == "object":
+        # NOTE: No need to handle optional dataclasses here (i.e. checking for property_val.get("anyOf"))
+        # those are handled in the top level of the function with recursion.
+        if property_val.get("additionalProperties"):
+            # For typing.Dict type
+            elem_type = _get_element_type(property_val["additionalProperties"])
+            return (property_key, typing.Dict[str, elem_type])  # type: ignore
+        elif property_val.get("title"):
+            # For nested dataclass
+            sub_schema_name = property_val["title"]
+            return (
+                property_key,
+                typing.cast(GenericAlias, convert_mashumaro_json_schema_to_python_class(property_val, sub_schema_name)),
+            )
+        else:
+            # For untyped dict
+            return (property_key, dict)  # type: ignore
+    elif property_type == "enum":
+        return (property_key, str)  # type: ignore
+    # Handle None, int, float, bool or str
+    else:
+        return (property_key, _get_element_type(property_val))  # type: ignore
+
+
+def generate_attribute_list_from_dataclass_json_mixin(
+    schema: dict,
+    schema_name: typing.Any,
+):
     attribute_list: typing.List[typing.Tuple[Any, Any]] = []
     for property_key, property_val in schema["properties"].items():
-        property_type = ""
-        if property_val.get("anyOf"):
-            property_type = property_val["anyOf"][0]["type"]
-        elif property_val.get("enum"):
-            property_type = "enum"
-        else:
-            property_type = property_val["type"]
-        # Handle list
-        if property_type == "array":
-            attribute_list.append((property_key, typing.List[_get_element_type(property_val["items"])]))  # type: ignore
-        # Handle dataclass and dict
-        elif property_type == "object":
-            if property_val.get("anyOf"):
-                # For optional with dataclass
-                sub_schemea = property_val["anyOf"][0]
-                sub_schemea_name = sub_schemea["title"]
-                attribute_list.append(
-                    (
-                        property_key,
-                        typing.cast(
-                            GenericAlias, convert_mashumaro_json_schema_to_python_class(sub_schemea, sub_schemea_name)
-                        ),
-                    )
-                )
-            elif property_val.get("additionalProperties"):
-                # For typing.Dict type
-                elem_type = _get_element_type(property_val["additionalProperties"])
-                attribute_list.append((property_key, typing.Dict[str, elem_type]))  # type: ignore
-            elif property_val.get("title"):
-                # For nested dataclass
-                sub_schemea_name = property_val["title"]
-                attribute_list.append(
-                    (
-                        property_key,
-                        typing.cast(
-                            GenericAlias, convert_mashumaro_json_schema_to_python_class(property_val, sub_schemea_name)
-                        ),
-                    )
-                )
-            else:
-                # For untyped dict
-                attribute_list.append((property_key, dict))  # type: ignore
-        elif property_type == "enum":
-            attribute_list.append([property_key, str])  # type: ignore
-        # Handle int, float, bool or str
-        else:
-            attribute_list.append([property_key, _get_element_type(property_val)])  # type: ignore
+        attribute_list.append(_handle_json_schema_property(property_key, property_val))
     return attribute_list
 
 
@@ -1154,7 +1231,9 @@ class TypeEngine(typing.Generic[T]):
     _RESTRICTED_TYPES: typing.List[type] = []
     _DATACLASS_TRANSFORMER: TypeTransformer = DataclassTransformer()  # type: ignore
     _ENUM_TRANSFORMER: TypeTransformer = EnumTransformer()  # type: ignore
+    _LITERAL_TYPE_TRANSFORMER: TypeTransformer = LiteralTypeTransformer()
     lazy_import_lock = threading.Lock()
+    _LITERAL_CACHE: LRUCache = LRUCache(maxsize=128)
 
     @classmethod
     def register(
@@ -1202,6 +1281,9 @@ class TypeEngine(typing.Generic[T]):
         if inspect.isclass(python_type) and issubclass(python_type, enum.Enum):
             # Special case: prevent that for a type `FooEnum(str, Enum)`, the str transformer is used.
             return cls._ENUM_TRANSFORMER
+
+        if get_origin(python_type) == typing.Literal:
+            return cls._LITERAL_TYPE_TRANSFORMER
 
         if hasattr(python_type, "__origin__"):
             # If the type is a generic type, we should check the origin type. But consider the case like Iterator[JSON]
@@ -1359,6 +1441,22 @@ class TypeEngine(typing.Generic[T]):
         return hsh
 
     @classmethod
+    def _get_literal_cache_key(cls, python_val: typing.Any, python_type: Type[T]) -> Optional[tuple]:
+        import cloudpickle
+
+        val_hash: int
+        type_hash: int
+        try:
+            val_hash = hash(cloudpickle.dumps(python_val))
+            type_hash = hash(cloudpickle.dumps(python_type))
+
+            return (val_hash, type_hash)
+
+        except Exception:
+            logger.warning(f"Could not hash python_val: {python_val} or python_type: {python_type}")
+            return None
+
+    @classmethod
     def to_literal(
         cls, ctx: FlyteContext, python_val: typing.Any, python_type: Type[T], expected: LiteralType
     ) -> Literal:
@@ -1367,6 +1465,10 @@ class TypeEngine(typing.Generic[T]):
         to_literal function, and allowing this to_literal function, to then invoke yet another async function,
         namely an async transformer.
         """
+        key = cls._get_literal_cache_key(python_val, python_type)
+        if key is not None and key in cls._LITERAL_CACHE:
+            return cls._LITERAL_CACHE[key]
+
         from flytekit.core.promise import Promise
 
         cls.to_literal_checks(python_val, python_type, expected)
@@ -1387,6 +1489,10 @@ class TypeEngine(typing.Generic[T]):
 
         modify_literal_uris(lv)
         lv.hash = cls.calculate_hash(python_val, python_type)
+
+        if key is not None:
+            cls._LITERAL_CACHE[key] = lv
+
         return lv
 
     @classmethod
@@ -1524,21 +1630,24 @@ class TypeEngine(typing.Generic[T]):
                 f" than allowed by the input spec {len(python_interface_inputs)}"
             )
         kwargs = {}
-        try:
-            for i, k in enumerate(lm.literals):
-                kwargs[k] = asyncio.create_task(
-                    TypeEngine.async_to_python_value(ctx, lm.literals[k], python_interface_inputs[k])
-                )
-            await asyncio.gather(*kwargs.values())
-        except Exception as e:
-            raise TypeTransformerFailedError(
-                f"Error converting input '{k}' at position {i}:\n"
-                f"Literal value: {lm.literals[k]}\n"
-                f"Expected Python type: {python_interface_inputs[k]}\n"
-                f"Exception: {e}"
+        for i, k in enumerate(lm.literals):
+            kwargs[k] = asyncio.create_task(
+                TypeEngine.async_to_python_value(ctx, lm.literals[k], python_interface_inputs[k])
             )
+        if kwargs:
+            await asyncio.wait(kwargs.values())
 
-        kwargs = {k: v.result() for k, v in kwargs.items() if v is not None}
+        for k, t in kwargs.items():
+            try:
+                kwargs[k] = t.result()
+            except Exception as e:
+                raise TypeTransformerFailedError(
+                    f"Error converting input '{k}':\n"
+                    f"Literal value: {lm.literals[k]!r}\n"
+                    f"Expected Python type: {python_interface_inputs[k]!r}\n"
+                    f"Exception: {e}"
+                )
+
         return kwargs
 
     @classmethod
@@ -1750,6 +1859,19 @@ def _type_essence(x: LiteralType) -> LiteralType:
 
 
 def _are_types_castable(upstream: LiteralType, downstream: LiteralType) -> bool:
+    if upstream.union_type is not None:
+        # for each upstream variant, there must be a compatible type downstream
+        for v in upstream.union_type.variants:
+            if not _are_types_castable(v, downstream):
+                return False
+        return True
+
+    if downstream.union_type is not None:
+        # there must be a compatible downstream type
+        for v in downstream.union_type.variants:
+            if _are_types_castable(upstream, v):
+                return True
+
     if upstream.collection_type is not None:
         if downstream.collection_type is None:
             return False
@@ -1794,19 +1916,6 @@ def _are_types_castable(upstream: LiteralType, downstream: LiteralType) -> bool:
                 return False
 
         return True
-
-    if upstream.union_type is not None:
-        # for each upstream variant, there must be a compatible type downstream
-        for v in upstream.union_type.variants:
-            if not _are_types_castable(v, downstream):
-                return False
-        return True
-
-    if downstream.union_type is not None:
-        # there must be a compatible downstream type
-        for v in downstream.union_type.variants:
-            if _are_types_castable(upstream, v):
-                return True
 
     if upstream.enum_type is not None:
         # enums are castable to string
@@ -1990,7 +2099,7 @@ class UnionTransformer(AsyncTypeTransformer[T]):
                 res_tag = trans.name
                 found_res = True
             except Exception as e:
-                logger.debug(f"Failed to convert from {lv} to {v} with error: {e}")
+                logger.debug(f"Failed to convert from {repr(lv)} to {v} with error: {e}")
 
         if is_ambiguous:
             raise TypeError(
@@ -2001,7 +2110,7 @@ class UnionTransformer(AsyncTypeTransformer[T]):
         if found_res:
             return res
 
-        raise TypeError(f"Cannot convert from {lv} to {expected_python_type} (using tag {union_tag})")
+        raise TypeError(f"Cannot convert from {repr(lv)} to {expected_python_type} (using tag {union_tag})")
 
     def guess_python_type(self, literal_type: LiteralType) -> type:
         if literal_type.union_type is not None:
@@ -2094,7 +2203,7 @@ class DictTransformer(AsyncTypeTransformer[dict]):
                     ),
                     metadata={"format": "pickle"},
                 )
-            raise TypeTransformerFailedError(f"Cannot convert `{v}` to Flyte Literal.\n" f"Error Message: {e}")
+            raise TypeTransformerFailedError(f"Cannot convert `{v}` to Flyte Literal.\nError Message: {e}")
 
     @staticmethod
     async def dict_to_binary_literal(
@@ -2120,7 +2229,7 @@ class DictTransformer(AsyncTypeTransformer[dict]):
                     ),
                     metadata={"format": "pickle"},
                 )
-            raise TypeTransformerFailedError(f"Cannot convert `{v}` to Flyte Literal.\n" f"Error Message: {e}")
+            raise TypeTransformerFailedError(f"Cannot convert `{v}` to Flyte Literal.\nError Message: {e}")
 
     @staticmethod
     def is_pickle(python_type: Type[dict]) -> bool:

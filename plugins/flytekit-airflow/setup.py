@@ -5,15 +5,18 @@ PLUGIN_NAME = "airflow"
 microlib_name = f"flytekitplugins-{PLUGIN_NAME}"
 
 plugin_requires = [
-    "apache-airflow",
+    "apache-airflow<3.0.0",
     "apache-airflow-providers-google<12.0.0",
     "flytekit>1.10.7",
     "flyteidl>1.10.7",
+    "sqlalchemy-spanner<1.12.0",
 ]
 
 __version__ = "0.0.0+develop"
 
 setup(
+    title="Apache Airflow",
+    title_expanded="Flytekit Airflow Plugin",
     name=microlib_name,
     version=__version__,
     author="flyteorg",
