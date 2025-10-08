@@ -245,7 +245,7 @@ jobs:
         uses: unionai-oss/flytectl-setup-action@master
       - name: Setup Flyte Sandbox
         run: |
-          flytectl demo start --disable-agent --image cr.flyte.org/flyteorg/flyte-sandbox-bundled:sha-3a102b9f4f9b83a150a01d885df1654d89561ce7
+          flytectl demo start --disable-agent
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
         with:
