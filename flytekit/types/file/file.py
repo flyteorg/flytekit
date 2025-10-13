@@ -196,7 +196,18 @@ class FlyteFile(SerializableType, os.PathLike, typing.Generic[T], DataClassJSONM
     @model_validator(mode="after")
     def deserialize_flyte_file(self, info) -> "FlyteFile":
         if info.context is None or info.context.get("deserialize") is not True:
-            return self
+            if hasattr(self, "_downloader") and hasattr(self, "_remote_source"):
+                return self
+
+            dict_obj = {"path": str(self.path)}
+            metadata = getattr(self, "metadata", None)
+            if metadata is not None:
+                dict_obj["metadata"] = metadata
+
+            return FlyteFilePathTransformer().dict_to_flyte_file(
+                dict_obj=dict_obj,
+                expected_python_type=type(self),
+            )
 
         pv = FlyteFilePathTransformer().to_python_value(
             FlyteContextManager.current_context(),
