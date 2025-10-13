@@ -1022,3 +1022,37 @@ def test_modify_literal_uris_call(mock_resolver):
 
     bm_revived = TypeEngine.to_python_value(ctx, lit, BM)
     assert bm_revived.s.literal.uri == "/my/replaced/val"
+
+
+def test_flytefile_pydantic_model_dump_validate_cycle():
+    class BM(BaseModel):
+        ff: FlyteFile
+
+    bm = BM(ff=FlyteFile.from_source("s3://my-bucket/file.txt"))
+
+    assert bm.ff.remote_source == "s3://my-bucket/file.txt"
+
+    bm_dict = bm.model_dump()
+    bm2 = BM.model_validate(bm_dict)
+
+    assert isinstance(bm2.ff, FlyteFile)
+    assert bm2.ff.remote_source == "s3://my-bucket/file.txt"
+
+    bm2.model_dump()
+
+
+def test_flytedirectory_pydantic_model_dump_validate_cycle():
+    class BM(BaseModel):
+        fd: FlyteDirectory
+
+    bm = BM(fd=FlyteDirectory.from_source("s3://my-bucket/my-dir"))
+
+    assert bm.fd.remote_source == "s3://my-bucket/my-dir"
+
+    bm_dict = bm.model_dump()
+    bm2 = BM.model_validate(bm_dict)
+
+    assert isinstance(bm2.fd, FlyteDirectory)
+    assert bm2.fd.remote_source == "s3://my-bucket/my-dir"
+
+    bm2.model_dump()
