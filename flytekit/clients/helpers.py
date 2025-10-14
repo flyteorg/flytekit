@@ -2,6 +2,7 @@ from flytekit.models.admin import common
 
 DEFAULT_SORT_ASC = common.Sort(key="created_at", direction=common.Sort.Direction.ASCENDING)
 
+
 def iterate_node_executions(
     client,
     workflow_execution_identifier=None,
