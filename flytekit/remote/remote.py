@@ -1330,7 +1330,11 @@ class FlyteRemote(object):
         return base64.urlsafe_b64encode(h.digest()).decode("ascii").rstrip("=")
 
     @staticmethod
-    def _get_image_names(entity: typing.Union[PythonAutoContainerTask, WorkflowBase]) -> typing.List[str]:
+    def _get_image_names(
+        entity: typing.Union[PythonAutoContainerTask, WorkflowBase, LaunchPlan, ReferenceEntity],
+    ) -> typing.List[str]:
+        if isinstance(entity, ReferenceEntity):
+            return []
         if isinstance(entity, PythonAutoContainerTask) and isinstance(entity.container_image, ImageSpec):
             return [entity.container_image.image_name()]
         if isinstance(entity, WorkflowBase):
