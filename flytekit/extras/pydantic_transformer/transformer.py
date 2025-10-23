@@ -25,7 +25,15 @@ class PydanticTransformer(TypeTransformer[BaseModel]):
     def get_literal_type(self, t: Type[BaseModel]) -> LiteralType:
         schema = t.model_json_schema()
         literal_type = {}
-        fields = t.__annotations__.items()
+
+        # Use Pydantic's field APIs to get properly resolved types
+        # This handles 'from __future__ import annotations' correctly
+        if hasattr(t, 'model_fields'):
+            # Pydantic v2
+            fields = [(name, field_info.annotation) for name, field_info in t.model_fields.items()]
+        else:
+            # Pydantic v1
+            fields = [(name, field_info.annotation) for name, field_info in t.__fields__.items()]
 
         for name, python_type in fields:
             try:
