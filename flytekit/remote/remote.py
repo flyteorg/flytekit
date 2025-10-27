@@ -2623,7 +2623,11 @@ class FlyteRemote(object):
             raise ValueError(f"Missing node from mapping: {node_id}")
 
         # Get the node execution data
-        node_execution_get_data_response = self.client.get_node_execution_data(execution.id)
+        try:
+            node_execution_get_data_response = self.client.get_node_execution_data(execution.id)
+        except FlyteEntityNotExistException:
+            logger.warning(f"Skipping node {execution.id.node_id} because node data not found")
+            return execution
 
         # Calling a launch plan directly case
         # If a node ran a launch plan directly (i.e. not through a dynamic task or anything) then
