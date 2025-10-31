@@ -179,7 +179,17 @@ class FlyteDirectory(SerializableType, DataClassJsonMixin, os.PathLike, typing.G
     @model_validator(mode="after")
     def deserialize_flyte_dir(self, info) -> FlyteDirectory:
         if info.context is None or info.context.get("deserialize") is not True:
-            return self
+            # Check if all private attributes are already set up (e.g., from __init__)
+            if hasattr(self, "_downloader") and hasattr(self, "_remote_source"):
+                return self
+
+            # Populate missing private attributes for Pydantic-deserialized instances
+            dict_obj = {"path": str(self.path)}
+
+            return FlyteDirToMultipartBlobTransformer().dict_to_flyte_directory(
+                dict_obj=dict_obj,
+                expected_python_type=type(self),
+            )
 
         pv = FlyteDirToMultipartBlobTransformer().to_python_value(
             FlyteContextManager.current_context(),
