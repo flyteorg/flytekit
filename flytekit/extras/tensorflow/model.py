@@ -20,7 +20,7 @@ class TensorFlowModelTransformer(AsyncTypeTransformer[tf.keras.Model]):
         return LiteralType(
             blob=_core_types.BlobType(
                 format=self.TENSORFLOW_FORMAT,
-                dimensionality=_core_types.BlobType.BlobDimensionality.MULTIPART,
+                dimensionality=_core_types.BlobType.BlobDimensionality.SINGLE,
             )
         )
 
@@ -34,14 +34,14 @@ class TensorFlowModelTransformer(AsyncTypeTransformer[tf.keras.Model]):
         meta = BlobMetadata(
             type=_core_types.BlobType(
                 format=self.TENSORFLOW_FORMAT,
-                dimensionality=_core_types.BlobType.BlobDimensionality.MULTIPART,
+                dimensionality=_core_types.BlobType.BlobDimensionality.SINGLE,
             )
         )
 
-        local_path = ctx.file_access.get_random_local_path()
+        local_path = ctx.file_access.get_random_local_path() + ".keras"
         pathlib.Path(local_path).parent.mkdir(parents=True, exist_ok=True)
 
-        # save model in SavedModel format
+        # save model in Keras format
         tf.keras.models.save_model(python_val, local_path)
 
         remote_path = await ctx.file_access.async_put_raw_data(local_path)
@@ -56,7 +56,7 @@ class TensorFlowModelTransformer(AsyncTypeTransformer[tf.keras.Model]):
             TypeTransformerFailedError(f"Cannot convert from {lv} to {expected_python_type}")
 
         local_path = ctx.file_access.get_random_local_path()
-        await ctx.file_access.async_get_data(uri, local_path, is_multipart=True)
+        await ctx.file_access.async_get_data(uri, local_path, is_multipart=False)
 
         # load model
         return tf.keras.models.load_model(local_path)
@@ -64,7 +64,7 @@ class TensorFlowModelTransformer(AsyncTypeTransformer[tf.keras.Model]):
     def guess_python_type(self, literal_type: LiteralType) -> Type[tf.keras.Model]:
         if (
             literal_type.blob is not None
-            and literal_type.blob.dimensionality == _core_types.BlobType.BlobDimensionality.MULTIPART
+            and literal_type.blob.dimensionality == _core_types.BlobType.BlobDimensionality.SINGLE
             and literal_type.blob.format == self.TENSORFLOW_FORMAT
         ):
             return tf.keras.Model
