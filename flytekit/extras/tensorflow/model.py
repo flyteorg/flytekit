@@ -55,7 +55,7 @@ class TensorFlowModelTransformer(AsyncTypeTransformer[tf.keras.Model]):
         except AttributeError:
             TypeTransformerFailedError(f"Cannot convert from {lv} to {expected_python_type}")
 
-        local_path = ctx.file_access.get_random_local_path()
+        local_path = ctx.file_access.get_random_local_path() + ".keras"
         await ctx.file_access.async_get_data(uri, local_path, is_multipart=False)
 
         # load model
