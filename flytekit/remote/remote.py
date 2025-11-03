@@ -80,7 +80,6 @@ from flytekit.models.admin import common as admin_common_models
 from flytekit.models.admin import workflow as admin_workflow_models
 from flytekit.models.admin.common import Sort
 from flytekit.models.common import NamedEntityIdentifier
-from flytekit.models.core import execution as core_execution_models
 from flytekit.models.core import identifier as id_models
 from flytekit.models.core import workflow as workflow_model
 from flytekit.models.core.identifier import Identifier, ResourceType, SignalIdentifier, WorkflowExecutionIdentifier
@@ -2779,7 +2778,7 @@ class FlyteRemote(object):
         if entity_interface is None:
             entity_definition = self.fetch_task(task_id.project, task_id.domain, task_id.name, task_id.version)
             entity_interface = entity_definition.interface
-        if get_task_exec_data and execution.closure.phase == core_execution_models.TaskExecutionPhase.SUCCEEDED:
+        if get_task_exec_data:
             try:
                 execution_data = self.client.get_task_execution_data(execution.id)
                 return self._assign_inputs_and_outputs(execution, execution_data, entity_interface)
