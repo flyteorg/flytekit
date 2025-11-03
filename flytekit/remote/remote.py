@@ -2784,7 +2784,6 @@ class FlyteRemote(object):
                 execution_data = self.client.get_task_execution_data(execution.id)
                 return self._assign_inputs_and_outputs(execution, execution_data, entity_interface)
             except Exception as e:
-                breakpoint()
                 logger.error(f"Failed to get data for successful task execution: {execution.id}, error: {e}")
                 raise
         return execution
