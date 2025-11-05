@@ -17,6 +17,7 @@ from click import Context
 from mashumaro.codecs.json import JSONEncoder
 from rich.progress import Progress, TextColumn, TimeElapsedColumn
 from typing_extensions import get_origin
+from typing_inspect import is_optional_type
 
 from flytekit import Annotations, FlyteContext, FlyteContextManager, Labels, LaunchPlan, Literal, WorkflowExecutionPhase
 from flytekit.clis.sdk_in_container.helpers import (
@@ -697,7 +698,11 @@ def run_command(ctx: click.Context, entity: typing.Union[PythonFunctionWorkflow,
             for input_name, v in entity.python_interface.inputs_with_defaults.items():
                 processed_click_value = kwargs.get(input_name)
                 skip_default_value_selection = False
-                if is_optional(v[0]) and processed_click_value == "None":
+                if (
+                    is_optional_type(v[0])
+                    and isinstance(processed_click_value, str)
+                    and processed_click_value.lower() == "none"
+                ):
                     processed_click_value = None
                     skip_default_value_selection = True
                 optional_v = False
