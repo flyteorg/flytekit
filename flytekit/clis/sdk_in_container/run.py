@@ -694,8 +694,12 @@ def run_command(ctx: click.Context, entity: typing.Union[PythonFunctionWorkflow,
         )
         try:
             inputs = {}
+            inputs_type = entity.python_interface.inputs
             for input_name, v in entity.python_interface.inputs_with_defaults.items():
                 processed_click_value = kwargs.get(input_name)
+                input_type = inputs_type[input_name]
+                if is_optional(input_type) and processed_click_value == "None":
+                    processed_click_value = None
                 optional_v = False
 
                 skip_default_value_selection = False

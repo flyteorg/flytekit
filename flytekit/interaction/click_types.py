@@ -572,6 +572,8 @@ class FlyteLiteralConverter(object):
             if not self._is_remote:
                 return value
 
+            if is_optional(self._python_type) and value == "None":
+                value = None
             lit = TypeEngine.to_literal(self._flyte_ctx, value, self._python_type, self._literal_type)
             return lit
         except click.BadParameter:
@@ -581,3 +583,10 @@ class FlyteLiteralConverter(object):
                 f"Failed to convert param: {param if param else 'NA'}, value: {value} to type: {self._python_type}."
                 f" Reason {e}"
             ) from e
+
+
+def is_optional(_type):
+    """
+    Checks if the given type is Optional Type
+    """
+    return typing.get_origin(_type) is typing.Union and type(None) in typing.get_args(_type)
