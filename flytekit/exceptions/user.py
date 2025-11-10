@@ -38,6 +38,7 @@ class FlyteUserRuntimeException(_FlyteException):
         else:
             return self._ERROR_CODE
 
+
 class FlyteTypeException(FlyteUserException, TypeError):
     _ERROR_CODE = "USER:TypeError"
 
