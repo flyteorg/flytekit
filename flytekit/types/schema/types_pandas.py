@@ -5,9 +5,9 @@ from typing import Type
 import pandas
 
 from flytekit import FlyteContext
-from flytekit.core.type_engine import AsyncTypeTransformer, T, TypeEngine
-from flytekit.models.literals import Literal, Scalar, Schema
-from flytekit.models.types import LiteralType, SchemaType
+from flytekit.core.type_engine import AsyncTypeTransformer, SimpleTransformer, T, TypeEngine
+from flytekit.models.literals import Literal, Primitive, Scalar, Schema
+from flytekit.models.types import LiteralType, SchemaType, SimpleType
 from flytekit.types.schema import LocalIOSchemaReader, LocalIOSchemaWriter, SchemaEngine, SchemaFormat, SchemaHandler
 
 
@@ -122,7 +122,25 @@ class PandasDataFrameTransformer(AsyncTypeTransformer[pandas.DataFrame]):
         return python_val.describe().to_html()
 
 
+class PandasTimestampTransformer(SimpleTransformer[pandas.Timestamp]):
+    """
+    Type transformer for pandas.Timestamp objects.
+
+    Converts pandas.Timestamp to/from Flyte DATETIME literals.
+    """
+
+    def __init__(self):
+        super().__init__(
+            name="pandas.Timestamp",
+            t=pandas.Timestamp,
+            lt=LiteralType(simple=SimpleType.DATETIME),
+            to_literal_transformer=lambda x: Literal(scalar=Scalar(primitive=Primitive(datetime=x.to_pydatetime()))),
+            from_literal_transformer=lambda x: pandas.Timestamp(x.scalar.primitive.datetime),
+        )
+
+
 SchemaEngine.register_handler(
     SchemaHandler("pandas-dataframe-schema", pandas.DataFrame, PandasSchemaReader, PandasSchemaWriter)
 )
 TypeEngine.register(PandasDataFrameTransformer())
+TypeEngine.register(PandasTimestampTransformer())
