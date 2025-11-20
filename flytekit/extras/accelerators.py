@@ -93,6 +93,18 @@ class GPUAccelerator(BaseAccelerator):
     def to_flyte_idl(self) -> tasks_pb2.GPUAccelerator:
         return tasks_pb2.GPUAccelerator(device=self._device)
 
+class NeuronxAccelerator(BaseAccelerator):
+    def __init__(self, neurondevice: str = None, neuron = None, neuroncore = None) -> None:
+        if neuron:
+            self._neuron = neuron
+        if neuroncore:
+            self._neuroncore = neuroncore
+        if neurondevice:
+            self._neurondevice = neurondevice
+    def to_flyte_idl(self) -> tasks_pb2.NeuronxAccelerator:
+        return tasks_pb2.NeuronxAccelerator(neurondevice=self._neurondevice, neuron=self._neuron, neuroncore=self._neuroncore)
+
+
 
 #: use this constant to specify that the task should run on an
 #: `NVIDIA A10 Tensor Core GPU https://www.nvidia.com/en-us/data-center/products/a10-gpu`_
@@ -133,6 +145,8 @@ T4 = GPUAccelerator("nvidia-tesla-t4")
 #: use this constant to specify that the task should run on an
 #: `NVIDIA Tesla V100 GPU https://images.nvidia.com/content/technologies/volta/pdf/tesla-volta-v100-datasheet-letter-fnl-web.pdf
 V100 = GPUAccelerator("nvidia-tesla-v100")
+Infv2 = NeuronxAccelerator("Inferentia-v2")
+Trn1 = NeuronxAccelerator("Trainium-v1")
 
 #: use this constant to specify that the task should run on an
 #: `NVIDIA H100 GPU https://www.nvidia.com/en-us/data-center/h100
