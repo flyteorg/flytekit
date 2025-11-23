@@ -19,10 +19,14 @@ my_plugin = "my_module:MyCustomPlugin"
 """
 
 import os
+import sys
 from typing import List, Optional, Protocol, runtime_checkable
 
 from click import Group
-from importlib_metadata import entry_points
+if sys.version_info < (3, 10):
+    from importlib_metadata import entry_points
+else:
+    from importlib.metadata import entry_points
 
 from flytekit import CachePolicy
 from flytekit.configuration import Config, get_config_file
