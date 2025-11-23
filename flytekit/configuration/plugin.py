@@ -23,6 +23,7 @@ import sys
 from typing import List, Optional, Protocol, runtime_checkable
 
 from click import Group
+
 if sys.version_info < (3, 10):
     from importlib_metadata import entry_points
 else:
