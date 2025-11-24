@@ -20,7 +20,7 @@ dependencies = [
     "diskcache>=5.2.1",
     "docker>=4.0.0",
     "docstring-parser>=0.9.0",
-    "flyteidl>=1.15.4b0,<2.0.0a0",
+    "flyteidl>=1.16.1,<2.0.0a0",
     "fsspec>=2023.3.0",
     # Bug in 2025.5.0, 2025.5.0post1 https://github.com/fsspec/gcsfs/issues/687
     # Bug in 2024.2.0 https://github.com/fsspec/gcsfs/pull/643
