@@ -8,6 +8,7 @@ import logging
 import os
 import pathlib
 import sys
+import types
 import typing
 import typing as t
 from typing import cast, get_args
@@ -561,7 +562,14 @@ class FlyteLiteralConverter(object):
             return value
         try:
             # If the expected Python type is datetime.date, adjust the value to date
-            if self._python_type is datetime.date:
+            is_union = typing.get_origin(self._python_type) in (
+                typing.Union,
+                types.UnionType,
+            )
+            args = typing.get_args(self._python_type)
+            is_date_type = (is_union and datetime.date in args) or self._python_type is datetime.date
+
+            if is_date_type and isinstance(value, datetime.datetime):
                 # Click produces datetime, so converting to date to avoid type mismatch error
                 value = value.date()
             # If the input matches the default value in the launch plan, serialization can be skipped.
