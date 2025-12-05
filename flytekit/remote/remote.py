@@ -1330,7 +1330,11 @@ class FlyteRemote(object):
         return base64.urlsafe_b64encode(h.digest()).decode("ascii").rstrip("=")
 
     @staticmethod
-    def _get_image_names(entity: typing.Union[PythonAutoContainerTask, WorkflowBase]) -> typing.List[str]:
+    def _get_image_names(
+        entity: typing.Union[PythonAutoContainerTask, WorkflowBase, LaunchPlan, ReferenceEntity],
+    ) -> typing.List[str]:
+        if isinstance(entity, ReferenceEntity):
+            return []
         if isinstance(entity, PythonAutoContainerTask) and isinstance(entity.container_image, ImageSpec):
             return [entity.container_image.image_name()]
         if isinstance(entity, WorkflowBase):
@@ -2619,7 +2623,11 @@ class FlyteRemote(object):
             raise ValueError(f"Missing node from mapping: {node_id}")
 
         # Get the node execution data
-        node_execution_get_data_response = self.client.get_node_execution_data(execution.id)
+        try:
+            node_execution_get_data_response = self.client.get_node_execution_data(execution.id)
+        except FlyteEntityNotExistException:
+            logger.warning(f"Skipping node {execution.id.node_id} because node data not found")
+            return execution
 
         # Calling a launch plan directly case
         # If a node ran a launch plan directly (i.e. not through a dynamic task or anything) then
@@ -2739,8 +2747,11 @@ class FlyteRemote(object):
         # This is the plain ol' task execution case
         else:
             execution._task_executions = [
+                # Sync task execution but only get inputs/outputs if the overall execution is done
                 self.sync_task_execution(
-                    FlyteTaskExecution.promote_from_model(t), node_mapping[node_id].task_node.flyte_task.interface
+                    FlyteTaskExecution.promote_from_model(t),
+                    node_mapping[node_id].task_node.flyte_task.interface,
+                    get_task_exec_data=execution.is_done,
                 )
                 for t in iterate_task_executions(self.client, execution.id)
             ]
@@ -2755,16 +2766,26 @@ class FlyteRemote(object):
         return execution
 
     def sync_task_execution(
-        self, execution: FlyteTaskExecution, entity_interface: typing.Optional[TypedInterface] = None
+        self,
+        execution: FlyteTaskExecution,
+        entity_interface: typing.Optional[TypedInterface] = None,
+        get_task_exec_data: bool = True,
     ) -> FlyteTaskExecution:
         """Sync a FlyteTaskExecution object with its corresponding remote state."""
+
         execution._closure = self.client.get_task_execution(execution.id).closure
-        execution_data = self.client.get_task_execution_data(execution.id)
         task_id = execution.id.task_id
         if entity_interface is None:
             entity_definition = self.fetch_task(task_id.project, task_id.domain, task_id.name, task_id.version)
             entity_interface = entity_definition.interface
-        return self._assign_inputs_and_outputs(execution, execution_data, entity_interface)
+        if get_task_exec_data:
+            try:
+                execution_data = self.client.get_task_execution_data(execution.id)
+                return self._assign_inputs_and_outputs(execution, execution_data, entity_interface)
+            except Exception as e:
+                logger.error(f"Failed to get data for successful task execution: {execution.id}, error: {e}")
+                raise
+        return execution
 
     #############################
     # Terminate Execution State #
