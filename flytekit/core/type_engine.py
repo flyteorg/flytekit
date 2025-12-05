@@ -1155,6 +1155,9 @@ def _resolve_json_schema_ref(property_val: dict, schema: typing.Optional[dict] =
     
     Returns:
         The resolved property value (dereferenced if it was a $ref)
+    
+    Raises:
+        ValueError: If the $ref path is invalid or cannot be resolved
     """
     if "$ref" in property_val and schema is not None:
         # Handle references like "#/$defs/ModelName" or "#/definitions/ModelName"
@@ -1162,9 +1165,15 @@ def _resolve_json_schema_ref(property_val: dict, schema: typing.Optional[dict] =
         if ref_path.startswith("#/"):
             path_parts = ref_path[2:].split("/")
             resolved = schema
-            for part in path_parts:
-                resolved = resolved[part]
-            return resolved
+            try:
+                for part in path_parts:
+                    resolved = resolved[part]
+                return resolved
+            except (KeyError, TypeError) as e:
+                raise ValueError(
+                    f"Failed to resolve JSON schema reference '{ref_path}': {e}. "
+                    f"Make sure the referenced definition exists in the schema."
+                ) from e
     return property_val
 
 
@@ -2534,7 +2543,7 @@ def convert_mashumaro_json_schema_to_python_class(schema: dict, schema_name: typ
     return dataclass_json(dataclasses.make_dataclass(schema_name, attribute_list))
 
 
-def _get_element_type(element_property: typing.Dict[str, str], schema: typing.Optional[dict] = None) -> Type:
+def _get_element_type(element_property: typing.Dict[str, typing.Any], schema: typing.Optional[dict] = None) -> Type:
     # Resolve $ref before processing
     element_property = _resolve_json_schema_ref(element_property, schema)
     
