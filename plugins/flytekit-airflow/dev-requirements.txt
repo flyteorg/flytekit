@@ -1048,7 +1048,7 @@ universal-pathlib==0.2.5
     # via apache-airflow
 uritemplate==4.1.1
     # via google-api-python-client
-urllib3==2.2.3
+urllib3==2.6.0
     # via requests
 werkzeug==2.2.3
     # via
