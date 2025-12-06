@@ -193,10 +193,15 @@ class FlyteFile(SerializableType, os.PathLike, typing.Generic[T], DataClassJSONM
             out["metadata"] = lv.metadata
         return out
 
+    def _was_initialized_via_init(self) -> bool:
+        """Check if __init__ was called (Pydantic deserialization bypasses __init__)."""
+        return hasattr(self, "_downloader") and hasattr(self, "_remote_source")
+
     @model_validator(mode="after")
     def deserialize_flyte_file(self, info) -> "FlyteFile":
         if info.context is None or info.context.get("deserialize") is not True:
-            return self
+            if self._was_initialized_via_init():
+                return self
 
         pv = FlyteFilePathTransformer().to_python_value(
             FlyteContextManager.current_context(),

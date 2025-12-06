@@ -176,10 +176,15 @@ class FlyteDirectory(SerializableType, DataClassJsonMixin, os.PathLike, typing.G
         )
         return {"path": lv.scalar.blob.uri}
 
+    def _was_initialized_via_init(self) -> bool:
+        """Check if __init__ was called (Pydantic deserialization bypasses __init__)."""
+        return hasattr(self, "_downloader") and hasattr(self, "_remote_source")
+
     @model_validator(mode="after")
     def deserialize_flyte_dir(self, info) -> FlyteDirectory:
         if info.context is None or info.context.get("deserialize") is not True:
-            return self
+            if self._was_initialized_via_init():
+                return self
 
         pv = FlyteDirToMultipartBlobTransformer().to_python_value(
             FlyteContextManager.current_context(),
