@@ -10,6 +10,7 @@ plugin_requires = [
     "flytekit>1.10.7",
     "flyteidl>1.10.7",
     "sqlalchemy-spanner<1.12.0",
+    "google-re2>=1.0,!=1.1.20251105",  # Avoid version with Bazel build issues
 ]
 
 __version__ = "0.0.0+develop"
