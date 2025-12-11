@@ -1022,3 +1022,69 @@ def test_modify_literal_uris_call(mock_resolver):
 
     bm_revived = TypeEngine.to_python_value(ctx, lit, BM)
     assert bm_revived.s.literal.uri == "/my/replaced/val"
+
+
+def test_nested_pydantic_model_with_list():
+    """
+    Test that nested Pydantic models in lists are handled correctly.
+    This tests the fix for JSON schema $ref references in nested models.
+    """
+    class NestedModel(BaseModel):
+        name: str
+        value: int
+
+    class ParentModel(BaseModel):
+        id: str
+        nested: NestedModel  # Direct nested model (generates $ref)
+        nested_list: List[NestedModel]  # List of nested models (generates array with $ref in items)
+        optional_nested_list: Optional[List[NestedModel]] = None  # Optional list with $ref
+
+    # Test TypeEngine can handle the model
+    ctx = FlyteContextManager.current_context()
+    
+    # Create test data
+    parent = ParentModel(
+        id="test-id",
+        nested=NestedModel(name="direct", value=42),
+        nested_list=[
+            NestedModel(name="item1", value=1),
+            NestedModel(name="item2", value=2),
+        ],
+        optional_nested_list=[
+            NestedModel(name="opt1", value=10),
+            NestedModel(name="opt2", value=20),
+        ]
+    )
+    
+    # Test to_literal_type
+    lt = TypeEngine.to_literal_type(ParentModel)
+    assert lt is not None
+    
+    # Test to_literal
+    literal = TypeEngine.to_literal(ctx, parent, ParentModel, lt)
+    assert literal is not None
+    
+    # Test to_python_value
+    restored = TypeEngine.to_python_value(ctx, literal, ParentModel)
+    assert restored.id == "test-id"
+    assert restored.nested.name == "direct"
+    assert restored.nested.value == 42
+    assert len(restored.nested_list) == 2
+    assert restored.nested_list[0].name == "item1"
+    assert restored.nested_list[0].value == 1
+    assert restored.nested_list[1].name == "item2"
+    assert restored.nested_list[1].value == 2
+    assert restored.optional_nested_list is not None
+    assert len(restored.optional_nested_list) == 2
+    assert restored.optional_nested_list[0].name == "opt1"
+    assert restored.optional_nested_list[0].value == 10
+    
+    # Test with task
+    @task
+    def process_parent(data: ParentModel) -> ParentModel:
+        return data
+    
+    result = process_parent(data=parent)
+    assert result.id == "test-id"
+    assert result.nested.name == "direct"
+    assert len(result.nested_list) == 2
