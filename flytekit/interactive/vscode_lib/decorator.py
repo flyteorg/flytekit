@@ -439,10 +439,11 @@ class vscode(ClassDecorator):
         task_function_source_dir = os.path.dirname(
             FlyteContextManager.current_context().user_space_params.TASK_FUNCTION_SOURCE_PATH
         )
+        code_server_idle_timeout_seconds = os.getenv("CODE_SERVER_IDLE_TIMEOUT_SECONDS", "36000")
         child_process = multiprocessing.Process(
             target=execute_command,
             kwargs={
-                "cmd": f"code-server --bind-addr 0.0.0.0:{self.port} --idle-timeout-seconds {os.getenv("CODE_SERVER_IDLE_TIMEOUT_SECONDS", 36000)} --disable-workspace-trust --auth none {task_function_source_dir}"
+                "cmd": f"code-server --bind-addr 0.0.0.0:{self.port} --idle-timeout-seconds {code_server_idle_timeout_seconds} --disable-workspace-trust --auth none {task_function_source_dir}"
             },
         )
         child_process.start()
