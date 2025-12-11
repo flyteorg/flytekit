@@ -442,7 +442,7 @@ class vscode(ClassDecorator):
         child_process = multiprocessing.Process(
             target=execute_command,
             kwargs={
-                "cmd": f"code-server --bind-addr 0.0.0.0:{self.port} --disable-workspace-trust --auth none {task_function_source_dir}"
+                "cmd": f"code-server --bind-addr 0.0.0.0:{self.port} --idle-timeout-seconds {os.getenv("CODE_SERVER_IDLE_TIMEOUT_SECONDS", 36000)} --disable-workspace-trust --auth none {task_function_source_dir}"
             },
         )
         child_process.start()
