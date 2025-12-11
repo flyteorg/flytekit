@@ -35,7 +35,7 @@ RUN apt-get update \
 
 # Set the environment variable for code-server
 ENV PATH="/tmp/code-server/code-server-4.19.0-linux-${TARGETARCH}/bin:${PATH}"
-# Set the idle timeout to 10 hours and instead of relying on the hearbeat file check , codeserver itself terminates gracefully https://github.com/coder/code-server/issues/1636
+# Set the idle timeout to 10 hours and instead of relying on the hear beat file check , codeserver itself terminates gracefully https://github.com/coder/code-server/issues/1636
 ENV CODE_SERVER_IDLE_TIMEOUT_SECONDS=36000
 USER flytekit
 
