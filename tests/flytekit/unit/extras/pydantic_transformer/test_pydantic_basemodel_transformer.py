@@ -1038,7 +1038,8 @@ def test_flytefile_pydantic_model_dump_validate_cycle():
     assert isinstance(bm2.ff, FlyteFile)
     assert bm2.ff.remote_source == "s3://my-bucket/file.txt"
 
-    bm2.model_dump()
+    bm2_dict = bm2.model_dump()
+    assert bm_dict == bm2_dict
 
 
 def test_flytefile_pydantic_with_local_file(local_dummy_file):
