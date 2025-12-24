@@ -402,6 +402,10 @@ class SecretsManager(object):
         if ctx.execution_state is None or ctx.execution_state.is_local_execution():
             env_prefixes.append("")
 
+        # Temporary fix to always check for the default prefix
+        if "_FSEC_" not in env_prefixes:
+            env_prefixes.append("_FSEC_")
+
         for env_prefix in env_prefixes:
             env_var = self._get_secrets_env_var(
                 group=group, key=key, group_version=group_version, env_prefix=env_prefix
@@ -414,19 +418,6 @@ class SecretsManager(object):
         if os.path.exists(fpath):
             with open(fpath, encode_mode) as f:
                 return f.read().strip()
-
-        print(
-            f"Unable to get in SecretsManager - inputs: {group=} {key=}, {group_version=}, {encode_mode=}", flush=True
-        )
-        print("Environment variables:", flush=True)
-        for ev_k, ev_v in os.environ.items():
-            print(f"{ev_k}: {ev_v[:7]}", flush=True)
-        print("<<== End environment variables ==>>", flush=True)
-
-        import traceback
-
-        traceback.print_stack()
-        print("<<== End stack trace ==>>", flush=True)
 
         raise ValueError(
             f"Please make sure to add secret_requests=[Secret(group={group}, key={key})] in @task. Unable to find secret for key {key} in group {group} "
