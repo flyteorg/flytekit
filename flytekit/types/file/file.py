@@ -195,15 +195,15 @@ class FlyteFile(SerializableType, os.PathLike, typing.Generic[T], DataClassJSONM
 
     def _was_initialized_via_init(self) -> bool:
         """Check if object was initialized via __init__ or deserialized by Pydantic.
-        
+
         When Pydantic deserializes a FlyteFile, it bypasses __init__ and directly
         sets the 'path' attribute. This means the _downloader and _remote_source attributes
         won't exist. We use this check to determine if we need to go through the transformer
         to properly set up these internal attributes.
 
         Returns:
-            True if __init__ was called (normal initialization), False if created via
-            Pydantic deserialization and needs to pass through transformer.
+            bool: True if __init__ was called (normal initialization), False if created via
+                Pydantic deserialization and needs to pass through transformer.
         """
         return hasattr(self, "_downloader") and hasattr(self, "_remote_source")
 
