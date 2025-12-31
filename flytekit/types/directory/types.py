@@ -176,10 +176,25 @@ class FlyteDirectory(SerializableType, DataClassJsonMixin, os.PathLike, typing.G
         )
         return {"path": lv.scalar.blob.uri}
 
+    def _was_initialized_via_init(self) -> bool:
+        """Check if object was initialized via __init__ or deserialized by Pydantic.
+
+        When Pydantic deserializes a FlyteDirectory, it bypasses __init__ and directly
+        sets the 'path' attribute. This means the _downloader and _remote_source attributes
+        won't exist. We use this check to determine if we need to go through the transformer
+        to properly set up these internal attributes.
+
+        Returns:
+            bool: True if __init__ was called (normal initialization), False if created via
+                Pydantic deserialization and needs to pass through transformer.
+        """
+        return hasattr(self, "_downloader") and hasattr(self, "_remote_source")
+
     @model_validator(mode="after")
     def deserialize_flyte_dir(self, info) -> FlyteDirectory:
         if info.context is None or info.context.get("deserialize") is not True:
-            return self
+            if self._was_initialized_via_init():
+                return self
 
         pv = FlyteDirToMultipartBlobTransformer().to_python_value(
             FlyteContextManager.current_context(),
