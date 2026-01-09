@@ -36,7 +36,7 @@ config = RayJobConfig(
             pod_template=pod_template,
         )
     ],
-    head_node_config=HeadNodeConfig(requests=Resources(cpu="1", mem="1Gi"), limits=Resources(cpu="2", mem="2Gi")),
+    head_node_config=HeadNodeConfig(requests=Resources(cpu="1", mem="1Gi"), limits=Resources(cpu="2", mem="2Gi"), enable_ingress=True),
     runtime_env={"pip": ["numpy"]},
     enable_autoscaling=True,
     shutdown_after_job_finishes=True,
@@ -84,7 +84,7 @@ def test_ray_task():
                     k8s_pod=K8sPod.from_pod_template(pod_template),
                 )
             ],
-            head_group_spec=HeadGroupSpec(k8s_pod=K8sPod.from_pod_template(head_pod_template)),
+            head_group_spec=HeadGroupSpec(k8s_pod=K8sPod.from_pod_template(head_pod_template), enable_ingress=True),
             enable_autoscaling=True,
         ),
         runtime_env=base64.b64encode(json.dumps({"pip": ["numpy"]}).encode()).decode(),

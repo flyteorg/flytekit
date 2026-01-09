@@ -105,9 +105,11 @@ class HeadGroupSpec(_common.FlyteIdlEntity):
         self,
         ray_start_params: typing.Optional[typing.Dict[str, str]] = None,
         k8s_pod: typing.Optional[K8sPod] = None,
+        enable_ingress: bool = False,
     ):
         self._ray_start_params = ray_start_params
         self._k8s_pod = k8s_pod
+        self._enable_ingress = enable_ingress
 
     @property
     def ray_start_params(self):
@@ -125,6 +127,14 @@ class HeadGroupSpec(_common.FlyteIdlEntity):
         """
         return self._k8s_pod
 
+    @property
+    def enable_ingress(self):
+        """
+        Whether to enable an ingress on the head node.
+        :rtype: bool
+        """
+        return self._enable_ingress
+
     def to_flyte_idl(self):
         """
         :rtype: flyteidl.plugins._ray_pb2.HeadGroupSpec
@@ -132,6 +142,7 @@ class HeadGroupSpec(_common.FlyteIdlEntity):
         return _ray_pb2.HeadGroupSpec(
             ray_start_params=self.ray_start_params if self.ray_start_params else {},
             k8s_pod=self.k8s_pod.to_flyte_idl() if self.k8s_pod else None,
+            enable_ingress=self.enable_ingress,
         )
 
     @classmethod
@@ -143,6 +154,7 @@ class HeadGroupSpec(_common.FlyteIdlEntity):
         return cls(
             ray_start_params=proto.ray_start_params,
             k8s_pod=K8sPod.from_flyte_idl(proto.k8s_pod) if proto.HasField("k8s_pod") else None,
+            enable_ingress=proto.enable_ingress,
         )
 
 

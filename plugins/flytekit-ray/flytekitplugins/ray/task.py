@@ -29,6 +29,7 @@ _RAY_WORKER_CONTAINER_NAME = "ray-worker"
 
 @dataclass
 class HeadNodeConfig:
+    enable_ingress: bool = False
     ray_start_params: typing.Optional[typing.Dict[str, str]] = None
     pod_template: typing.Optional[PodTemplate] = None
     requests: Optional[Resources] = None
@@ -122,6 +123,7 @@ class RayFunctionTask(PythonFunctionTask):
             head_group_spec = HeadGroupSpec(
                 cfg.head_node_config.ray_start_params,
                 K8sPod.from_pod_template(head_pod_template) if head_pod_template else None,
+                enable_ingress=cfg.head_node_config.enable_ingress,
             )
 
         worker_group_spec: typing.List[WorkerGroupSpec] = []
