@@ -21,6 +21,7 @@ from types import GenericAlias
 from typing import Any, Dict, List, NamedTuple, Optional, Type, cast
 
 import msgpack
+from cachetools import LRUCache
 from dataclasses_json import DataClassJsonMixin, dataclass_json
 from flyteidl.core import literals_pb2
 from fsspec.asyn import _run_coros_in_chunks  # pylint: disable=W0212
@@ -1087,6 +1088,63 @@ class EnumTransformer(TypeTransformer[enum.Enum]):
             raise TypeTransformerFailedError(f"Value {v} is not in Enum {t}")
 
 
+class LiteralTypeTransformer(TypeTransformer[object]):
+    def __init__(self):
+        super().__init__("LiteralTypeTransformer", object)
+
+    @classmethod
+    def get_base_type(cls, t: Type) -> Type:
+        args = get_args(t)
+        if not args:
+            raise TypeTransformerFailedError("Literal must have at least one value")
+
+        base_type = type(args[0])
+        if not all(type(a) == base_type for a in args):
+            raise TypeTransformerFailedError("All values must be of the same type")
+
+        return base_type
+
+    def get_literal_type(self, t: Type) -> LiteralType:
+        base_type = self.get_base_type(t)
+        vals = list(get_args(t))
+        ann = TypeAnnotationModel(annotations={"literal_values": vals})
+        if base_type is str:
+            simple = SimpleType.STRING
+        elif base_type is int:
+            simple = SimpleType.INTEGER
+        elif base_type is float:
+            simple = SimpleType.FLOAT
+        elif base_type is bool:
+            simple = SimpleType.BOOLEAN
+        elif base_type is datetime.datetime:
+            simple = SimpleType.DATETIME
+        elif base_type is datetime.timedelta:
+            simple = SimpleType.DURATION
+        else:
+            raise TypeTransformerFailedError(f"Unsupported type: {base_type}")
+        return LiteralType(simple=simple, annotation=ann)
+
+    def to_literal(self, ctx: FlyteContext, python_val: T, python_type: Type, expected: LiteralType) -> Literal:
+        base_type = self.get_base_type(python_type)
+        base_transformer: TypeTransformer[object] = TypeEngine.get_transformer(base_type)
+        return base_transformer.to_literal(ctx, python_val, python_type, expected)
+
+    def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type) -> object:
+        base_type = self.get_base_type(expected_python_type)
+        base_transformer: TypeTransformer[object] = TypeEngine.get_transformer(base_type)
+        return base_transformer.to_python_value(ctx, lv, base_type)
+
+    def guess_python_type(self, literal_type: LiteralType) -> Type:
+        if literal_type.annotation and literal_type.annotation.annotations:
+            return typing.Literal[tuple(literal_type.annotation.annotations.get("literal_values"))]  # type: ignore
+        raise ValueError(f"LiteralType transformer cannot reverse {literal_type}")
+
+    def assert_type(self, python_type: Type, python_val: T):
+        base_type = self.get_base_type(python_type)
+        base_transformer: TypeTransformer[object] = TypeEngine.get_transformer(base_type)
+        return base_transformer.assert_type(base_type, python_val)
+
+
 def _handle_json_schema_property(
     property_key: str,
     property_val: dict,
@@ -1173,7 +1231,9 @@ class TypeEngine(typing.Generic[T]):
     _RESTRICTED_TYPES: typing.List[type] = []
     _DATACLASS_TRANSFORMER: TypeTransformer = DataclassTransformer()  # type: ignore
     _ENUM_TRANSFORMER: TypeTransformer = EnumTransformer()  # type: ignore
+    _LITERAL_TYPE_TRANSFORMER: TypeTransformer = LiteralTypeTransformer()
     lazy_import_lock = threading.Lock()
+    _LITERAL_CACHE: LRUCache = LRUCache(maxsize=128)
 
     @classmethod
     def register(
@@ -1221,6 +1281,9 @@ class TypeEngine(typing.Generic[T]):
         if inspect.isclass(python_type) and issubclass(python_type, enum.Enum):
             # Special case: prevent that for a type `FooEnum(str, Enum)`, the str transformer is used.
             return cls._ENUM_TRANSFORMER
+
+        if get_origin(python_type) == typing.Literal:
+            return cls._LITERAL_TYPE_TRANSFORMER
 
         if hasattr(python_type, "__origin__"):
             # If the type is a generic type, we should check the origin type. But consider the case like Iterator[JSON]
@@ -1378,6 +1441,22 @@ class TypeEngine(typing.Generic[T]):
         return hsh
 
     @classmethod
+    def _get_literal_cache_key(cls, python_val: typing.Any, python_type: Type[T]) -> Optional[tuple]:
+        import cloudpickle
+
+        val_hash: int
+        type_hash: int
+        try:
+            val_hash = hash(cloudpickle.dumps(python_val))
+            type_hash = hash(cloudpickle.dumps(python_type))
+
+            return (val_hash, type_hash)
+
+        except Exception:
+            logger.warning(f"Could not hash python_val: {python_val} or python_type: {python_type}")
+            return None
+
+    @classmethod
     def to_literal(
         cls, ctx: FlyteContext, python_val: typing.Any, python_type: Type[T], expected: LiteralType
     ) -> Literal:
@@ -1386,6 +1465,10 @@ class TypeEngine(typing.Generic[T]):
         to_literal function, and allowing this to_literal function, to then invoke yet another async function,
         namely an async transformer.
         """
+        key = cls._get_literal_cache_key(python_val, python_type)
+        if key is not None and key in cls._LITERAL_CACHE:
+            return cls._LITERAL_CACHE[key]
+
         from flytekit.core.promise import Promise
 
         cls.to_literal_checks(python_val, python_type, expected)
@@ -1406,6 +1489,10 @@ class TypeEngine(typing.Generic[T]):
 
         modify_literal_uris(lv)
         lv.hash = cls.calculate_hash(python_val, python_type)
+
+        if key is not None:
+            cls._LITERAL_CACHE[key] = lv
+
         return lv
 
     @classmethod
@@ -1543,21 +1630,24 @@ class TypeEngine(typing.Generic[T]):
                 f" than allowed by the input spec {len(python_interface_inputs)}"
             )
         kwargs = {}
-        try:
-            for i, k in enumerate(lm.literals):
-                kwargs[k] = asyncio.create_task(
-                    TypeEngine.async_to_python_value(ctx, lm.literals[k], python_interface_inputs[k])
-                )
-            await asyncio.gather(*kwargs.values())
-        except Exception as e:
-            raise TypeTransformerFailedError(
-                f"Error converting input '{k}' at position {i}:\n"
-                f"Literal value: {lm.literals[k]}\n"
-                f"Expected Python type: {python_interface_inputs[k]}\n"
-                f"Exception: {e}"
+        for i, k in enumerate(lm.literals):
+            kwargs[k] = asyncio.create_task(
+                TypeEngine.async_to_python_value(ctx, lm.literals[k], python_interface_inputs[k])
             )
+        if kwargs:
+            await asyncio.wait(kwargs.values())
 
-        kwargs = {k: v.result() for k, v in kwargs.items() if v is not None}
+        for k, t in kwargs.items():
+            try:
+                kwargs[k] = t.result()
+            except Exception as e:
+                raise TypeTransformerFailedError(
+                    f"Error converting input '{k}':\n"
+                    f"Literal value: {lm.literals[k]!r}\n"
+                    f"Expected Python type: {python_interface_inputs[k]!r}\n"
+                    f"Exception: {e}"
+                )
+
         return kwargs
 
     @classmethod
@@ -2009,7 +2099,7 @@ class UnionTransformer(AsyncTypeTransformer[T]):
                 res_tag = trans.name
                 found_res = True
             except Exception as e:
-                logger.debug(f"Failed to convert from {lv} to {v} with error: {e}")
+                logger.debug(f"Failed to convert from {repr(lv)} to {v} with error: {e}")
 
         if is_ambiguous:
             raise TypeError(
@@ -2020,7 +2110,7 @@ class UnionTransformer(AsyncTypeTransformer[T]):
         if found_res:
             return res
 
-        raise TypeError(f"Cannot convert from {lv} to {expected_python_type} (using tag {union_tag})")
+        raise TypeError(f"Cannot convert from {repr(lv)} to {expected_python_type} (using tag {union_tag})")
 
     def guess_python_type(self, literal_type: LiteralType) -> type:
         if literal_type.union_type is not None:

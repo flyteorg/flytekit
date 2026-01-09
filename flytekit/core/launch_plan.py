@@ -14,6 +14,7 @@ from flytekit.models import interface as _interface_models
 from flytekit.models import literals as _literal_models
 from flytekit.models import schedule as _schedule_model
 from flytekit.models import security
+from flytekit.models.concurrency import ConcurrencyPolicy
 from flytekit.models.core import workflow as _workflow_model
 
 
@@ -114,6 +115,7 @@ class LaunchPlan(object):
         trigger: Optional[LaunchPlanTriggerBase] = None,
         overwrite_cache: Optional[bool] = None,
         auto_activate: bool = False,
+        concurrency: Optional[ConcurrencyPolicy] = None,
     ) -> LaunchPlan:
         ctx = FlyteContextManager.current_context()
         default_inputs = default_inputs or {}
@@ -167,6 +169,7 @@ class LaunchPlan(object):
             trigger=trigger,
             overwrite_cache=overwrite_cache,
             auto_activate=auto_activate,
+            concurrency=concurrency,
         )
 
         # This is just a convenience - we'll need the fixed inputs LiteralMap for when serializing the Launch Plan out
@@ -198,6 +201,7 @@ class LaunchPlan(object):
         trigger: Optional[LaunchPlanTriggerBase] = None,
         overwrite_cache: Optional[bool] = None,
         auto_activate: bool = False,
+        concurrency: Optional[ConcurrencyPolicy] = None,
     ) -> LaunchPlan:
         """
         This function offers a friendlier interface for creating launch plans. If the name for the launch plan is not
@@ -225,8 +229,8 @@ class LaunchPlan(object):
             parallelism/concurrency of MapTasks is independent from this.
         :param trigger: [alpha] This is a new syntax for specifying schedules.
         :param overwrite_cache: If set to True, the execution will always overwrite cache
-        :param auto_activate: If set to True, the launch plan will be activated automatically on registration.
-         Default is False.
+        :param auto_activate: If set to True, the launch plan will be activated automatically on registration. Default is False.
+        :param concurrency: Defines execution concurrency limits and policy when limit is reached
         """
         if name is None and (
             default_inputs is not None
@@ -279,6 +283,7 @@ class LaunchPlan(object):
                 ("security_context", security_context, cached_outputs["_security_context"]),
                 ("overwrite_cache", overwrite_cache, cached_outputs["_overwrite_cache"]),
                 ("auto_activate", auto_activate, cached_outputs["_auto_activate"]),
+                ("concurrency", concurrency, cached_outputs["_concurrency"]),
             ]:
                 if new != cached:
                     raise AssertionError(
@@ -311,6 +316,7 @@ class LaunchPlan(object):
                 trigger=trigger,
                 overwrite_cache=overwrite_cache,
                 auto_activate=auto_activate,
+                concurrency=concurrency,
             )
         LaunchPlan.CACHE[name or workflow.name] = lp
         return lp
@@ -331,6 +337,7 @@ class LaunchPlan(object):
         trigger: Optional[LaunchPlanTriggerBase] = None,
         overwrite_cache: Optional[bool] = None,
         auto_activate: bool = False,
+        concurrency: Optional[ConcurrencyPolicy] = None,
     ):
         self._name = name
         self._workflow = workflow
@@ -351,6 +358,7 @@ class LaunchPlan(object):
         self._trigger = trigger
         self._overwrite_cache = overwrite_cache
         self._auto_activate = auto_activate
+        self._concurrency = concurrency
 
         FlyteEntities.entities.append(self)
 
@@ -454,6 +462,10 @@ class LaunchPlan(object):
     @property
     def trigger(self) -> Optional[LaunchPlanTriggerBase]:
         return self._trigger
+
+    @property
+    def concurrency(self) -> Optional[ConcurrencyPolicy]:
+        return self._concurrency
 
     @property
     def should_auto_activate(self) -> bool:

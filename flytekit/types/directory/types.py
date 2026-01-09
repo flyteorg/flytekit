@@ -49,6 +49,28 @@ PathType = typing.Union[str, os.PathLike]
 def noop(): ...
 
 
+class _FlyteDirectoryDownloader:
+    """Downloader for FlyteDirectory that uses current context when called."""
+
+    def __init__(
+        self, remote_path: str, local_path: str, is_multipart: bool = True, batch_size: typing.Optional[int] = None
+    ):
+        self.remote_path = remote_path
+        self.local_path = local_path
+        self.is_multipart = is_multipart
+        self.batch_size = batch_size
+
+    def __call__(self):
+        """Download the directory using current context's synced get_data method."""
+        current_ctx = FlyteContextManager.current_context()
+        return current_ctx.file_access.get_data(
+            remote_path=self.remote_path,
+            local_path=self.local_path,
+            is_multipart=self.is_multipart,
+            batch_size=self.batch_size,
+        )
+
+
 @dataclass
 class FlyteDirectory(SerializableType, DataClassJsonMixin, os.PathLike, typing.Generic[T]):
     path: PathType = field(default=None, metadata=config(mm_field=fields.String()))  # type: ignore
@@ -154,10 +176,25 @@ class FlyteDirectory(SerializableType, DataClassJsonMixin, os.PathLike, typing.G
         )
         return {"path": lv.scalar.blob.uri}
 
+    def _was_initialized_via_init(self) -> bool:
+        """Check if object was initialized via __init__ or deserialized by Pydantic.
+
+        When Pydantic deserializes a FlyteDirectory, it bypasses __init__ and directly
+        sets the 'path' attribute. This means the _downloader and _remote_source attributes
+        won't exist. We use this check to determine if we need to go through the transformer
+        to properly set up these internal attributes.
+
+        Returns:
+            bool: True if __init__ was called (normal initialization), False if created via
+                Pydantic deserialization and needs to pass through transformer.
+        """
+        return hasattr(self, "_downloader") and hasattr(self, "_remote_source")
+
     @model_validator(mode="after")
     def deserialize_flyte_dir(self, info) -> FlyteDirectory:
         if info.context is None or info.context.get("deserialize") is not True:
-            return self
+            if self._was_initialized_via_init():
+                return self
 
         pv = FlyteDirToMultipartBlobTransformer().to_python_value(
             FlyteContextManager.current_context(),
@@ -409,9 +446,11 @@ class FlyteDirectory(SerializableType, DataClassJsonMixin, os.PathLike, typing.G
                 paths.append(flyte_file)
             else:
                 local_folder = file_access.get_random_local_directory()
-                downloader = partial(file_access.get_data, remote_path, local_folder, is_multipart=True)
+                dir_downloader: typing.Callable = _FlyteDirectoryDownloader(
+                    remote_path=remote_path, local_path=local_folder, is_multipart=True
+                )
 
-                flyte_directory: FlyteDirectory = FlyteDirectory(path=local_folder, downloader=downloader)
+                flyte_directory: FlyteDirectory = FlyteDirectory(path=local_folder, downloader=dir_downloader)
                 flyte_directory._remote_source = remote_path
                 paths.append(flyte_directory)
 
@@ -684,7 +723,9 @@ class FlyteDirToMultipartBlobTransformer(AsyncTypeTransformer[FlyteDirectory]):
 
         batch_size = get_batch_size(expected_python_type)
 
-        _downloader = partial(ctx.file_access.get_data, uri, local_folder, is_multipart=True, batch_size=batch_size)
+        _downloader = _FlyteDirectoryDownloader(
+            remote_path=uri, local_path=local_folder, is_multipart=True, batch_size=batch_size
+        )
 
         expected_format = self.get_format(expected_python_type)
 

@@ -7,16 +7,16 @@ DOWNLOAD_DIR = Path.home() / ".code-server"
 HOURS_TO_SECONDS = 60 * 60
 DEFAULT_UP_SECONDS = 10 * HOURS_TO_SECONDS  # 10 hours
 DEFAULT_CODE_SERVER_REMOTE_PATHS = {
-    "amd64": "https://github.com/coder/code-server/releases/download/v4.18.0/code-server-4.18.0-linux-amd64.tar.gz",
-    "arm64": "https://github.com/coder/code-server/releases/download/v4.18.0/code-server-4.18.0-linux-arm64.tar.gz",
+    "amd64": "https://github.com/coder/code-server/releases/download/v4.106.3/code-server-4.106.3-linux-amd64.tar.gz",
+    "arm64": "https://github.com/coder/code-server/releases/download/v4.106.3/code-server-4.106.3-linux-arm64.tar.gz",
 }
 DEFAULT_CODE_SERVER_EXTENSIONS = [
     "https://raw.githubusercontent.com/flyteorg/flytetools/master/flytekitplugins/flyin/ms-python.python-2023.20.0.vsix",
     "https://raw.githubusercontent.com/flyteorg/flytetools/master/flytekitplugins/flyin/ms-toolsai.jupyter-2023.9.100.vsix",
 ]
 DEFAULT_CODE_SERVER_DIR_NAMES = {
-    "amd64": "code-server-4.18.0-linux-amd64",
-    "arm64": "code-server-4.18.0-linux-arm64",
+    "amd64": "code-server-4.106.3-linux-amd64",
+    "arm64": "code-server-4.106.3-linux-arm64",
 }
 
 # Duration to pause the checking of the heartbeat file until the next one
