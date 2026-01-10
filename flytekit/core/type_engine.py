@@ -565,10 +565,14 @@ class DataclassTransformer(TypeTransformer[object]):
                     else:
                         expected_type = expected_fields_dict[k]
                         original_type = type(v)
+                        is_optional = False
                         if UnionTransformer.is_optional_type(expected_type):
+                            is_optional = True
                             expected_type = UnionTransformer.get_sub_type_in_optional(expected_type)
 
-                        if UnionTransformer.is_union(expected_type) and UnionTransformer.in_union(
+                        if is_optional and original_type is type(None):
+                            pass
+                        elif UnionTransformer.is_union(expected_type) and UnionTransformer.in_union(
                             original_type, expected_type
                         ):
                             pass
