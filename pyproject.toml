@@ -9,7 +9,7 @@ authors = [{ name = "Flyte Contributors", email = "admin@flyte.org" }]
 description = "Flyte SDK for Python"
 license = { text = "Apache-2.0" }
 readme = { file = "README.md", content-type = "text/markdown" }
-requires-python = ">=3.9,<3.13"
+requires-python = ">=3.9,<3.15"
 dependencies = [
     # Please maintain an alphabetical order in the following list
     "adlfs>=2023.3.0",
@@ -60,6 +60,8 @@ classifiers = [
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
     "Topic :: Scientific/Engineering",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
     "Topic :: Software Development",
