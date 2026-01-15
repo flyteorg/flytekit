@@ -459,7 +459,7 @@ class Execution(_common_models.FlyteIdlEntity):
         self._closure = closure
 
     @property
-    def id(self):
+    def id(self) -> _identifier.WorkflowExecutionIdentifier:
         """
         :rtype: flytekit.models.core.identifier.WorkflowExecutionIdentifier
         """
