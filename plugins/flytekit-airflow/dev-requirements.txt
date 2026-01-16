@@ -850,7 +850,7 @@ pyarrow==16.1.0
     #   pandas-gbq
 pyarrow-hotfix==0.6
     # via apache-beam
-pyasn1==0.6.1
+pyasn1==0.6.2
     # via
     #   oauth2client
     #   pyasn1-modules
