@@ -33,8 +33,22 @@ def test_pytorch_task(serialization_settings: SerializationSettings):
     assert my_pytorch_task.task_config is not None
 
     assert my_pytorch_task.get_custom(serialization_settings) == {
-        "workerReplicas": {"replicas": 10, "resources": {}},
-        "masterReplicas": {"replicas": 1, "resources": {}},
+        "workerReplicas": {
+            "common": {
+                "replicas": 10,
+                "resources": {},
+            },
+            "replicas": 10,
+            "resources": {},
+        },
+        "masterReplicas": {
+            "common": {
+                "replicas": 1,
+                "resources": {},
+            },
+            "replicas": 1,
+            "resources": {},
+        },
     }
     assert my_pytorch_task.resources.limits == Resources()
     assert my_pytorch_task.resources.requests == Resources(cpu="1")
@@ -64,10 +78,18 @@ def test_pytorch_task_with_default_config(serialization_settings: SerializationS
 
     expected_dict = {
         "masterReplicas": {
+            "common": {
+                "replicas": 1,
+                "resources": {},
+            },
             "replicas": 1,
             "resources": {},
         },
         "workerReplicas": {
+            "common": {
+                "replicas": 1,
+                "resources": {},
+            },
             "replicas": 1,
             "resources": {},
         },
@@ -114,6 +136,21 @@ def test_pytorch_task_with_custom_config(serialization_settings: SerializationSe
 
     expected_custom_dict = {
         "workerReplicas": {
+            "common": {
+                "replicas": 5,
+                "image": "worker:latest",
+                "resources": {
+                    "requests": [
+                        {"name": "CPU", "value": "2"},
+                        {"name": "MEMORY", "value": "2Gi"},
+                    ],
+                    "limits": [
+                        {"name": "CPU", "value": "4"},
+                        {"name": "MEMORY", "value": "2Gi"},
+                    ],
+                },
+                "restartPolicy": "RESTART_POLICY_ON_FAILURE",
+            },
             "replicas": 5,
             "image": "worker:latest",
             "resources": {
@@ -129,6 +166,11 @@ def test_pytorch_task_with_custom_config(serialization_settings: SerializationSe
             "restartPolicy": "RESTART_POLICY_ON_FAILURE",
         },
         "masterReplicas": {
+            "common": {
+                "resources": {},
+                "replicas": 1,
+                "restartPolicy": "RESTART_POLICY_ALWAYS",
+            },
             "resources": {},
             "replicas": 1,
             "restartPolicy": "RESTART_POLICY_ALWAYS",

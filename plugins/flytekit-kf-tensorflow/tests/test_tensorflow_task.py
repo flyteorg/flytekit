@@ -44,16 +44,29 @@ def test_tensorflow_task_with_default_config(serialization_settings: Serializati
 
     expected_dict = {
         "chiefReplicas": {
+            "common": {
+                "resources": {},
+            },
             "resources": {},
         },
         "workerReplicas": {
+            "common": {
+                "replicas": 1,
+                "resources": {},
+            },
             "replicas": 1,
             "resources": {},
         },
         "psReplicas": {
+            "common": {
+                "resources": {},
+            },
             "resources": {},
         },
         "evaluatorReplicas": {
+            "common": {
+                "resources": {},
+            },
             "resources": {},
         },
     }
@@ -106,6 +119,14 @@ def test_tensorflow_task_with_custom_config(serialization_settings: Serializatio
 
     expected_custom_dict = {
         "chiefReplicas": {
+            "common": {
+                "replicas": 1,
+                "image": "chief:latest",
+                "resources": {
+                    "requests": [{"name": "CPU", "value": "1"}],
+                    "limits": [{"name": "CPU", "value": "2"}],
+                },
+            },
             "replicas": 1,
             "image": "chief:latest",
             "resources": {
@@ -114,6 +135,21 @@ def test_tensorflow_task_with_custom_config(serialization_settings: Serializatio
             },
         },
         "workerReplicas": {
+            "common": {
+                "replicas": 5,
+                "image": "worker:latest",
+                "resources": {
+                    "requests": [
+                        {"name": "CPU", "value": "2"},
+                        {"name": "MEMORY", "value": "2Gi"},
+                    ],
+                    "limits": [
+                        {"name": "CPU", "value": "4"},
+                        {"name": "MEMORY", "value": "2Gi"},
+                    ],
+                },
+                "restartPolicy": "RESTART_POLICY_ON_FAILURE",
+            },
             "replicas": 5,
             "image": "worker:latest",
             "resources": {
@@ -129,11 +165,31 @@ def test_tensorflow_task_with_custom_config(serialization_settings: Serializatio
             "restartPolicy": "RESTART_POLICY_ON_FAILURE",
         },
         "psReplicas": {
+            "common": {
+                "resources": {},
+                "replicas": 2,
+                "restartPolicy": "RESTART_POLICY_ALWAYS",
+            },
             "resources": {},
             "replicas": 2,
             "restartPolicy": "RESTART_POLICY_ALWAYS",
         },
         "evaluatorReplicas": {
+            "common": {
+                "replicas": 5,
+                "image": "evaluator:latest",
+                "resources": {
+                    "requests": [
+                        {"name": "CPU", "value": "2"},
+                        {"name": "MEMORY", "value": "2Gi"},
+                    ],
+                    "limits": [
+                        {"name": "CPU", "value": "4"},
+                        {"name": "MEMORY", "value": "2Gi"},
+                    ],
+                },
+                "restartPolicy": "RESTART_POLICY_ON_FAILURE",
+            },
             "replicas": 5,
             "image": "evaluator:latest",
             "resources": {
@@ -185,16 +241,29 @@ def test_tensorflow_task_with_run_policy(serialization_settings: SerializationSe
 
     expected_dict = {
         "chiefReplicas": {
+            "common": {
+                "resources": {},
+            },
             "resources": {},
         },
         "workerReplicas": {
+            "common": {
+                "replicas": 1,
+                "resources": {},
+            },
             "replicas": 1,
             "resources": {},
         },
         "psReplicas": {
+            "common": {
+                "resources": {},
+            },
             "resources": {},
         },
         "evaluatorReplicas": {
+            "common": {
+                "resources": {},
+            },
             "resources": {},
         },
         "runPolicy": {
@@ -233,18 +302,34 @@ def test_tensorflow_task():
 
     expected_dict = {
         "chiefReplicas": {
+            "common": {
+                "replicas": 1,
+                "resources": {},
+            },
             "replicas": 1,
             "resources": {},
         },
         "workerReplicas": {
+            "common": {
+                "replicas": 10,
+                "resources": {},
+            },
             "replicas": 10,
             "resources": {},
         },
         "psReplicas": {
+            "common": {
+                "replicas": 1,
+                "resources": {},
+            },
             "replicas": 1,
             "resources": {},
         },
         "evaluatorReplicas": {
+            "common": {
+                "replicas": 1,
+                "resources": {},
+            },
             "replicas": 1,
             "resources": {},
         },
