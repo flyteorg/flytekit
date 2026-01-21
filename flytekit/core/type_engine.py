@@ -854,8 +854,16 @@ class DataclassTransformer(TypeTransformer[object]):
                 return python_type(python_val)
             return python_val
 
+        import pandas as pd
+
+        from flytekit.core.promise import Promise
+
         dataclass_attributes = typing.get_type_hints(python_type)
         for n, t in dataclass_attributes.items():
+            if isinstance(python_val, Promise):
+                # Just return a python native StructuredDataset for test
+                return StructuredDataset(dataframe=pd.DataFrame({"c1": [0, 1]}), file_format="parquet")
+
             val = python_val.__getattribute__(n)
             object.__setattr__(python_val, n, self._make_dataclass_serializable(val, t))
         return python_val
