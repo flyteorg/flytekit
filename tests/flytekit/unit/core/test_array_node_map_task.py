@@ -1,3 +1,5 @@
+import math
+import sys
 import functools
 from datetime import timedelta
 import os
@@ -9,10 +11,17 @@ from typing import List
 import pytest
 from flyteidl.core import workflow_pb2 as _core_workflow
 
-from flytekit import dynamic, map_task, task, workflow, eager, PythonFunctionTask
-from flytekit.configuration import FastSerializationSettings, Image, ImageConfig, SerializationSettings
+from flytekit import dynamic, map_task, task, workflow, eager, PythonFunctionTask, ImageSpec
+from flytekit.configuration import (
+    FastSerializationSettings,
+    Image,
+    ImageConfig,
+    SerializationSettings,
+)
 from flytekit.core import context_manager
 from flytekit.core.array_node_map_task import ArrayNodeMapTask, ArrayNodeMapTaskResolver
+from flytekit.core.base_task import kwtypes
+from flytekit.core.container_task import ContainerTask
 from flytekit.core.task import TaskMetadata
 from flytekit.core.type_engine import TypeEngine
 from flytekit.extras.accelerators import GPUAccelerator
@@ -96,12 +105,16 @@ def test_remote_execution(serialization_settings):
 
     ctx = context_manager.FlyteContextManager.current_context()
     with context_manager.FlyteContextManager.with_context(
-            ctx.with_execution_state(
-                ctx.execution_state.with_params(mode=context_manager.ExecutionState.Mode.TASK_EXECUTION)
+        ctx.with_execution_state(
+            ctx.execution_state.with_params(
+                mode=context_manager.ExecutionState.Mode.TASK_EXECUTION
             )
+        )
     ) as ctx:
         t = map_task(say_hello)
-        lm = TypeEngine.dict_to_literal_map(ctx, {"name": ["earth", "mars"]}, type_hints={"name": typing.List[str]})
+        lm = TypeEngine.dict_to_literal_map(
+            ctx, {"name": ["earth", "mars"]}, type_hints={"name": typing.List[str]}
+        )
         res = t.dispatch_execute(ctx, lm)
         assert len(res.literals) == 1
         assert res.literals["o0"].scalar.primitive.string_value == "hello earth!"
@@ -121,7 +134,9 @@ def test_serialization(serialization_settings):
         return a + 1
 
     arraynode_maptask = map_task(t1, metadata=TaskMetadata(retries=2))
-    task_spec = get_serializable(OrderedDict(), serialization_settings, arraynode_maptask)
+    task_spec = get_serializable(
+        OrderedDict(), serialization_settings, arraynode_maptask
+    )
 
     assert task_spec.template.metadata.retries.retries == 2
     assert task_spec.template.type == "python-task"
@@ -153,14 +168,18 @@ def test_serialization(serialization_settings):
 
 
 def test_fast_serialization(serialization_settings):
-    serialization_settings.fast_serialization_settings = FastSerializationSettings(enabled=True)
+    serialization_settings.fast_serialization_settings = FastSerializationSettings(
+        enabled=True
+    )
 
     @task
     def t1(a: int) -> int:
         return a + 1
 
     arraynode_maptask = map_task(t1, metadata=TaskMetadata(retries=2))
-    task_spec = get_serializable(OrderedDict(), serialization_settings, arraynode_maptask)
+    task_spec = get_serializable(
+        OrderedDict(), serialization_settings, arraynode_maptask
+    )
 
     assert task_spec.template.container.args == [
         "pyflyte-fast-execute",
@@ -201,7 +220,11 @@ def test_fast_serialization(serialization_settings):
         ({}, {"concurrency": 2}, False),
         ({}, {"min_successes": 3}, False),
         ({}, {"min_success_ratio": 0.2}, False),
-        ({}, {"concurrency": 10, "min_successes": 999, "min_success_ratio": 0.2}, False),
+        (
+            {},
+            {"concurrency": 10, "min_successes": 999, "min_success_ratio": 0.2},
+            False,
+        ),
         ({"concurrency": 1}, {"concurrency": 2}, False),
         ({"concurrency": 42}, {"concurrency": 42}, True),
         ({"min_successes": 1}, {"min_successes": 2}, False),
@@ -241,7 +264,11 @@ def test_inputs_outputs_length():
         return f"{a} - {b} - {c}"
 
     m = map_task(many_inputs)
-    assert m.python_interface.inputs == {"a": List[int], "b": List[str], "c": List[float]}
+    assert m.python_interface.inputs == {
+        "a": List[int],
+        "b": List[str],
+        "c": List[float],
+    }
     assert (
         m.name
         == "tests.flytekit.unit.core.test_array_node_map_task.map_many_inputs_6b3bd0353da5de6e84d7982921ead2b3-arraynode"
@@ -315,24 +342,46 @@ def test_partials_local_execute():
     m2 = map_task(functools.partial(task2, c=fixed_param_c))(a=param_a, b=param_b)
     m3 = map_task(functools.partial(task3, c=fixed_param_c))(a=param_a, b=param_b)
 
-    m4 = ArrayNodeMapTask(task1, bound_inputs_values={"c": fixed_param_c})(a=param_a, b=param_b)
-    m5 = ArrayNodeMapTask(task2, bound_inputs_values={"c": fixed_param_c})(a=param_a, b=param_b)
-    m6 = ArrayNodeMapTask(task3, bound_inputs_values={"c": fixed_param_c})(a=param_a, b=param_b)
+    m4 = ArrayNodeMapTask(task1, bound_inputs_values={"c": fixed_param_c})(
+        a=param_a, b=param_b
+    )
+    m5 = ArrayNodeMapTask(task2, bound_inputs_values={"c": fixed_param_c})(
+        a=param_a, b=param_b
+    )
+    m6 = ArrayNodeMapTask(task3, bound_inputs_values={"c": fixed_param_c})(
+        a=param_a, b=param_b
+    )
 
-    assert m1 == m2 == m3 == m4 == m5 == m6 == ["1 - 0.1 - c", "2 - 0.2 - c", "3 - 0.3 - c"]
+    assert (
+        m1
+        == m2
+        == m3
+        == m4
+        == m5
+        == m6
+        == ["1 - 0.1 - c", "2 - 0.2 - c", "3 - 0.3 - c"]
+    )
 
     list_param_a = [[1, 2, 3], [4, 5, 6], [7, 8, 9]]
     list_param_b = [[0.1, 0.2, 0.3], [0.4, 0.5, 0.6], [0.7, 0.8, 0.9]]
     fixed_list_param_c = ["c", "d", "e"]
 
-    m7 = map_task(functools.partial(task4, c=fixed_list_param_c))(a=list_param_a, b=list_param_b)
-    m8 = ArrayNodeMapTask(task4, bound_inputs_values={"c": fixed_list_param_c})(a=list_param_a, b=list_param_b)
+    m7 = map_task(functools.partial(task4, c=fixed_list_param_c))(
+        a=list_param_a, b=list_param_b
+    )
+    m8 = ArrayNodeMapTask(task4, bound_inputs_values={"c": fixed_list_param_c})(
+        a=list_param_a, b=list_param_b
+    )
 
-    assert m7 == m8 == [
-        ['1 - 0.1 - c', '2 - 0.2 - d', '3 - 0.3 - e'],
-        ['4 - 0.4 - c', '5 - 0.5 - d', '6 - 0.6 - e'],
-        ['7 - 0.7 - c', '8 - 0.8 - d', '9 - 0.9 - e']
-    ]
+    assert (
+        m7
+        == m8
+        == [
+            ["1 - 0.1 - c", "2 - 0.2 - d", "3 - 0.3 - e"],
+            ["4 - 0.4 - c", "5 - 0.5 - d", "6 - 0.6 - e"],
+            ["7 - 0.7 - c", "8 - 0.8 - d", "9 - 0.9 - e"],
+        ]
+    )
 
     with pytest.raises(ValueError):
         map_task(functools.partial(task1, c=fixed_list_param_c))(a=param_a, b=param_b)
@@ -361,15 +410,24 @@ def test_bound_inputs_collision():
     param_d = "d"
 
     partial_task = functools.partial(task1, c=param_c)
-    m1 = ArrayNodeMapTask(partial_task, bound_inputs_values={"c": param_d})(a=param_a, b=param_b)
+    m1 = ArrayNodeMapTask(partial_task, bound_inputs_values={"c": param_d})(
+        a=param_a, b=param_b
+    )
 
     assert m1 == ["1 - 0.1 - d", "2 - 0.2 - d", "3 - 0.3 - d"]
 
-    with pytest.raises(ValueError, match="bound_inputs and bound_inputs_values should have the same keys if both set"):
-        ArrayNodeMapTask(task1, bound_inputs_values={"c": param_c}, bound_inputs={"b"})(a=param_a, b=param_b)
+    with pytest.raises(
+        ValueError,
+        match="bound_inputs and bound_inputs_values should have the same keys if both set",
+    ):
+        ArrayNodeMapTask(task1, bound_inputs_values={"c": param_c}, bound_inputs={"b"})(
+            a=param_a, b=param_b
+        )
 
     # no error raised
-    ArrayNodeMapTask(task1, bound_inputs_values={"c": param_c}, bound_inputs={"c"})(a=param_a, b=param_b)
+    ArrayNodeMapTask(task1, bound_inputs_values={"c": param_c}, bound_inputs={"c"})(
+        a=param_a, b=param_b
+    )
 
 
 @task()
@@ -385,7 +443,9 @@ def task_2() -> int:
 def get_wf_bound_input(serialization_settings):
     @workflow()
     def wf1() -> List[str]:
-        return ArrayNodeMapTask(task_1, bound_inputs_values={"a": 1})(b=[1, 2, 3], c=["a", "b", "c"])
+        return ArrayNodeMapTask(task_1, bound_inputs_values={"a": 1})(
+            b=[1, 2, 3], c=["a", "b", "c"]
+        )
 
     return wf1
 
@@ -393,7 +453,9 @@ def get_wf_bound_input(serialization_settings):
 def get_wf_partials(serialization_settings):
     @workflow()
     def wf2() -> List[str]:
-        return ArrayNodeMapTask(functools.partial(task_1, a=1))(b=[1, 2, 3], c=["a", "b", "c"])
+        return ArrayNodeMapTask(functools.partial(task_1, a=1))(
+            b=[1, 2, 3], c=["a", "b", "c"]
+        )
 
     return wf2
 
@@ -403,7 +465,9 @@ def get_wf_bound_input_upstream(serialization_settings):
     @workflow()
     def wf3() -> List[str]:
         a = task_2()
-        return ArrayNodeMapTask(task_1, bound_inputs_values={"a": a})(b=[1, 2, 3], c=["a", "b", "c"])
+        return ArrayNodeMapTask(task_1, bound_inputs_values={"a": a})(
+            b=[1, 2, 3], c=["a", "b", "c"]
+        )
 
     return wf3
 
@@ -413,7 +477,9 @@ def get_wf_partials_upstream(serialization_settings):
     @workflow()
     def wf4() -> List[str]:
         a = task_2()
-        return ArrayNodeMapTask(functools.partial(task_1, a=a))(b=[1, 2, 3], c=["a", "b", "c"])
+        return ArrayNodeMapTask(functools.partial(task_1, a=a))(
+            b=[1, 2, 3], c=["a", "b", "c"]
+        )
 
     return wf4
 
@@ -422,7 +488,9 @@ def get_wf_bound_input_partials_collision(serialization_settings):
 
     @workflow()
     def wf5() -> List[str]:
-        return ArrayNodeMapTask(functools.partial(task_1, a=1), bound_inputs_values={"a": 2})(b=[1, 2, 3], c=["a", "b", "c"])
+        return ArrayNodeMapTask(
+            functools.partial(task_1, a=1), bound_inputs_values={"a": 2}
+        )(b=[1, 2, 3], c=["a", "b", "c"])
 
     return wf5
 
@@ -431,7 +499,9 @@ def get_wf_bound_input_overrides(serialization_settings):
 
     @workflow()
     def wf6() -> List[str]:
-        return ArrayNodeMapTask(task_1, bound_inputs_values={"a": 1})(a=[1, 2, 3], b=[1, 2, 3], c=["a", "b", "c"])
+        return ArrayNodeMapTask(task_1, bound_inputs_values={"a": 1})(
+            a=[1, 2, 3], b=[1, 2, 3], c=["a", "b", "c"]
+        )
 
     return wf6
 
@@ -455,16 +525,52 @@ C_BINDINGS_LIST = [get_str_binding("a"), get_str_binding("b"), get_str_binding("
 @pytest.mark.parametrize(
     ("wf", "upstream_nodes", "expected_inputs"),
     [
-        (get_wf_bound_input, {}, {"a": get_int_binding(1), "b": B_BINDINGS_LIST, "c": C_BINDINGS_LIST}),
-        (get_wf_partials, {}, {"a": get_int_binding(1), "b": B_BINDINGS_LIST, "c": C_BINDINGS_LIST}),
-        (get_wf_bound_input_upstream, {"n0"}, {"a": promise_binding("n0", "o0"), "b": B_BINDINGS_LIST, "c": C_BINDINGS_LIST}),
-        (get_wf_partials_upstream, {"n0"}, {"a": promise_binding("n0", "o0"), "b": B_BINDINGS_LIST, "c": C_BINDINGS_LIST}),
-        (get_wf_bound_input_partials_collision, {}, {"a": get_int_binding(2), "b": B_BINDINGS_LIST, "c": C_BINDINGS_LIST}),
-        (get_wf_bound_input_overrides, {}, {"a": get_int_binding(1), "b": B_BINDINGS_LIST, "c": C_BINDINGS_LIST}),
-    ]
+        (
+            get_wf_bound_input,
+            {},
+            {"a": get_int_binding(1), "b": B_BINDINGS_LIST, "c": C_BINDINGS_LIST},
+        ),
+        (
+            get_wf_partials,
+            {},
+            {"a": get_int_binding(1), "b": B_BINDINGS_LIST, "c": C_BINDINGS_LIST},
+        ),
+        (
+            get_wf_bound_input_upstream,
+            {"n0"},
+            {
+                "a": promise_binding("n0", "o0"),
+                "b": B_BINDINGS_LIST,
+                "c": C_BINDINGS_LIST,
+            },
+        ),
+        (
+            get_wf_partials_upstream,
+            {"n0"},
+            {
+                "a": promise_binding("n0", "o0"),
+                "b": B_BINDINGS_LIST,
+                "c": C_BINDINGS_LIST,
+            },
+        ),
+        (
+            get_wf_bound_input_partials_collision,
+            {},
+            {"a": get_int_binding(2), "b": B_BINDINGS_LIST, "c": C_BINDINGS_LIST},
+        ),
+        (
+            get_wf_bound_input_overrides,
+            {},
+            {"a": get_int_binding(1), "b": B_BINDINGS_LIST, "c": C_BINDINGS_LIST},
+        ),
+    ],
 )
-def test_bound_inputs_serialization(wf, upstream_nodes, expected_inputs, serialization_settings):
-    wf_spec = get_serializable(OrderedDict(), serialization_settings, wf(serialization_settings))
+def test_bound_inputs_serialization(
+    wf, upstream_nodes, expected_inputs, serialization_settings
+):
+    wf_spec = get_serializable(
+        OrderedDict(), serialization_settings, wf(serialization_settings)
+    )
     assert len(wf_spec.template.nodes) == len(upstream_nodes) + 1
     parent_node = wf_spec.template.nodes[len(upstream_nodes)]
 
@@ -505,7 +611,9 @@ def test_raw_execute_with_min_success_ratio(min_success_ratio, should_raise_erro
 
     @workflow
     def my_wf1() -> typing.List[typing.Optional[int]]:
-        return map_task(some_task1, min_success_ratio=min_success_ratio)(inputs=[1, 2, 3, 4])
+        return map_task(some_task1, min_success_ratio=min_success_ratio)(
+            inputs=[1, 2, 3, 4]
+        )
 
     if should_raise_error:
         with pytest.raises(ValueError):
@@ -555,7 +663,9 @@ def test_serialization_metadata2(serialization_settings):
         t1,
         min_success_ratio=0.9,
         concurrency=10,
-        metadata=TaskMetadata(retries=2, interruptible=True, timeout=timedelta(seconds=10))
+        metadata=TaskMetadata(
+            retries=2, interruptible=True, timeout=timedelta(seconds=10)
+        ),
     )
     assert arraynode_maptask.metadata.interruptible
 
@@ -563,7 +673,9 @@ def test_serialization_metadata2(serialization_settings):
     def wf(x: typing.List[int]):
         return arraynode_maptask(a=x)
 
-    full_state_array_node_map_task = map_task(PythonFunctionTaskExtension(task_config={}, task_function=t1))
+    full_state_array_node_map_task = map_task(
+        PythonFunctionTaskExtension(task_config={}, task_function=t1)
+    )
 
     @workflow
     def wf1(x: typing.List[int]):
@@ -577,7 +689,9 @@ def test_serialization_metadata2(serialization_settings):
     assert array_node.array_node._min_success_ratio == 0.9
     assert array_node.array_node._parallelism == 10
     assert not array_node.array_node._is_original_sub_node_interface
-    assert array_node.array_node._execution_mode == _core_workflow.ArrayNode.MINIMAL_STATE
+    assert (
+        array_node.array_node._execution_mode == _core_workflow.ArrayNode.MINIMAL_STATE
+    )
     task_spec = od[arraynode_maptask]
     assert task_spec.template.metadata.retries.retries == 2
     assert task_spec.template.metadata.interruptible
@@ -609,9 +723,7 @@ def test_serialization_extended_resources(serialization_settings):
 
 
 def test_serialization_extended_resources_shared_memory(serialization_settings):
-    @task(
-        shared_memory="2Gi"
-    )
+    @task(shared_memory="2Gi")
     def t1(a: int) -> int:
         return a + 1
 
@@ -630,30 +742,26 @@ def test_serialization_extended_resources_shared_memory(serialization_settings):
 
 def test_supported_node_type():
     @task
-    def test_task():
-        ...
+    def test_task(): ...
 
     map_task(test_task)
 
 
 def test_unsupported_node_types():
     @dynamic
-    def test_dynamic():
-        ...
+    def test_dynamic(): ...
 
     with pytest.raises(ValueError):
         map_task(test_dynamic)
 
     @eager
-    def test_eager():
-        ...
+    def test_eager(): ...
 
     with pytest.raises(ValueError):
         map_task(test_eager)
 
     @workflow
-    def test_wf():
-        ...
+    def test_wf(): ...
 
     with pytest.raises(ValueError):
         map_task(test_wf)
@@ -692,9 +800,11 @@ def test_load_offloaded_literal(tmp_path, monkeypatch):
 
     ctx = context_manager.FlyteContextManager.current_context()
     with context_manager.FlyteContextManager.with_context(
-            ctx.with_execution_state(
-                ctx.execution_state.with_params(mode=context_manager.ExecutionState.Mode.TASK_EXECUTION)
+        ctx.with_execution_state(
+            ctx.execution_state.with_params(
+                mode=context_manager.ExecutionState.Mode.TASK_EXECUTION
             )
+        )
     ) as ctx:
         list_strs = ["a", "b", "c"]
         lt = TypeEngine.to_literal_type(typing.List[str])
@@ -709,9 +819,7 @@ def test_load_offloaded_literal(tmp_path, monkeypatch):
             ),
         )
 
-        lm = LiteralMap({
-            "name": literal
-        })
+        lm = LiteralMap({"name": literal})
 
         for index, map_input_str in enumerate(list_strs):
             monkeypatch.setenv("BATCH_JOB_ARRAY_INDEX_VAR_NAME", "name")
@@ -719,5 +827,51 @@ def test_load_offloaded_literal(tmp_path, monkeypatch):
             t = map_task(say_hello)
             res = t.dispatch_execute(ctx, lm)
             assert len(res.literals) == 1
-            assert res.literals[f"o{0}"].scalar.primitive.string_value == f"hello {map_input_str}!"
+            assert (
+                res.literals[f"o{0}"].scalar.primitive.string_value
+                == f"hello {map_input_str}!"
+            )
             monkeypatch.undo()
+
+
+@pytest.mark.skipif(
+    sys.platform in ["darwin", "win32"],
+    reason="Skip if running on windows or macos due to CI Docker environment setup failure",
+)
+def test_container_task_map_execution(serialization_settings):
+    # NOTE: We only take one output "area" even if this calculate-ellipse-area.py
+    # produce two output. This is because that map task can only return one value.
+    calculate_ellipse_area_python_template_style = ContainerTask(
+        name="calculate_ellipse_area_python_template_style",
+        input_data_dir="/var/inputs",
+        output_data_dir="/var/outputs",
+        inputs=kwtypes(a=float, b=float),
+        outputs=kwtypes(area=float),
+        image="ghcr.io/flyteorg/rawcontainers-python:v2",
+        command=[
+            "python",
+            "calculate-ellipse-area.py",
+            "{{.inputs.a}}",
+            "{{.inputs.b}}",
+            "/var/outputs",
+        ],
+    )
+
+    @workflow
+    def wf(a: list[float], b: float) -> list[float]:
+        partial_task = functools.partial(
+            calculate_ellipse_area_python_template_style, b=b
+        )
+        res = map_task(partial_task)(a=a)
+        return res
+
+    def calculate_area(a, b):
+        return math.pi * a * b
+
+    expected_area = [
+        calculate_area(a, b) for a, b in [(3.0, 4.0), (4.0, 4.0), (5.0, 4.0)]
+    ]
+
+    res = wf(a=[3.0, 4.0, 5.0], b=4.0)
+
+    assert res == expected_area
