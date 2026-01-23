@@ -18,7 +18,7 @@ onnxruntime==1.16.1
     # via -r dev-requirements.in
 packaging==23.2
     # via onnxruntime
-protobuf==4.25.0
+protobuf==7.34.0rc1
     # via onnxruntime
 sympy==1.12
     # via onnxruntime
