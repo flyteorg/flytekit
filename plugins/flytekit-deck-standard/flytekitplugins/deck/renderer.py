@@ -42,9 +42,13 @@ class SourceCodeRenderer:
         Returns:
             str: The resulting HTML as a string, including CSS and highlighted source code.
         """
-        formatter = pygments.formatters.html.HtmlFormatter(style="colorful")
+        from pygments import highlight
+        from pygments.formatters.html import HtmlFormatter
+        from pygments.lexers.python import PythonLexer
+
+        formatter = HtmlFormatter(style="colorful")
         css = formatter.get_style_defs(".highlight").replace("#fff0f0", "#ffffff")
-        html = pygments.highlight(source_code, pygments.lexers.python.PythonLexer(), formatter)
+        html = highlight(source_code, PythonLexer(), formatter)
         return f"<style>{css}</style>{html}"
 
 
