@@ -1025,12 +1025,6 @@ def test_modify_literal_uris_call(mock_resolver):
 
 
 def test_pydantic_model_with_locally_defined_nested_model():
-    """Test that pydantic transformer works with locally-defined nested models.
-
-    This test demonstrates a case where typing.get_type_hints() fails because it
-    cannot resolve forward references to locally-defined classes (not in module globals).
-    Using model_fields instead works because Pydantic resolves the types internally.
-    """
     import typing
 
     ctx = FlyteContextManager.current_context()
