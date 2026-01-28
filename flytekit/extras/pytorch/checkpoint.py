@@ -119,7 +119,9 @@ class PyTorchCheckpointTransformer(TypeTransformer[PyTorchCheckpoint]):
             map_location = torch.device("cpu")
 
         # load checkpoint from a file
-        return typing.cast(PyTorchCheckpoint, torch.load(local_path, map_location=map_location))
+        # Note: weights_only=False is required for backward compatibility with checkpoints
+        # saved before PyTorch 2.6. This allows loading of pickled checkpoint objects.
+        return typing.cast(PyTorchCheckpoint, torch.load(local_path, map_location=map_location, weights_only=False))
 
     def guess_python_type(self, literal_type: LiteralType) -> Type[PyTorchCheckpoint]:
         if (

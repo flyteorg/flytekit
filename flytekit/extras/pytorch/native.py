@@ -63,7 +63,9 @@ class PyTorchTypeTransformer(TypeTransformer[T]):
             map_location = torch.device("cpu")
 
         # load pytorch tensor/module from a file
-        return torch.load(local_path, map_location=map_location)
+        # Note: weights_only=False is required for backward compatibility with models
+        # saved before PyTorch 2.6. This allows loading of pickled nn.Module objects.
+        return torch.load(local_path, map_location=map_location, weights_only=False)
 
 
 class PyTorchTensorTransformer(PyTorchTypeTransformer[torch.Tensor]):
