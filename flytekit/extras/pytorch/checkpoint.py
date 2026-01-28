@@ -121,6 +121,8 @@ class PyTorchCheckpointTransformer(TypeTransformer[PyTorchCheckpoint]):
         # load checkpoint from a file
         # Note: weights_only=False is required for backward compatibility with checkpoints
         # saved before PyTorch 2.6. This allows loading of pickled checkpoint objects.
+        # WARNING: This can execute arbitrary code from the pickle file. Only load checkpoints
+        # from trusted sources. See: https://pytorch.org/docs/stable/generated/torch.load.html
         return typing.cast(PyTorchCheckpoint, torch.load(local_path, map_location=map_location, weights_only=False))
 
     def guess_python_type(self, literal_type: LiteralType) -> Type[PyTorchCheckpoint]:

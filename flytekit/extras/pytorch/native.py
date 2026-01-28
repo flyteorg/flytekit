@@ -65,6 +65,8 @@ class PyTorchTypeTransformer(TypeTransformer[T]):
         # load pytorch tensor/module from a file
         # Note: weights_only=False is required for backward compatibility with models
         # saved before PyTorch 2.6. This allows loading of pickled nn.Module objects.
+        # WARNING: This can execute arbitrary code from the pickle file. Only load models
+        # from trusted sources. See: https://pytorch.org/docs/stable/generated/torch.load.html
         return torch.load(local_path, map_location=map_location, weights_only=False)
 
 
