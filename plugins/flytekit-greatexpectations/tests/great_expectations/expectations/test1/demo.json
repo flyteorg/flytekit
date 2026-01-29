@@ -64,25 +64,6 @@
       "meta": {}
     },
     {
-      "expectation_type": "expect_column_values_to_be_in_type_list",
-      "kwargs": {
-        "column": "store_and_fwd_flag",
-        "type_list": [
-          "CHAR",
-          "VARCHAR",
-          "NVARCHAR",
-          "TEXT",
-          "STRING",
-          "StringType",
-          "string",
-          "str",
-          "object",
-          "O"
-        ]
-      },
-      "meta": {}
-    },
-    {
       "expectation_type": "expect_column_min_to_be_between",
       "kwargs": {
         "column": "dropoff_location_id",
