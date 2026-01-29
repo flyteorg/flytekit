@@ -35,6 +35,11 @@ from mashumaro.codecs.msgpack import MessagePackDecoder, MessagePackEncoder
 from mashumaro.mixins.json import DataClassJSONMixin
 from typing_extensions import Annotated, get_args, get_origin
 
+try:
+    from dataclasses_json import DataClassJsonMixin
+except ImportError:
+    DataClassJsonMixin = None  # type: ignore
+
 from flytekit.core.annotation import FlyteAnnotation
 from flytekit.core.constants import CACHE_KEY_METADATA, FLYTE_USE_OLD_DC_FORMAT, MESSAGEPACK, SERIALIZATION_FORMAT
 from flytekit.core.context_manager import FlyteContext
@@ -913,6 +918,9 @@ class DataclassTransformer(TypeTransformer[object]):
         # It deserializes a JSON string into a data class, and supports additional functionality over JSONDecoder
         # We can't use hasattr(expected_python_type, "from_json") here because we rely on mashumaro's API to customize the deserialization behavior for Flyte types.
         if issubclass(expected_python_type, DataClassJSONMixin):
+            dc = expected_python_type.from_json(json_str)  # type: ignore
+        elif DataClassJsonMixin is not None and issubclass(expected_python_type, DataClassJsonMixin):
+            # Support legacy dataclasses_json.DataClassJsonMixin
             dc = expected_python_type.from_json(json_str)  # type: ignore
         else:
             # The function looks up or creates a JSONDecoder specifically designed for the object's type.
