@@ -359,7 +359,7 @@ jobs:
             plugin-names: "flytekit-greatexpectations"
           # onnxruntime does not support python 3.10 yet
           # https://github.com/microsoft/onnxruntime/issues/9782
-          - python-version: 3.11
+          - python-version: 3.12
             plugin-names: "flytekit-onnx-pytorch"
           - python-version: 3.11
             plugin-names: "flytekit-onnx-scikitlearn"
