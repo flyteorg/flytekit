@@ -75,7 +75,9 @@
           "STRING",
           "StringType",
           "string",
-          "str"
+          "str",
+          "object",
+          "O"
         ]
       },
       "meta": {}
