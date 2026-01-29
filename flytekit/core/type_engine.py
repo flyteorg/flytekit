@@ -22,7 +22,6 @@ from typing import Any, Dict, List, NamedTuple, Optional, Type, cast
 
 import msgpack
 from cachetools import LRUCache
-from dataclasses_json import DataClassJsonMixin, dataclass_json
 from flyteidl.core import literals_pb2
 from fsspec.asyn import _run_coros_in_chunks  # pylint: disable=W0212
 from google.protobuf import json_format as _json_format
@@ -68,8 +67,170 @@ _TYPE_ENGINE_COROS_BATCH_SIZE = int(os.environ.get("_F_TE_MAX_COROS", "10"))
 # In Mashumaro, the default encoder uses strict_map_key=False, while the default decoder uses strict_map_key=True.
 # This is relevant for cases like Dict[int, str].
 # If strict_map_key=False is not used, the decoder will raise an error when trying to decode keys that are not strictly typed.｀
+
+
+def _filter_dataclass_json_config(obj: Any) -> Any:
+    """Recursively remove dataclass_json_config from dicts.
+
+    This provides compatibility with dataclasses-json 0.6.x which adds
+    dataclass_json_config as a class annotation that mashumaro picks up
+    during serialization.
+    """
+    if isinstance(obj, dict):
+        return {k: _filter_dataclass_json_config(v) for k, v in obj.items() if k != "dataclass_json_config"}
+    elif isinstance(obj, list):
+        return [_filter_dataclass_json_config(item) for item in obj]
+    return obj
+
+
 def _default_msgpack_decoder(data: bytes) -> Any:
-    return msgpack.unpackb(data, strict_map_key=False)
+    result = msgpack.unpackb(data, strict_map_key=False)
+    return _filter_dataclass_json_config(result)
+
+
+# Lock for thread-safe patching of DataClassJsonMixin.__annotations__
+_dataclass_json_mixin_lock = threading.Lock()
+
+# Cache for JSONDecoders and encoders used with dataclass_json_config patching
+_patched_decoders: Dict[type, JSONDecoder] = {}
+_patched_json_encoders: Dict[type, JSONEncoder] = {}
+_patched_msgpack_encoders: Dict[type, MessagePackEncoder] = {}
+
+
+def _deserialize_with_dataclass_json_config_patch(
+    expected_python_type: type, json_str: str, decoder_cache: Optional[Dict[type, Any]] = None
+) -> Any:
+    """Deserialize JSON to a dataclass, handling dataclasses-json 0.6.x compatibility.
+
+    dataclasses-json 0.6.x adds dataclass_json_config to DataClassJsonMixin's __annotations__.
+    This causes mashumaro's JSONDecoder to fail because it expects this field in the data.
+
+    For classes inheriting from dataclasses-json's mixin, this function temporarily removes
+    the annotation from the parent class, creates a decoder, deserializes, and restores it.
+
+    Args:
+        expected_python_type: The dataclass type to deserialize to
+        json_str: The JSON string to deserialize
+        decoder_cache: Optional cache dict to store/retrieve decoders (for non-patched cases)
+    """
+    try:
+        from dataclasses_json import DataClassJsonMixin as DCJsonMixin
+    except ImportError:
+        DCJsonMixin = None  # type: ignore
+
+    # Check if the expected type inherits from dataclasses-json's mixin
+    needs_patch = DCJsonMixin is not None and issubclass(expected_python_type, DCJsonMixin)
+
+    if not needs_patch:
+        # Not using dataclasses-json, use JSONDecoder directly with caching
+        if decoder_cache is not None:
+            try:
+                decoder = decoder_cache[expected_python_type]
+            except KeyError:
+                decoder = JSONDecoder(expected_python_type)
+                decoder_cache[expected_python_type] = decoder
+        else:
+            decoder = JSONDecoder(expected_python_type)
+        return decoder.decode(json_str)
+
+    # For dataclasses-json mixin classes, we need to patch temporarily
+    # Check if we already have a cached decoder (created with patch)
+    if expected_python_type in _patched_decoders:
+        return _patched_decoders[expected_python_type].decode(json_str)
+
+    # Temporarily patch DataClassJsonMixin.__annotations__ to remove dataclass_json_config
+    with _dataclass_json_mixin_lock:
+        original_annotations = DCJsonMixin.__annotations__.copy()
+        DCJsonMixin.__annotations__ = {}
+        try:
+            decoder = JSONDecoder(expected_python_type)
+            _patched_decoders[expected_python_type] = decoder
+            return decoder.decode(json_str)
+        finally:
+            DCJsonMixin.__annotations__ = original_annotations
+
+
+def _get_msgpack_encoder_with_patch(python_type: type, encoder_cache: Optional[Dict[type, Any]] = None) -> MessagePackEncoder:
+    """Get a MessagePackEncoder for a dataclass, handling dataclasses-json 0.6.x compatibility.
+
+    Similar to _deserialize_with_dataclass_json_config_patch but for encoding.
+    """
+    try:
+        from dataclasses_json import DataClassJsonMixin as DCJsonMixin
+    except ImportError:
+        DCJsonMixin = None  # type: ignore
+
+    # Only check for mixin inheritance if python_type is actually a class (not a generic like Dict[str, int])
+    needs_patch = (
+        DCJsonMixin is not None
+        and isinstance(python_type, type)
+        and issubclass(python_type, DCJsonMixin)
+    )
+
+    if not needs_patch:
+        if encoder_cache is not None:
+            try:
+                return encoder_cache[python_type]
+            except KeyError:
+                encoder = MessagePackEncoder(python_type)
+                encoder_cache[python_type] = encoder
+                return encoder
+        return MessagePackEncoder(python_type)
+
+    # Check cache first
+    if python_type in _patched_msgpack_encoders:
+        return _patched_msgpack_encoders[python_type]
+
+    # Create encoder with patch
+    with _dataclass_json_mixin_lock:
+        original_annotations = DCJsonMixin.__annotations__.copy()
+        DCJsonMixin.__annotations__ = {}
+        try:
+            encoder = MessagePackEncoder(python_type)
+            _patched_msgpack_encoders[python_type] = encoder
+            return encoder
+        finally:
+            DCJsonMixin.__annotations__ = original_annotations
+
+
+def _get_json_encoder_with_patch(python_type: type, encoder_cache: Optional[Dict[type, Any]] = None) -> JSONEncoder:
+    """Get a JSONEncoder for a dataclass, handling dataclasses-json 0.6.x compatibility."""
+    try:
+        from dataclasses_json import DataClassJsonMixin as DCJsonMixin
+    except ImportError:
+        DCJsonMixin = None  # type: ignore
+
+    # Only check for mixin inheritance if python_type is actually a class (not a generic like Dict[str, int])
+    needs_patch = (
+        DCJsonMixin is not None
+        and isinstance(python_type, type)
+        and issubclass(python_type, DCJsonMixin)
+    )
+
+    if not needs_patch:
+        if encoder_cache is not None:
+            try:
+                return encoder_cache[python_type]
+            except KeyError:
+                encoder = JSONEncoder(python_type)
+                encoder_cache[python_type] = encoder
+                return encoder
+        return JSONEncoder(python_type)
+
+    # Check cache first
+    if python_type in _patched_json_encoders:
+        return _patched_json_encoders[python_type]
+
+    # Create encoder with patch
+    with _dataclass_json_mixin_lock:
+        original_annotations = DCJsonMixin.__annotations__.copy()
+        DCJsonMixin.__annotations__ = {}
+        try:
+            encoder = JSONEncoder(python_type)
+            _patched_json_encoders[python_type] = encoder
+            return encoder
+        finally:
+            DCJsonMixin.__annotations__ = original_annotations
 
 
 class BatchSize:
@@ -621,34 +782,12 @@ class DataclassTransformer(TypeTransformer[object]):
 
             schema = build_json_schema(cast(DataClassJSONMixin, self._get_origin_type_in_annotation(t))).to_dict()
         except Exception as e:
-            logger.error(
-                f"Failed to extract schema for object {t}, error: {e}\n"
-                f"Please remove `DataClassJsonMixin` and `dataclass_json` decorator from the dataclass definition"
+            # https://github.com/lovasoa/marshmallow_dataclass/issues/13
+            logger.warning(
+                f"Failed to extract schema for object {t}, (will run schemaless) error: {e}"
+                f"If you have postponed annotations turned on (PEP 563) turn it off please. Postponed"
+                f"evaluation doesn't work with json dataclasses"
             )
-
-        if schema is None:
-            try:
-                # This produce JSON SCHEMA draft 2020-12
-                from marshmallow_enum import EnumField, LoadDumpOptions
-
-                if issubclass(t, DataClassJsonMixin):
-                    s = cast(DataClassJsonMixin, self._get_origin_type_in_annotation(t)).schema()
-                    for _, v in s.fields.items():
-                        # marshmallow-jsonschema only supports enums loaded by name.
-                        # https://github.com/fuhrysteve/marshmallow-jsonschema/blob/81eada1a0c42ff67de216923968af0a6b54e5dcb/marshmallow_jsonschema/base.py#L228
-                        if isinstance(v, EnumField):
-                            v.load_by = LoadDumpOptions.name
-                    # check if DataClass mixin
-                    from marshmallow_jsonschema import JSONSchema
-
-                    schema = JSONSchema().dump(s)
-            except Exception as e:
-                # https://github.com/lovasoa/marshmallow_dataclass/issues/13
-                logger.warning(
-                    f"Failed to extract schema for object {t}, (will run schemaless) error: {e}"
-                    f"If you have postponed annotations turned on (PEP 563) turn it off please. Postponed"
-                    f"evaluation doesn't work with json dataclasses"
-                )
 
         # Recursively construct the dataclass_type which contains the literal type of each field
         literal_type = {}
@@ -699,11 +838,8 @@ class DataclassTransformer(TypeTransformer[object]):
         if isinstance(python_val, DataClassJSONMixin):
             json_str = python_val.to_json()
         else:
-            try:
-                encoder = self._json_encoder[python_type]
-            except KeyError:
-                encoder = JSONEncoder(python_type)
-                self._json_encoder[python_type] = encoder
+            # Use the patching helper to handle dataclasses-json 0.6.x compatibility.
+            encoder = _get_json_encoder_with_patch(python_type, encoder_cache=self._json_encoder)
 
             try:
                 json_str = encoder.encode(python_val)
@@ -741,11 +877,8 @@ class DataclassTransformer(TypeTransformer[object]):
         else:
             # The function looks up or creates a MessagePackEncoder specifically designed for the object's type.
             # This encoder is then used to convert a data class into MessagePack Bytes.
-            try:
-                encoder = self._msgpack_encoder[python_type]
-            except KeyError:
-                encoder = MessagePackEncoder(python_type)
-                self._msgpack_encoder[python_type] = encoder
+            # Use the patching helper to handle dataclasses-json 0.6.x compatibility.
+            encoder = _get_msgpack_encoder_with_patch(python_type, encoder_cache=self._msgpack_encoder)
 
             try:
                 msgpack_bytes = encoder.encode(python_val)
@@ -906,17 +1039,21 @@ class DataclassTransformer(TypeTransformer[object]):
 
     def from_binary_idl(self, binary_idl_object: Binary, expected_python_type: Type[T]) -> T:
         if binary_idl_object.tag == MESSAGEPACK:
+            # Decode msgpack to dict and filter dataclass_json_config for compatibility
+            # with dataclasses-json 0.6.x which adds this field as a class annotation.
+            dict_obj = msgpack.loads(binary_idl_object.value, strict_map_key=False)
+            dict_obj = _filter_dataclass_json_config(dict_obj)
+            json_str = json.dumps(dict_obj)
+
             if issubclass(expected_python_type, DataClassJSONMixin):
-                dict_obj = msgpack.loads(binary_idl_object.value, strict_map_key=False)
-                json_str = json.dumps(dict_obj)
+                # For mashumaro's DataClassJSONMixin, use from_json directly
                 dc = expected_python_type.from_json(json_str)  # type: ignore
             else:
-                try:
-                    decoder = self._msgpack_decoder[expected_python_type]
-                except KeyError:
-                    decoder = MessagePackDecoder(expected_python_type, pre_decoder_func=_default_msgpack_decoder)
-                    self._msgpack_decoder[expected_python_type] = decoder
-                dc = decoder.decode(binary_idl_object.value)
+                # For other dataclasses, use JSONDecoder with dataclass_json_config patch
+                # Pass _msgpack_decoder as cache since this is the msgpack path
+                dc = _deserialize_with_dataclass_json_config_patch(
+                    expected_python_type, json_str, decoder_cache=self._msgpack_decoder
+                )
 
             return dc
         else:
@@ -934,21 +1071,21 @@ class DataclassTransformer(TypeTransformer[object]):
 
         json_str = _json_format.MessageToJson(lv.scalar.generic)
 
+        # Filter out dataclass_json_config for compatibility with dataclasses-json 0.6.x
+        dict_obj = json.loads(json_str)
+        dict_obj = _filter_dataclass_json_config(dict_obj)
+        json_str = json.dumps(dict_obj)
+
         # The `from_json` function is provided from mashumaro's `DataClassJSONMixin`.
         # It deserializes a JSON string into a data class, and supports additional functionality over JSONDecoder
         # We can't use hasattr(expected_python_type, "from_json") here because we rely on mashumaro's API to customize the deserialization behavior for Flyte types.
         if issubclass(expected_python_type, DataClassJSONMixin):
             dc = expected_python_type.from_json(json_str)  # type: ignore
         else:
-            # The function looks up or creates a JSONDecoder specifically designed for the object's type.
-            # This decoder is then used to convert a JSON string into a data class.
-            try:
-                decoder = self._json_decoder[expected_python_type]
-            except KeyError:
-                decoder = JSONDecoder(expected_python_type)
-                self._json_decoder[expected_python_type] = decoder
-
-            dc = decoder.decode(json_str)
+            # For other dataclasses, use JSONDecoder with dataclass_json_config patch
+            dc = _deserialize_with_dataclass_json_config_patch(
+                expected_python_type, json_str, decoder_cache=self._json_decoder
+            )
 
         return self._fix_dataclass_int(expected_python_type, dc)
 
@@ -2182,7 +2319,8 @@ class DictTransformer(AsyncTypeTransformer[dict]):
         try:
             try:
                 # JSONEncoder is mashumaro's codec and this can triggered Flyte Types customized serialization and deserialization.
-                encoder = JSONEncoder(python_type)
+                # Use the patching helper to handle dataclasses-json 0.6.x compatibility.
+                encoder = _get_json_encoder_with_patch(python_type)
                 json_str = encoder.encode(v)
             except NotImplementedError:
                 raise NotImplementedError(
@@ -2217,7 +2355,8 @@ class DictTransformer(AsyncTypeTransformer[dict]):
 
         try:
             # Handle dictionaries with non-string keys (e.g., Dict[int, Type])
-            encoder = MessagePackEncoder(python_type)
+            # Use the patching helper to handle dataclasses-json 0.6.x compatibility.
+            encoder = _get_msgpack_encoder_with_patch(python_type)
             msgpack_bytes = encoder.encode(v)
             return Literal(scalar=Scalar(binary=Binary(value=msgpack_bytes, tag=MESSAGEPACK)))
         except TypeError as e:
@@ -2488,7 +2627,7 @@ def convert_marshmallow_json_schema_to_python_class(schema: dict, schema_name: t
     """
 
     attribute_list = generate_attribute_list_from_dataclass_json(schema, schema_name)
-    return dataclass_json(dataclasses.make_dataclass(schema_name, attribute_list))
+    return dataclasses.make_dataclass(schema_name, attribute_list)
 
 
 def convert_mashumaro_json_schema_to_python_class(schema: dict, schema_name: typing.Any) -> type:
@@ -2499,7 +2638,7 @@ def convert_mashumaro_json_schema_to_python_class(schema: dict, schema_name: typ
     """
 
     attribute_list = generate_attribute_list_from_dataclass_json_mixin(schema, schema_name)
-    return dataclass_json(dataclasses.make_dataclass(schema_name, attribute_list))
+    return dataclasses.make_dataclass(schema_name, attribute_list)
 
 
 def _get_element_type(element_property: typing.Dict[str, str]) -> Type:

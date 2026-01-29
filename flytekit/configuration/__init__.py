@@ -124,7 +124,7 @@ from io import BytesIO
 from typing import Dict, List, Optional
 
 import yaml
-from dataclasses_json import DataClassJsonMixin
+from mashumaro.mixins.json import DataClassJSONMixin
 
 from flytekit.configuration import internal as _internal
 from flytekit.configuration.default_images import DefaultImages
@@ -146,7 +146,7 @@ SERIALIZED_CONTEXT_ENV_VAR = "_F_SS_C"
 
 
 @dataclass(init=True, repr=True, eq=True, frozen=True)
-class Image(DataClassJsonMixin):
+class Image(DataClassJSONMixin):
     """
     Image is a structured wrapper for task container images used in object serialization.
 
@@ -236,7 +236,7 @@ def _parse_image_identifier(image_identifier: str) -> typing.Tuple[str, Optional
 
 
 @dataclass(init=True, repr=True, eq=True, frozen=True)
-class ImageConfig(DataClassJsonMixin):
+class ImageConfig(DataClassJSONMixin):
     """
     We recommend you to use ImageConfig.auto(img_name=None) to create an ImageConfig.
     For example, ImageConfig.auto(img_name=""ghcr.io/flyteorg/flytecookbook:v1.0.0"") will create an ImageConfig.
@@ -792,7 +792,7 @@ class Config(object):
 
 
 @dataclass
-class EntrypointSettings(DataClassJsonMixin):
+class EntrypointSettings(DataClassJSONMixin):
     """
     This object carries information about the path of the entrypoint command that will be invoked at runtime.
     This is where `pyflyte-execute` code can be found. This is useful for cases like pyspark execution.
@@ -802,7 +802,7 @@ class EntrypointSettings(DataClassJsonMixin):
 
 
 @dataclass
-class FastSerializationSettings(DataClassJsonMixin):
+class FastSerializationSettings(DataClassJSONMixin):
     """
     This object hold information about settings necessary to serialize an object so that it can be fast-registered.
     """
@@ -817,7 +817,7 @@ class FastSerializationSettings(DataClassJsonMixin):
 
 # TODO: ImageConfig, python_interpreter, venv_root, fast_serialization_settings.destination_dir should be combined.
 @dataclass
-class SerializationSettings(DataClassJsonMixin):
+class SerializationSettings(DataClassJSONMixin):
     """
     These settings are provided while serializing a workflow and task, before registration. This is required to get
     runtime information at serialization time, as well as some defaults.

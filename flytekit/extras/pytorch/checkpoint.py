@@ -4,7 +4,7 @@ from dataclasses import asdict, dataclass, fields, is_dataclass
 from typing import Any, Callable, Dict, NamedTuple, Optional, Type, Union
 
 import torch
-from dataclasses_json import DataClassJsonMixin
+from mashumaro.mixins.json import DataClassJSONMixin
 from typing_extensions import Protocol
 
 from flytekit.core.context_manager import FlyteContext
@@ -21,7 +21,7 @@ class IsDataclass(Protocol):
 
 
 @dataclass
-class PyTorchCheckpoint(DataClassJsonMixin):
+class PyTorchCheckpoint(DataClassJSONMixin):
     """
     This class is helpful to save a checkpoint.
     """

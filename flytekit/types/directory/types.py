@@ -14,11 +14,10 @@ from uuid import UUID
 
 import fsspec
 import msgpack
-from dataclasses_json import DataClassJsonMixin, config
+from mashumaro.mixins.json import DataClassJSONMixin
 from fsspec.utils import get_protocol
 from google.protobuf import json_format as _json_format
 from google.protobuf.struct_pb2 import Struct
-from marshmallow import fields
 from mashumaro.types import SerializableType
 
 from flytekit.core.constants import MESSAGEPACK
@@ -72,8 +71,8 @@ class _FlyteDirectoryDownloader:
 
 
 @dataclass
-class FlyteDirectory(SerializableType, DataClassJsonMixin, os.PathLike, typing.Generic[T]):
-    path: PathType = field(default=None, metadata=config(mm_field=fields.String()))  # type: ignore
+class FlyteDirectory(SerializableType, DataClassJSONMixin, os.PathLike, typing.Generic[T]):
+    path: PathType = field(default=None)  # type: ignore
     """
     > [!WARNING]
     > This class should not be used on very large datasets, as merely listing the dataset will cause
