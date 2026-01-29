@@ -27,9 +27,9 @@ jobs:
       - name: Set Python versions for run
         run: |
           if [[ ${{ github.event_name }} == "schedule" ]]; then
-            echo "python_versions=[\"3.9\",\"3.10\",\"3.11\",\"3.12\"]" >> $GITHUB_ENV
+            echo "python_versions=[\"3.9\",\"3.10\",\"3.11\",\"3.12\",\"3.13\",\"3.14\"]" >> $GITHUB_ENV
           else
-            echo "python_versions=[\"3.9\", \"3.12\"]" >> $GITHUB_ENV
+            echo "python_versions=[\"3.9\", \"3.12\", \"3.13\", \"3.14\"]" >> $GITHUB_ENV
           fi
 
   build:
@@ -112,6 +112,7 @@ jobs:
       - name: Run extras unit tests with coverage
         # Skip this step if running on python 3.12 due to https://github.com/tensorflow/tensorflow/issues/62003
         # and https://github.com/pytorch/pytorch/issues/110436
+        # TensorFlow now supports 3.13, PyTorch supports 3.13 and 3.14
         if: ${{ matrix.python-version != '3.12' }}
         run: |
           make unit_test_extras_codecov
@@ -390,6 +391,32 @@ jobs:
           # Segmentation fault on python 3.12: https://github.com/flyteorg/flyte/issues/5020
           - python-version: 3.12
             plugin-names: "flytekit-kf-pytorch"
+          # Python 3.13 - exclude plugins that don't support it yet
+          # apache-beam does not support python 3.13 yet
+          - python-version: 3.13
+            plugin-names: "flytekit-airflow"
+          # modin[ray] is not supported on python 3.13 yet
+          - python-version: 3.13
+            plugin-names: "flytekit-modin"
+          # vaex does not support python 3.13
+          - python-version: 3.13
+            plugin-names: "flytekit-vaex"
+          # Ray does not support python 3.13 yet
+          - python-version: 3.13
+            plugin-names: "flytekit-ray"
+          # Python 3.14 - exclude plugins that don't support it yet
+          # apache-beam does not support python 3.14 yet
+          - python-version: 3.14
+            plugin-names: "flytekit-airflow"
+          # modin[ray] is not supported on python 3.14 yet
+          - python-version: 3.14
+            plugin-names: "flytekit-modin"
+          # vaex does not support python 3.14
+          - python-version: 3.14
+            plugin-names: "flytekit-vaex"
+          # Ray does not support python 3.14 yet
+          - python-version: 3.14
+            plugin-names: "flytekit-ray"
     steps:
       - uses: actions/checkout@v4
       - name: "Clear action cache"
@@ -441,10 +468,10 @@ jobs:
     steps:
       - name: Fetch the code
         uses: actions/checkout@v4
-      - name: Set up Python 3.12
+      - name: Set up Python 3.14
         uses: actions/setup-python@v4
         with:
-          python-version: 3.12
+          python-version: 3.14
       - uses: actions/cache@v4
         with:
           path: ~/.cache/pip
