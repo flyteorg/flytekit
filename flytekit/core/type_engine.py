@@ -22,7 +22,6 @@ from typing import Any, Dict, List, NamedTuple, Optional, Type, cast
 
 import msgpack
 from cachetools import LRUCache
-from dataclasses_json import DataClassJsonMixin, dataclass_json
 from flyteidl.core import literals_pb2
 from fsspec.asyn import _run_coros_in_chunks  # pylint: disable=W0212
 from google.protobuf import json_format as _json_format
@@ -510,7 +509,7 @@ class DataclassTransformer(TypeTransformer[object]):
         self._json_encoder: Dict[Type, JSONEncoder] = dict()
         self._json_decoder: Dict[Type, JSONDecoder] = dict()
 
-    def assert_type(self, expected_type: Type[DataClassJsonMixin], v: T):
+    def assert_type(self, expected_type, v: T):
         # Skip iterating all attributes in the dataclass if the type of v already matches the expected_type
         expected_type = get_underlying_type(expected_type)
         if type(v) == expected_type or issubclass(type(v), expected_type):
@@ -614,7 +613,6 @@ class DataclassTransformer(TypeTransformer[object]):
             # Drop all annotations and handle only the dataclass type passed in.
             t = args[0]
 
-        schema = None
         try:
             # This produce JSON SCHEMA draft 2020-12
             from mashumaro.jsonschema import build_json_schema
@@ -625,30 +623,7 @@ class DataclassTransformer(TypeTransformer[object]):
                 f"Failed to extract schema for object {t}, error: {e}\n"
                 f"Please remove `DataClassJsonMixin` and `dataclass_json` decorator from the dataclass definition"
             )
-
-        if schema is None:
-            try:
-                # This produce JSON SCHEMA draft 2020-12
-                from marshmallow_enum import EnumField, LoadDumpOptions
-
-                if issubclass(t, DataClassJsonMixin):
-                    s = cast(DataClassJsonMixin, self._get_origin_type_in_annotation(t)).schema()
-                    for _, v in s.fields.items():
-                        # marshmallow-jsonschema only supports enums loaded by name.
-                        # https://github.com/fuhrysteve/marshmallow-jsonschema/blob/81eada1a0c42ff67de216923968af0a6b54e5dcb/marshmallow_jsonschema/base.py#L228
-                        if isinstance(v, EnumField):
-                            v.load_by = LoadDumpOptions.name
-                    # check if DataClass mixin
-                    from marshmallow_jsonschema import JSONSchema
-
-                    schema = JSONSchema().dump(s)
-            except Exception as e:
-                # https://github.com/lovasoa/marshmallow_dataclass/issues/13
-                logger.warning(
-                    f"Failed to extract schema for object {t}, (will run schemaless) error: {e}"
-                    f"If you have postponed annotations turned on (PEP 563) turn it off please. Postponed"
-                    f"evaluation doesn't work with json dataclasses"
-                )
+            raise
 
         # Recursively construct the dataclass_type which contains the literal type of each field
         literal_type = {}
@@ -2488,7 +2463,7 @@ def convert_marshmallow_json_schema_to_python_class(schema: dict, schema_name: t
     """
 
     attribute_list = generate_attribute_list_from_dataclass_json(schema, schema_name)
-    return dataclass_json(dataclasses.make_dataclass(schema_name, attribute_list))
+    return dataclasses.make_dataclass(schema_name, attribute_list)
 
 
 def convert_mashumaro_json_schema_to_python_class(schema: dict, schema_name: typing.Any) -> type:
@@ -2499,7 +2474,7 @@ def convert_mashumaro_json_schema_to_python_class(schema: dict, schema_name: typ
     """
 
     attribute_list = generate_attribute_list_from_dataclass_json_mixin(schema, schema_name)
-    return dataclass_json(dataclasses.make_dataclass(schema_name, attribute_list))
+    return dataclasses.make_dataclass(schema_name, attribute_list)
 
 
 def _get_element_type(element_property: typing.Dict[str, str]) -> Type:
