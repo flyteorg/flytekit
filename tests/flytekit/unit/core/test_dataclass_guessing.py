@@ -56,6 +56,45 @@ def test_guessing_of_nested_pydantic():
     assert reconstituted_pydantic == input_config
 
 
+def test_nested_pydantic_reconstruction_from_raw_json():
+    existing_json = """
+    {
+      "input_storage_bucket": "s3://input-storage-bucket",
+      "cross_account_role_arn": "cross:account:role:arn",
+      "jobs": [
+        {
+          "job_config_id": "ecorrelation_id",
+          "config_file_name": "runConfig.json"
+        }
+      ]}
+    """
+
+    # Get the flyte type
+    target_literal_type = TypeEngine.to_literal_type(SchedulerConfig)
+
+    # get the type that Flyte Remote guesses - this is now a dataclass, not a pydantic model
+    guessed_type = TypeEngine.guess_python_type(target_literal_type)
+
+    # parse the json from pydantic, into the guessed dataclass
+    decoder = JSONDecoder(guessed_type)
+    input_config_dc_version = decoder.decode(existing_json)
+
+    # recover the dataclass back into json, and then back into pydantic, and make sure it matches.
+    json_dc_version = input_config_dc_version.to_json()
+    reconstituted_pydantic = SchedulerConfig.model_validate_json(json_dc_version)
+    assert reconstituted_pydantic == SchedulerConfig(
+        input_storage_bucket="s3://input-storage-bucket",
+        cross_account_role_arn="cross:account:role:arn",
+        jobs=[
+            JobConfig(
+                job_config_id="ecorrelation_id",
+                config_file_name="runConfig.json"
+            )
+        ]
+    )
+
+
+
 def test_guessing_of_nested_pydantic_mapped():
     # Create a Pydantic model instance
     input_config = SchedulerConfigMapped(
