@@ -1153,10 +1153,11 @@ def _handle_json_schema_property(
     """
     A helper to handle the properties of a JSON schema and returns their equivalent Flyte attribute name and type.
 
-    Args:
-        property_key: The property name
-        property_val: The JSON schema definition for this property
-        schema: The full JSON schema (needed to resolve $ref references in nested types like List[NestedModel])
+    :param property_key: The property name
+    :param property_val: The JSON schema definition for this property
+    :param schema: The full JSON schema (needed to resolve $ref references in nested types like List[NestedModel])
+    :return: A tuple of the attribute name and its Python type.
+    :raises ValueError: If the property has a nested Optional or Union type, which is not supported.
     """
 
     # Handle Optional[T] or Union[T1, T2, ...] at the top level for proper recursion
