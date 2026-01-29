@@ -19,6 +19,13 @@ class SchedulerConfig(BaseModel):
     jobs: List[JobConfig]
 
 
+class SchedulerConfigMapped(BaseModel):
+    """The main parent config"""
+    input_storage_bucket: str
+    cross_account_role_arn: str
+    jobs: dict[str, JobConfig]
+
+
 def test_guessing_of_nested_pydantic():
     # Create a Pydantic model instance
     input_config = SchedulerConfig(
@@ -43,9 +50,39 @@ def test_guessing_of_nested_pydantic():
     decoder = JSONDecoder(guessed_type)
     input_config_dc_version = decoder.decode(input_config_json)
 
-    # recovert the dataclass back into json, and then back into pydantic, and make sure it matches.
+    # recover the dataclass back into json, and then back into pydantic, and make sure it matches.
     json_dc_version = input_config_dc_version.to_json()
     reconstituted_pydantic = SchedulerConfig.model_validate_json(json_dc_version)
+    assert reconstituted_pydantic == input_config
+
+
+def test_guessing_of_nested_pydantic_mapped():
+    # Create a Pydantic model instance
+    input_config = SchedulerConfigMapped(
+        input_storage_bucket="data_storage_bucket",
+        cross_account_role_arn="example-role",
+        jobs={
+            "job1": JobConfig(
+                job_config_id="example-correlation-id-1",
+                config_file_name="runConfig.json"
+            )
+        }
+    )
+    input_config_json = input_config.model_dump_json()
+
+    # Get the flyte type
+    target_literal_type = TypeEngine.to_literal_type(SchedulerConfigMapped)
+
+    # get the type that Flyte Remote guesses - this is now a dataclass, not a pydantic model
+    guessed_type = TypeEngine.guess_python_type(target_literal_type)
+
+    # parse the json from pydantic, into the guessed dataclass
+    decoder = JSONDecoder(guessed_type)
+    input_config_dc_version = decoder.decode(input_config_json)
+
+    # recover the dataclass back into json, and then back into pydantic, and make sure it matches.
+    json_dc_version = input_config_dc_version.to_json()
+    reconstituted_pydantic = SchedulerConfigMapped.model_validate_json(json_dc_version)
     assert reconstituted_pydantic == input_config
 
 
