@@ -10,6 +10,7 @@ plugin_requires = [
     "onnx-pytorch",
     "networkx<3.2; python_version<'3.9'",
     "onnxscript",
+    "numpy<2.0.0",
 ]
 
 __version__ = "0.0.0+develop"
