@@ -162,6 +162,7 @@ class Credentials(object):
     This setting can be used to manually pass in the audience into authenticator flows.
     """
 
+
 class Platform(object):
     SECTION = "platform"
     URL = ConfigEntry(
