@@ -94,6 +94,8 @@ class RayFunctionTask(PythonFunctionTask):
                 "working_dir": working_dir,
                 "excludes": ["script_mode.tar.gz", "fast*.tar.gz", ".python_history"],
             }
+        else:
+            init_params["ignore_reinit_error"] = True
 
         ray.init(**init_params)
         return user_params

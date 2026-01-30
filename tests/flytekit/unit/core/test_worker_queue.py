@@ -21,8 +21,9 @@ def _mock_reconcile(update: Update):
     update.wf_exec.outputs.as_python_native.return_value = "hello"
 
 
+@pytest.mark.asyncio
 @mock.patch("flytekit.core.worker_queue.Controller.reconcile_one", side_effect=_mock_reconcile)
-def test_controller(mock_reconcile):
+async def test_controller(mock_reconcile):
     print(f"ID mock_reconcile {id(mock_reconcile)}")
     mock_reconcile.return_value = 123
 
@@ -41,11 +42,12 @@ def test_controller(mock_reconcile):
         res = await f
         assert res == "hello"
 
-    loop_manager.run_sync(fake_eager)
+    await fake_eager()
 
 
+@pytest.mark.asyncio
 @mock.patch("flytekit.core.worker_queue.Controller._execute")
-def test_controller_launch(mock_thread_target):
+async def test_controller_launch(mock_thread_target):
     @task
     def t2() -> str:
         return "hello"
@@ -263,13 +265,14 @@ serialization_settings = SerializationSettings(
 )
 
 
+@pytest.mark.asyncio
 @pytest.mark.parametrize("phase,expected_update_status", [
     (execution.WorkflowExecutionPhase.SUCCEEDED, ItemStatus.SUCCESS),
     (execution.WorkflowExecutionPhase.FAILED, ItemStatus.FAILED),
     (execution.WorkflowExecutionPhase.ABORTED, ItemStatus.FAILED),
     (execution.WorkflowExecutionPhase.TIMED_OUT, ItemStatus.FAILED),
 ])
-def test_reconcile(phase, expected_update_status):
+async def test_reconcile(phase, expected_update_status):
     mock_remote = mock.MagicMock()
     wf_exec = FlyteWorkflowExecution(
         id=identifier.WorkflowExecutionIdentifier("project", "domain", "exec-name"),

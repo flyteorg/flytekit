@@ -1,6 +1,7 @@
 import asyncio
 import contextlib
 import datetime
+import faulthandler
 import os
 import pathlib
 import signal
@@ -727,6 +728,9 @@ def execute_task_cmd(
     resolver,
     resolver_args,
 ):
+    logger.info("Registering faulthandler for SIGUSR1")
+    faulthandler.register(signal.SIGUSR1)
+
     logger.info(get_version_message())
     # We get weird errors if there are no click echo messages at all, so emit an empty string so that unit tests pass.
     click.echo("")

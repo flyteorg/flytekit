@@ -9,10 +9,11 @@ authors = [{ name = "Flyte Contributors", email = "admin@flyte.org" }]
 description = "Flyte SDK for Python"
 license = { text = "Apache-2.0" }
 readme = { file = "README.md", content-type = "text/markdown" }
-requires-python = ">=3.9,<3.13"
+requires-python = ">=3.10,<3.13"
 dependencies = [
     # Please maintain an alphabetical order in the following list
     "adlfs>=2023.3.0",
+    "cachetools>=5.3.3",
     "click>=6.6",
     "cloudpickle>=2.0.0",
     "croniter>=0.3.20",
@@ -20,9 +21,11 @@ dependencies = [
     "diskcache>=5.2.1",
     "docker>=4.0.0",
     "docstring-parser>=0.9.0",
-    "flyteidl>=1.15.1",
+    "flyteidl>=1.16.1,<2.0.0a0",
     "fsspec>=2023.3.0",
-    "gcsfs>=2023.3.0,!=2025.5.0,!=2025.5.0post1",  # Bug in 2025.5.0, 2025.5.0post1 https://github.com/fsspec/gcsfs/issues/687
+    # Bug in 2025.5.0, 2025.5.0post1 https://github.com/fsspec/gcsfs/issues/687
+    # Bug in 2024.2.0 https://github.com/fsspec/gcsfs/pull/643
+    "gcsfs>=2023.3.0,!=2024.2.0,!=2025.5.0,!=2025.5.0post1",
     "googleapis-common-protos>=1.57",
     "grpcio",
     "grpcio-status",
@@ -53,7 +56,6 @@ classifiers = [
     "Intended Audience :: Science/Research",
     "Intended Audience :: Developers",
     "License :: OSI Approved :: Apache Software License",
-    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",

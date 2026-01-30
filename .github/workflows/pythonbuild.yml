@@ -27,9 +27,9 @@ jobs:
       - name: Set Python versions for run
         run: |
           if [[ ${{ github.event_name }} == "schedule" ]]; then
-            echo "python_versions=[\"3.9\",\"3.10\",\"3.11\",\"3.12\"]" >> $GITHUB_ENV
+            echo "python_versions=[\"3.10\",\"3.11\",\"3.12\"]" >> $GITHUB_ENV
           else
-            echo "python_versions=[\"3.9\", \"3.12\"]" >> $GITHUB_ENV
+            echo "python_versions=[\"3.12\"]" >> $GITHUB_ENV
           fi
 
   build:
@@ -137,8 +137,6 @@ jobs:
             pandas: "pandas<2.0.0"
           - numpy: "numpy<2.0.0"
             pandas: "pandas>=2.0.0"
-          - numpy: "numpy>=2.0.0"
-            python-version: "3.8"
 
     steps:
       - uses: actions/checkout@v4
@@ -245,7 +243,7 @@ jobs:
         uses: unionai-oss/flytectl-setup-action@master
       - name: Setup Flyte Sandbox
         run: |
-          flytectl demo start
+          flytectl demo start --disable-agent
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
         with:
@@ -268,16 +266,12 @@ jobs:
         env:
           FLYTEKIT_IMAGE: localhost:30000/flytekit:dev
           FLYTEKIT_CI: 1
-          PYTEST_OPTS: -n2
+          PYTEST_OPTS: -n1
           AWS_ENDPOINT_URL: 'http://localhost:30002'
           AWS_ACCESS_KEY_ID: minio
           AWS_SECRET_ACCESS_KEY: miniostorage
         run: |
           make ${{ matrix.makefile-cmd }}
-      - name: Setup tmate session
-        if: ${{ failure() }}
-        uses: mxschmitt/action-tmate@v3
-        timeout-minutes: 60
       - name: Codecov
         uses: codecov/codecov-action@v3.1.0
         with:
@@ -305,6 +299,7 @@ jobs:
           - flytekit-data-fsspec
           - flytekit-dbt
           - flytekit-deck-standard
+          - flytekit-dgxc-lepton
           # TODO: remove dolt plugin - https://github.com/flyteorg/flyte/issues/5350
           # flytekit-dolt
           - flytekit-duckdb
@@ -347,8 +342,6 @@ jobs:
           # Below is a list of community plugins. Please keep in alphabetical order.
           - community/flytekit-xarray-zarr
         exclude:
-          - python-version: 3.9
-            plugin-names: "flytekit-aws-sagemaker"
           # flytekit-modin depends on ray which does not have a 3.11 wheel yet.
           # Issue tracked in https://github.com/ray-project/ray/issues/27881
           - python-version: 3.11
@@ -362,7 +355,7 @@ jobs:
             plugin-names: "flytekit-greatexpectations"
           # onnxruntime does not support python 3.10 yet
           # https://github.com/microsoft/onnxruntime/issues/9782
-          - python-version: 3.11
+          - python-version: 3.12
             plugin-names: "flytekit-onnx-pytorch"
           - python-version: 3.11
             plugin-names: "flytekit-onnx-scikitlearn"
@@ -412,12 +405,13 @@ jobs:
         run: |
           pip install uv
           # TODO: double-check if checking out all tags solves the issue
-          export SETUPTOOLS_SCM_PRETEND_VERSION="3.0.0"
+          export SETUPTOOLS_SCM_PRETEND_VERSION="1.999.999"
           make setup-global-uv
           cd plugins/${{ matrix.plugin-names }}
           uv pip install --system .
           if [ -f dev-requirements.in ]; then uv pip install --system -r dev-requirements.in; fi
           # TODO: move to protobuf>=5. Github issue: https://github.com/flyteorg/flyte/issues/5448
+          echo "Workspace: $GITHUB_WORKSPACE"
           uv pip install --system -U $GITHUB_WORKSPACE "protobuf<5" "git+https://github.com/flyteorg/flyte.git@master#subdirectory=flyteidl"
           # TODO: remove this when numpy v2 in onnx has been resolved
           if [[ ${{ matrix.plugin-names }} == *"onnx"* || ${{ matrix.plugin-names }} == "flytekit-sqlalchemy" || ${{ matrix.plugin-names }} == "flytekit-pandera" ]]; then

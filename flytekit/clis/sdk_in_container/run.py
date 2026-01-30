@@ -160,7 +160,7 @@ class RunLevelParams(PyFlyteParams):
     )
     poll_interval: int = make_click_option_field(
         click.Option(
-            param_decls=["-i", "--poll-interval", "poll_interval"],
+            param_decls=["--poll-interval", "poll_interval"],
             required=False,
             type=int,
             default=None,
@@ -810,6 +810,7 @@ class DynamicEntityLaunchCommand(click.RichCommand):
 
     LP_LAUNCHER = "lp"
     TASK_LAUNCHER = "task"
+    WORKFLOW_LAUNCHER = "workflow"
 
     def __init__(self, name: str, h: str, entity_name: str, launcher: str, **kwargs):
         super().__init__(name=name, help=h, **kwargs)
@@ -817,7 +818,7 @@ class DynamicEntityLaunchCommand(click.RichCommand):
         self._launcher = launcher
         self._entity = None
 
-    def _fetch_entity(self, ctx: click.Context) -> typing.Union[FlyteLaunchPlan, FlyteTask]:
+    def _fetch_entity(self, ctx: click.Context) -> typing.Union[FlyteLaunchPlan, FlyteTask, FlyteWorkflow]:
         if self._entity:
             return self._entity
         run_level_params: RunLevelParams = ctx.obj
@@ -837,6 +838,12 @@ class DynamicEntityLaunchCommand(click.RichCommand):
                         )
                     )
                     entity = r.fetch_launch_plan(run_level_params.project, run_level_params.domain, self._entity_name)
+        elif self._launcher == self.WORKFLOW_LAUNCHER:
+            parts = self._entity_name.split(":")
+            if len(parts) == 2:
+                entity = r.fetch_workflow(run_level_params.project, run_level_params.domain, parts[0], parts[1])
+            else:
+                entity = r.fetch_workflow(run_level_params.project, run_level_params.domain, self._entity_name)
         else:
             parts = self._entity_name.split(":")
             if len(parts) == 2:
@@ -973,12 +980,19 @@ class RemoteEntityGroup(click.RichGroup):
                 return []
 
     def get_command(self, ctx, name):
-        if self._command_name in [self.LAUNCHPLAN_COMMAND, self.WORKFLOW_COMMAND]:
+        if self._command_name == self.LAUNCHPLAN_COMMAND:
             return DynamicEntityLaunchCommand(
                 name=name,
                 h=f"Execute a {self._command_name}.",
                 entity_name=name,
                 launcher=DynamicEntityLaunchCommand.LP_LAUNCHER,
+            )
+        elif self._command_name == self.WORKFLOW_COMMAND:
+            return DynamicEntityLaunchCommand(
+                name=name,
+                h=f"Execute a {self._command_name}.",
+                entity_name=name,
+                launcher=DynamicEntityLaunchCommand.WORKFLOW_LAUNCHER,
             )
         return DynamicEntityLaunchCommand(
             name=name,

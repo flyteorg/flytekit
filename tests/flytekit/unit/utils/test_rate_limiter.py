@@ -19,8 +19,7 @@ async def helper_for_async(rpm: int, total: int):
 
 
 def runner_for_async(rpm: int, total: int):
-    loop = asyncio.get_event_loop()
-    return loop.run_until_complete(helper_for_async(rpm, total))
+    return asyncio.run(helper_for_async(rpm, total))
 
 
 @pytest.mark.asyncio
@@ -43,8 +42,7 @@ async def helper_for_sync(rpm: int, total: int):
 
 
 def runner_for_sync(rpm: int, total: int):
-    loop = asyncio.get_event_loop()
-    return loop.run_until_complete(helper_for_sync(rpm, total))
+    return asyncio.run(helper_for_sync(rpm, total))
 
 
 @pytest.mark.asyncio

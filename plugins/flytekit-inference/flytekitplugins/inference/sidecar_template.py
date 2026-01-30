@@ -13,6 +13,7 @@ class ModelInferenceTemplate:
         cpu: int = 1,
         gpu: int = 1,
         mem: str = "1Gi",
+        ephemeral_storage: str = "1Gi",
         env: Optional[dict[str, str]] = None,
         download_inputs: bool = False,
         download_inputs_mem: str = "500Mi",
@@ -36,6 +37,7 @@ class ModelInferenceTemplate:
         self._cpu = cpu
         self._gpu = gpu
         self._mem = mem
+        self._ephemeral_storage = ephemeral_storage
         self._download_inputs_mem = download_inputs_mem
         self._download_inputs_cpu = download_inputs_cpu
         self._env = env
@@ -58,11 +60,13 @@ class ModelInferenceTemplate:
                             "cpu": self._cpu,
                             "nvidia.com/gpu": self._gpu,
                             "memory": self._mem,
+                            "ephemeral-storage": self._ephemeral_storage,
                         },
                         limits={
                             "cpu": self._cpu,
                             "nvidia.com/gpu": self._gpu,
                             "memory": self._mem,
+                            "ephemeral-storage": self._ephemeral_storage,
                         },
                     ),
                     restart_policy="Always",  # treat this container as a sidecar

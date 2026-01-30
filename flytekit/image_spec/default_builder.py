@@ -29,7 +29,8 @@ RUN --mount=type=cache,sharing=locked,mode=0777,target=/root/.cache/uv,id=uv \
     --mount=type=bind,target=uv.lock,src=uv.lock \
     --mount=type=bind,target=pyproject.toml,src=pyproject.toml \
     $PIP_SECRET_MOUNT \
-    uv sync $PIP_INSTALL_ARGS
+    uv sync $PIP_INSTALL_ARGS && \
+    chown -R flytekit /root/.venv
 WORKDIR /
 
 # Update PATH and UV_PYTHON to point to the venv created by uv sync
@@ -54,12 +55,12 @@ RUN --mount=type=cache,sharing=locked,mode=0777,target=/tmp/poetry_cache,id=poet
     --mount=type=bind,target=poetry.lock,src=poetry.lock \
     --mount=type=bind,target=pyproject.toml,src=pyproject.toml \
     $PIP_SECRET_MOUNT \
-    poetry install $PIP_INSTALL_ARGS
-
+    poetry install $PIP_INSTALL_ARGS && \
+    chown -R flytekit /root/.venv
 WORKDIR /
 
 # Update PATH and UV_PYTHON to point to venv
-ENV PATH="/root/.venv/bin:$$PATH" \
+ENV PATH="/root/.venv/bin:$$PATH"  \
     UV_PYTHON=/root/.venv/bin/python
 """
 )
@@ -81,14 +82,19 @@ RUN --mount=type=cache,sharing=locked,mode=0777,target=/var/cache/apt,id=apt \
     $APT_PACKAGES
 """)
 
+# make sure that micromamba python installation is owned by flytekit user
 MICROMAMBA_INSTALL_COMMAND_TEMPLATE = Template("""\
 RUN --mount=type=cache,sharing=locked,mode=0777,target=/opt/micromamba/pkgs,\
 id=micromamba \
     --mount=from=micromamba,source=/usr/bin/micromamba,target=/usr/bin/micromamba \
     micromamba config set use_lockfiles False && \
-    micromamba create -n runtime --root-prefix /opt/micromamba \
+    ( micromamba create -n runtime --root-prefix /opt/micromamba \
     -c conda-forge $CONDA_CHANNELS \
-    python=$PYTHON_VERSION $CONDA_PACKAGES
+    python=$PYTHON_VERSION $CONDA_PACKAGES \
+    || micromamba install -n runtime --root-prefix /opt/micromamba \
+    -c conda-forge $CONDA_CHANNELS \
+    python=$PYTHON_VERSION $CONDA_PACKAGES ) && \
+    chown -R flytekit /opt/micromamba
 """)
 
 DOCKER_FILE_TEMPLATE = Template("""\
@@ -98,6 +104,7 @@ FROM $MICROMAMBA_IMAGE as micromamba
 
 FROM $BASE_IMAGE
 
+WORKDIR /
 USER root
 $APT_INSTALL_COMMAND
 RUN --mount=from=micromamba,source=/etc/ssl/certs/ca-certificates.crt,target=/tmp/ca-certificates.crt \
@@ -118,7 +125,7 @@ ENV PATH="$EXTRA_PATH:$$PATH" \
     SSL_CERT_DIR=/etc/ssl/certs \
     $ENV
 
-$UV_PYTHON_INSTALL_COMMAND
+$PYTHON_INSTALL_COMMAND
 
 # Adds nvidia just in case it exists
 ENV PATH="$$PATH:/usr/local/nvidia/bin:/usr/local/cuda/bin" \
@@ -336,7 +343,7 @@ def create_docker_context(image_spec: ImageSpec, tmp_dir: Path):
         )
         raise ValueError(msg)
 
-    uv_python_install_command = prepare_python_install(image_spec, tmp_dir)
+    python_install_command = prepare_python_install(image_spec, tmp_dir)
     env_dict = {"PYTHONPATH": "/root"}
 
     if image_spec.env:
@@ -422,11 +429,11 @@ def create_docker_context(image_spec: ImageSpec, tmp_dir: Path):
     _f_img_id_env = f"{_F_IMG_ID}={image_spec.id}"
 
     docker_content = DOCKER_FILE_TEMPLATE.substitute(
-        UV_PYTHON_INSTALL_COMMAND=uv_python_install_command,
-        APT_INSTALL_COMMAND=apt_install_command,
         INSTALL_PYTHON_TEMPLATE=python_install_template.template,
         EXTRA_PATH=python_install_template.extra_path,
         PYTHON_EXEC=python_install_template.python_exec,
+        APT_INSTALL_COMMAND=apt_install_command,
+        PYTHON_INSTALL_COMMAND=python_install_command,
         BASE_IMAGE=base_image,
         ENV=env,
         _F_IMG_ID_ENV=_f_img_id_env,
