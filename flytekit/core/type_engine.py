@@ -618,17 +618,18 @@ class DataclassTransformer(TypeTransformer[object]):
             # Drop all annotations and handle only the dataclass type passed in.
             t = args[0]
 
+        schema = None
         try:
             # This produce JSON SCHEMA draft 2020-12
             from mashumaro.jsonschema import build_json_schema
 
             schema = build_json_schema(cast(DataClassJSONMixin, self._get_origin_type_in_annotation(t))).to_dict()
         except Exception as e:
-            logger.error(
-                f"Failed to extract schema for object {t}, error: {e}\n"
-                f"Please remove `DataClassJsonMixin` and `dataclass_json` decorator from the dataclass definition"
+            logger.warning(
+                f"Failed to extract schema for object {t}, (will run schemaless) error: {e}\n"
+                f"If you have postponed annotations turned on (PEP 563) turn it off please. Postponed "
+                f"evaluation doesn't work with json dataclasses"
             )
-            raise
 
         # Recursively construct the dataclass_type which contains the literal type of each field
         literal_type = {}
@@ -884,12 +885,99 @@ class DataclassTransformer(TypeTransformer[object]):
 
         return dc
 
+    def _fix_val_flyte_file_directory(
+        self, ctx: FlyteContext, python_type: typing.Type, val: typing.Any
+    ) -> typing.Any:
+        """
+        Fix FlyteFile and FlyteDirectory fields that were deserialized via dataclasses_json.
+        dataclasses_json doesn't use the custom _deserialize method, so we need to manually
+        set up the proper local path and downloader for remote files.
+        """
+        from flytekit.types.directory import FlyteDirectory
+        from flytekit.types.file import FlyteFile
+
+        if val is None:
+            return val
+
+        # Check for FlyteFile/FlyteDirectory FIRST, before the generic dataclass check
+        # because FlyteFile and FlyteDirectory are also dataclasses
+        if isinstance(val, FlyteFile):
+            # Fix FlyteFile if path is remote - need to set up local path and downloader
+            if ctx.file_access.is_remote(val.path):
+                from flytekit.types.file.file import FlyteFilePathTransformer
+                transformer = FlyteFilePathTransformer()
+                return transformer.dict_to_flyte_file(
+                    {"path": val.path, "metadata": getattr(val, "metadata", None)},
+                    type(val) if type(val) != FlyteFile else FlyteFile
+                )
+            return val
+        elif isinstance(val, FlyteDirectory):
+            # Fix FlyteDirectory if path is remote - need to set up local path and downloader
+            if ctx.file_access.is_remote(val.path):
+                from flytekit.types.directory.types import FlyteDirToMultipartBlobTransformer
+                transformer = FlyteDirToMultipartBlobTransformer()
+                return transformer.dict_to_flyte_directory(
+                    {"path": val.path, "metadata": getattr(val, "metadata", None)},
+                    type(val) if type(val) != FlyteDirectory else FlyteDirectory
+                )
+            return val
+
+        python_type = get_underlying_type(python_type)
+        origin = get_origin(python_type)
+        args = get_args(python_type)
+
+        if origin is list and args:
+            return [self._fix_val_flyte_file_directory(ctx, args[0], item) for item in val]
+        elif origin is dict and args and len(args) == 2:
+            return {k: self._fix_val_flyte_file_directory(ctx, args[1], v) for k, v in val.items()}
+        elif origin is typing.Union:
+            # Handle Optional and Union types
+            for arg in args:
+                if arg is type(None):
+                    continue
+                try:
+                    return self._fix_val_flyte_file_directory(ctx, arg, val)
+                except Exception:
+                    continue
+            return val
+        elif dataclasses.is_dataclass(python_type) and not isinstance(python_type, type):
+            # Already an instance, skip
+            return val
+        elif dataclasses.is_dataclass(python_type):
+            return self._fix_dataclass_flyte_file_directory(ctx, python_type, val)
+
+        return val
+
+    def _fix_dataclass_flyte_file_directory(
+        self, ctx: FlyteContext, dc_type: Type[dataclasses.dataclass], dc: typing.Any
+    ) -> typing.Any:
+        """
+        Walk through dataclass fields and fix FlyteFile/FlyteDirectory values.
+        """
+        hints = typing.get_type_hints(dc_type)
+        for f in dataclasses.fields(dc_type):
+            python_type = hints.get(f.name, f.type)
+            val = getattr(dc, f.name)
+            fixed_val = self._fix_val_flyte_file_directory(ctx, python_type, val)
+            if fixed_val is not val:
+                object.__setattr__(dc, f.name, fixed_val)
+        return dc
+
     def from_binary_idl(self, binary_idl_object: Binary, expected_python_type: Type[T]) -> T:
         if binary_idl_object.tag == MESSAGEPACK:
             if issubclass(expected_python_type, DataClassJSONMixin):
                 dict_obj = msgpack.loads(binary_idl_object.value, strict_map_key=False)
                 json_str = json.dumps(dict_obj)
                 dc = expected_python_type.from_json(json_str)  # type: ignore
+            elif DataClassJsonMixin is not None and issubclass(expected_python_type, DataClassJsonMixin):
+                # Support legacy dataclasses_json.DataClassJsonMixin
+                dict_obj = msgpack.loads(binary_idl_object.value, strict_map_key=False)
+                json_str = json.dumps(dict_obj)
+                dc = expected_python_type.from_json(json_str)  # type: ignore
+                # Fix up FlyteFile/FlyteDirectory fields that don't get proper deserialization with dataclasses_json
+                from flytekit.core.context_manager import FlyteContextManager
+                ctx = FlyteContextManager.current_context()
+                dc = self._fix_dataclass_flyte_file_directory(ctx, expected_python_type, dc)
             else:
                 try:
                     decoder = self._msgpack_decoder[expected_python_type]
@@ -922,6 +1010,9 @@ class DataclassTransformer(TypeTransformer[object]):
         elif DataClassJsonMixin is not None and issubclass(expected_python_type, DataClassJsonMixin):
             # Support legacy dataclasses_json.DataClassJsonMixin
             dc = expected_python_type.from_json(json_str)  # type: ignore
+            # dataclasses_json doesn't use custom _deserialize methods for FlyteFile/FlyteDirectory,
+            # so we need to fix them up manually to ensure proper local paths and downloaders are set
+            dc = self._fix_dataclass_flyte_file_directory(ctx, expected_python_type, dc)
         else:
             # The function looks up or creates a JSONDecoder specifically designed for the object's type.
             # This decoder is then used to convert a JSON string into a data class.
