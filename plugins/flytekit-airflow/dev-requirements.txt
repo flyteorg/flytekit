@@ -850,7 +850,7 @@ pyarrow==16.1.0
     #   pandas-gbq
 pyarrow-hotfix==0.6
     # via apache-beam
-pyasn1==0.6.1
+pyasn1==0.6.2
     # via
     #   oauth2client
     #   pyasn1-modules
@@ -1048,7 +1048,7 @@ universal-pathlib==0.2.5
     # via apache-airflow
 uritemplate==4.1.1
     # via google-api-python-client
-urllib3==2.2.3
+urllib3==2.6.3
     # via requests
 werkzeug==2.2.3
     # via

@@ -1,6 +1,5 @@
 import json
 import os
-import typing
 from typing import Type
 
 import msgpack
@@ -26,9 +25,9 @@ class PydanticTransformer(TypeTransformer[BaseModel]):
     def get_literal_type(self, t: Type[BaseModel]) -> LiteralType:
         schema = t.model_json_schema()
         literal_type = {}
-        fields = typing.get_type_hints(t).items()
 
-        for name, python_type in fields:
+        for name, field_info in t.model_fields.items():
+            python_type = field_info.annotation
             try:
                 literal_type[name] = TypeEngine.to_literal_type(python_type)
             except Exception as e:
