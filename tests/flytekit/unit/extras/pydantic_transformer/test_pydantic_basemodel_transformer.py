@@ -1023,6 +1023,52 @@ def test_modify_literal_uris_call(mock_resolver):
     bm_revived = TypeEngine.to_python_value(ctx, lit, BM)
     assert bm_revived.s.literal.uri == "/my/replaced/val"
 
+def test_pydantic_model_with_locally_defined_nested_model():
+    import typing
+
+    ctx = FlyteContextManager.current_context()
+
+    # Define nested model inside the function - not in module globals
+    class LocalNestedModel(BaseModel):
+        x: int = 1
+        y: str = "hello"
+
+    # Model with forward reference using string annotation
+    class ModelWithLocalForwardRef(BaseModel):
+        nested: "LocalNestedModel"
+        value: int = 42
+
+    # Verify that get_type_hints fails with locally defined forward references
+    with pytest.raises(NameError, match="LocalNestedModel"):
+        typing.get_type_hints(ModelWithLocalForwardRef)
+
+    # But __annotations__ works fine - it returns raw annotations without resolution
+    annotations = ModelWithLocalForwardRef.__annotations__
+    assert "nested" in annotations
+    assert "value" in annotations
+
+    # Test get_literal_type
+    lt = TypeEngine.to_literal_type(ModelWithLocalForwardRef)
+    assert lt is not None
+    assert lt.structure is not None
+
+    # Test to_literal
+    original = ModelWithLocalForwardRef(
+        nested=LocalNestedModel(x=10, y="world"),
+        value=100
+    )
+    lit = TypeEngine.to_literal(ctx, original, ModelWithLocalForwardRef, lt)
+    assert lit is not None
+    assert lit.scalar is not None
+
+    # Test to_python_value
+    revived = TypeEngine.to_python_value(ctx, lit, ModelWithLocalForwardRef)
+    assert revived is not None
+    assert isinstance(revived, ModelWithLocalForwardRef)
+    assert revived.value == 100
+    assert revived.nested.x == 10
+    assert revived.nested.y == "world"
+
 
 def test_flytefile_pydantic_model_dump_validate_cycle():
     class BM(BaseModel):
