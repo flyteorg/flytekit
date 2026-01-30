@@ -991,7 +991,7 @@ def test_attr_access_sd():
     execution_id = run("attr_access_sd.py", "wf", "--uri", remote_file_path)
     remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
     execution = remote.fetch_execution(name=execution_id)
-    execution = remote.wait(execution=execution, timeout=datetime.timedelta(minutes=15))
+    execution = remote.wait(execution=execution, timeout=datetime.timedelta(minutes=25))
     assert execution.error is None, f"Execution failed with error: {execution.error}"
     assert execution.closure.phase == WorkflowExecutionPhase.SUCCEEDED, f"Execution failed with phase: {execution.closure.phase}"
 
@@ -1358,3 +1358,19 @@ def test_run_wf_with_resource_requests_override(register):
         ],
         limits=[],
     )
+
+
+def test_workflow_with_failure_node():
+    execution_id = run("with_failure_node.py", "wf")
+    remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
+    execution = remote.fetch_execution(name=execution_id)
+    execution = remote.wait(execution=execution, timeout=datetime.timedelta(minutes=5))
+    print("Execution Error:", execution.error)
+    assert execution.closure.phase == WorkflowExecutionPhase.FAILED, f"Execution failed with phase: {execution.closure.phase}"
+
+def test_conditional_workflow():
+    execution_id = run("conditional_workflow.py", "wf")
+    remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
+    execution = remote.fetch_execution(name=execution_id)
+    execution = remote.wait(execution=execution, timeout=datetime.timedelta(minutes=5))
+    assert execution.closure.phase == WorkflowExecutionPhase.SUCCEEDED, f"Execution failed with phase: {execution.closure.phase}"

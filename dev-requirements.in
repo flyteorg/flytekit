@@ -46,6 +46,7 @@ types-protobuf<5
 types-croniter
 types-decorator
 types-mock
+types-cachetools
 autoflake
 
 pillow
