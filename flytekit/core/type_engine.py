@@ -681,10 +681,17 @@ class DataclassTransformer(TypeTransformer[object]):
             json_str = python_val.to_json()
         elif DataClassJsonMixin is not None and isinstance(python_val, DataClassJsonMixin):
             # Support legacy dataclasses_json.DataClassJsonMixin
-            # We can't use mashumaro's encoder because it includes dataclass_json_config in the output
-            # We can't use to_json() directly because it doesn't properly serialize FlyteFile/FlyteDirectory
-            # So we manually convert to dict with proper handling
-            dict_obj = self._dataclass_to_dict(python_val)
+            # Use mashumaro's encoder to handle serialization_strategy from mashumaro Config,
+            # then filter out dataclass_json_config which mashumaro includes from type hints
+            try:
+                encoder = self._json_encoder[python_type]
+            except KeyError:
+                encoder = JSONEncoder(python_type)
+                self._json_encoder[python_type] = encoder
+            json_str = encoder.encode(python_val)
+            # Recursively remove dataclass_json_config from the output (including nested dataclasses)
+            dict_obj = json.loads(json_str)
+            dict_obj = self._remove_dataclass_json_config(dict_obj)
             json_str = json.dumps(dict_obj)
         else:
             try:
@@ -728,10 +735,17 @@ class DataclassTransformer(TypeTransformer[object]):
             msgpack_bytes = msgpack.dumps(dict_obj)
         elif DataClassJsonMixin is not None and isinstance(python_val, DataClassJsonMixin):
             # Support legacy dataclasses_json.DataClassJsonMixin
-            # We can't use mashumaro's encoder because it includes dataclass_json_config in the output
-            # We can't use to_json() directly because it doesn't properly serialize FlyteFile/FlyteDirectory
-            # So we manually convert to dict with proper handling
-            dict_obj = self._dataclass_to_dict(python_val)
+            # Use mashumaro's encoder to handle serialization_strategy from mashumaro Config,
+            # then filter out dataclass_json_config which mashumaro includes from type hints
+            try:
+                encoder = self._msgpack_encoder[python_type]
+            except KeyError:
+                encoder = MessagePackEncoder(python_type)
+                self._msgpack_encoder[python_type] = encoder
+            msgpack_bytes = encoder.encode(python_val)
+            # Recursively remove dataclass_json_config from the output (including nested dataclasses)
+            dict_obj = msgpack.loads(msgpack_bytes, strict_map_key=False)
+            dict_obj = self._remove_dataclass_json_config(dict_obj)
             msgpack_bytes = msgpack.dumps(dict_obj)
         else:
             # The function looks up or creates a MessagePackEncoder specifically designed for the object's type.
@@ -855,7 +869,19 @@ class DataclassTransformer(TypeTransformer[object]):
             object.__setattr__(python_val, n, self._make_dataclass_serializable(val, t))
         return python_val
 
-    def _dataclass_to_dict(self, python_val: typing.Any) -> typing.Dict[str, typing.Any]:
+    def _remove_dataclass_json_config(self, dict_obj: typing.Any) -> typing.Any:
+        """
+        Recursively remove dataclass_json_config from nested dicts.
+        This is needed because mashumaro includes it when serializing dataclasses_json types.
+        """
+        if isinstance(dict_obj, dict):
+            result = {k: self._remove_dataclass_json_config(v) for k, v in dict_obj.items() if k != "dataclass_json_config"}
+            return result
+        elif isinstance(dict_obj, list):
+            return [self._remove_dataclass_json_config(item) for item in dict_obj]
+        return dict_obj
+
+    def _dataclass_to_dict(self, python_val: typing.Any) -> typing.Any:
         """
         Convert a dataclass to a dict, properly serializing FlyteFile/FlyteDirectory objects.
         This is used for dataclasses_json types which don't have proper _serialize support.
@@ -1002,7 +1028,7 @@ class DataclassTransformer(TypeTransformer[object]):
         return val
 
     def _fix_dataclass_flyte_file_directory(
-        self, ctx: FlyteContext, dc_type: Type[dataclasses.dataclass], dc: typing.Any
+        self, ctx: FlyteContext, dc_type: type, dc: typing.Any
     ) -> typing.Any:
         """
         Walk through dataclass fields and fix FlyteFile/FlyteDirectory values.
