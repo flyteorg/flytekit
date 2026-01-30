@@ -545,6 +545,7 @@ class S3Config(object):
     backoff: datetime.timedelta = datetime.timedelta(seconds=5)
     access_key_id: typing.Optional[str] = None
     secret_access_key: typing.Optional[str] = None
+    adressing_style: typing.Optional[str] = None
 
     @classmethod
     def auto(cls, config_file: typing.Union[str, ConfigFile] = None) -> S3Config:
@@ -561,6 +562,7 @@ class S3Config(object):
         kwargs = set_if_exists(kwargs, "backoff", _internal.AWS.BACKOFF_SECONDS.read(config_file))
         kwargs = set_if_exists(kwargs, "access_key_id", _internal.AWS.S3_ACCESS_KEY_ID.read(config_file))
         kwargs = set_if_exists(kwargs, "secret_access_key", _internal.AWS.S3_SECRET_ACCESS_KEY.read(config_file))
+        kwargs = set_if_exists(kwargs, "adressing_style", _internal.AWS.S3_ADDRESSING_STYLE.read(config_file))
         return S3Config(**kwargs)
 
 
