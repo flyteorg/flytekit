@@ -828,6 +828,9 @@ def map_execute_task_cmd(
     prev_checkpoint,
     checkpoint_path,
 ):
+    logger.info("Registering faulthandler for SIGUSR1 for map tasks")
+    faulthandler.register(signal.SIGUSR1)
+
     logger.info(get_version_message())
 
     raw_output_data_prefix, checkpoint_path, prev_checkpoint = normalize_inputs(

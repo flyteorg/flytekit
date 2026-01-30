@@ -459,7 +459,7 @@ class Execution(_common_models.FlyteIdlEntity):
         self._closure = closure
 
     @property
-    def id(self):
+    def id(self) -> _identifier.WorkflowExecutionIdentifier:
         """
         :rtype: flytekit.models.core.identifier.WorkflowExecutionIdentifier
         """
@@ -532,7 +532,7 @@ class ExecutionClosure(_common_models.FlyteIdlEntity):
         phase: int,
         started_at: datetime.datetime,
         duration: datetime.timedelta,
-        error: typing.Optional[flytekit.models.core.execution.ExecutionError] = None,
+        error: typing.Optional[_core_execution.ExecutionError] = None,
         outputs: typing.Optional[LiteralMapBlob] = None,
         abort_metadata: typing.Optional[AbortMetadata] = None,
         created_at: typing.Optional[datetime.datetime] = None,
@@ -556,7 +556,7 @@ class ExecutionClosure(_common_models.FlyteIdlEntity):
         self._updated_at = updated_at
 
     @property
-    def error(self) -> flytekit.models.core.execution.ExecutionError:
+    def error(self) -> _core_execution.ExecutionError:
         return self._error
 
     @property
