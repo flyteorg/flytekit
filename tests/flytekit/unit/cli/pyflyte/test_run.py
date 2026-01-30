@@ -962,3 +962,63 @@ def test_remote_task_boolean_False(mock_run_remote, mock_remote):
     args, _ = mock_run_remote.call_args
     inputs = args[4]['flag']
     assert inputs == False
+
+
+@mock.patch("flytekit.configuration.plugin.FlyteRemote", spec=FlyteRemote)
+@mock.patch("flytekit.clis.sdk_in_container.run.run_remote")
+def test_remote_workflow(mock_run_remote, mock_remote):
+    @task()
+    def example_task(x: int, y: str) -> str:
+        return f"{x},{y}"
+
+    @workflow
+    def example_workflow(x: int, y: str) -> str:
+        return example_task(x=x, y=y)
+
+    mock_remote_instance = mock.MagicMock()
+    mock_remote.return_value = mock_remote_instance
+    mock_remote_instance.fetch_workflow.return_value = example_workflow
+
+    runner = CliRunner()
+    result = runner.invoke(
+        pyflyte.main,
+        ["run", "remote-workflow", "some_module.example_workflow", "--x", "42", "--y", "hello"],
+        catch_exceptions=False,
+    )
+
+    assert result.exit_code == 0
+    mock_remote_instance.fetch_workflow.assert_called_once()
+    mock_run_remote.assert_called_once()
+
+
+@mock.patch("flytekit.configuration.plugin.FlyteRemote", spec=FlyteRemote)
+@mock.patch("flytekit.clis.sdk_in_container.run.run_remote")
+def test_remote_workflow_with_version(mock_run_remote, mock_remote):
+    @task()
+    def example_task(x: int) -> int:
+        return x * 2
+
+    @workflow
+    def example_workflow(x: int) -> int:
+        return example_task(x=x)
+
+    mock_remote_instance = mock.MagicMock()
+    mock_remote.return_value = mock_remote_instance
+    mock_remote_instance.fetch_workflow.return_value = example_workflow
+
+    runner = CliRunner()
+    result = runner.invoke(
+        pyflyte.main,
+        ["run", "remote-workflow", "some_module.example_workflow:v1", "--x", "10"],
+        catch_exceptions=False,
+    )
+
+    assert result.exit_code == 0
+    # Verify fetch_workflow was called with the correct arguments (project, domain, name, version)
+    mock_remote_instance.fetch_workflow.assert_called_once()
+    call_args = mock_remote_instance.fetch_workflow.call_args[0]
+    # Should be called with 4 args when version is specified
+    assert len(call_args) == 4
+    assert call_args[2] == "some_module.example_workflow"
+    assert call_args[3] == "v1"
+    mock_run_remote.assert_called_once()
