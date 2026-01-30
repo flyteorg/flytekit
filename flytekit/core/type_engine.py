@@ -679,6 +679,13 @@ class DataclassTransformer(TypeTransformer[object]):
         # JSON serialization using mashumaro's DataClassJSONMixin
         if isinstance(python_val, DataClassJSONMixin):
             json_str = python_val.to_json()
+        elif DataClassJsonMixin is not None and isinstance(python_val, DataClassJsonMixin):
+            # Support legacy dataclasses_json.DataClassJsonMixin
+            # We can't use mashumaro's encoder because it includes dataclass_json_config in the output
+            # We can't use to_json() directly because it doesn't properly serialize FlyteFile/FlyteDirectory
+            # So we manually convert to dict with proper handling
+            dict_obj = self._dataclass_to_dict(python_val)
+            json_str = json.dumps(dict_obj)
         else:
             try:
                 encoder = self._json_encoder[python_type]
@@ -718,6 +725,13 @@ class DataclassTransformer(TypeTransformer[object]):
         if isinstance(python_val, DataClassJSONMixin):
             json_str = python_val.to_json()
             dict_obj = json.loads(json_str)
+            msgpack_bytes = msgpack.dumps(dict_obj)
+        elif DataClassJsonMixin is not None and isinstance(python_val, DataClassJsonMixin):
+            # Support legacy dataclasses_json.DataClassJsonMixin
+            # We can't use mashumaro's encoder because it includes dataclass_json_config in the output
+            # We can't use to_json() directly because it doesn't properly serialize FlyteFile/FlyteDirectory
+            # So we manually convert to dict with proper handling
+            dict_obj = self._dataclass_to_dict(python_val)
             msgpack_bytes = msgpack.dumps(dict_obj)
         else:
             # The function looks up or creates a MessagePackEncoder specifically designed for the object's type.
@@ -841,6 +855,45 @@ class DataclassTransformer(TypeTransformer[object]):
             object.__setattr__(python_val, n, self._make_dataclass_serializable(val, t))
         return python_val
 
+    def _dataclass_to_dict(self, python_val: typing.Any) -> typing.Dict[str, typing.Any]:
+        """
+        Convert a dataclass to a dict, properly serializing FlyteFile/FlyteDirectory objects.
+        This is used for dataclasses_json types which don't have proper _serialize support.
+        """
+        from flytekit.types.directory import FlyteDirectory
+        from flytekit.types.file import FlyteFile
+        from flytekit.types.structured import StructuredDataset
+
+        if python_val is None:
+            return None  # type: ignore
+
+        # Handle enums - convert to value
+        if isinstance(python_val, enum.Enum):
+            return python_val.value
+
+        # Handle FlyteFile, FlyteDirectory, StructuredDataset by calling their _serialize method
+        if isinstance(python_val, (FlyteFile, FlyteDirectory, StructuredDataset)):
+            return python_val._serialize()
+
+        # Handle lists
+        if isinstance(python_val, list):
+            return [self._dataclass_to_dict(item) for item in python_val]
+
+        # Handle dicts
+        if isinstance(python_val, dict):
+            return {k: self._dataclass_to_dict(v) for k, v in python_val.items()}
+
+        # Handle dataclasses
+        if dataclasses.is_dataclass(python_val) and not isinstance(python_val, type):
+            result = {}
+            for field in dataclasses.fields(python_val):
+                val = getattr(python_val, field.name)
+                result[field.name] = self._dataclass_to_dict(val)
+            return result
+
+        # Return primitive values as-is
+        return python_val
+
     def _fix_val_int(self, t: typing.Type, val: typing.Any) -> typing.Any:
         if val is None:
             return val
@@ -885,9 +938,7 @@ class DataclassTransformer(TypeTransformer[object]):
 
         return dc
 
-    def _fix_val_flyte_file_directory(
-        self, ctx: FlyteContext, python_type: typing.Type, val: typing.Any
-    ) -> typing.Any:
+    def _fix_val_flyte_file_directory(self, ctx: FlyteContext, python_type: typing.Type, val: typing.Any) -> typing.Any:
         """
         Fix FlyteFile and FlyteDirectory fields that were deserialized via dataclasses_json.
         dataclasses_json doesn't use the custom _deserialize method, so we need to manually
@@ -905,20 +956,22 @@ class DataclassTransformer(TypeTransformer[object]):
             # Fix FlyteFile if path is remote - need to set up local path and downloader
             if ctx.file_access.is_remote(val.path):
                 from flytekit.types.file.file import FlyteFilePathTransformer
+
                 transformer = FlyteFilePathTransformer()
                 return transformer.dict_to_flyte_file(
                     {"path": val.path, "metadata": getattr(val, "metadata", None)},
-                    type(val) if type(val) != FlyteFile else FlyteFile
+                    type(val) if type(val) != FlyteFile else FlyteFile,
                 )
             return val
         elif isinstance(val, FlyteDirectory):
             # Fix FlyteDirectory if path is remote - need to set up local path and downloader
             if ctx.file_access.is_remote(val.path):
                 from flytekit.types.directory.types import FlyteDirToMultipartBlobTransformer
+
                 transformer = FlyteDirToMultipartBlobTransformer()
                 return transformer.dict_to_flyte_directory(
                     {"path": val.path, "metadata": getattr(val, "metadata", None)},
-                    type(val) if type(val) != FlyteDirectory else FlyteDirectory
+                    type(val) if type(val) != FlyteDirectory else FlyteDirectory,
                 )
             return val
 
@@ -976,6 +1029,7 @@ class DataclassTransformer(TypeTransformer[object]):
                 dc = expected_python_type.from_json(json_str)  # type: ignore
                 # Fix up FlyteFile/FlyteDirectory fields that don't get proper deserialization with dataclasses_json
                 from flytekit.core.context_manager import FlyteContextManager
+
                 ctx = FlyteContextManager.current_context()
                 dc = self._fix_dataclass_flyte_file_directory(ctx, expected_python_type, dc)
             else:
