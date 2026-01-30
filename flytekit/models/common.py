@@ -74,10 +74,10 @@ class FlyteIdlEntity(object, metaclass=FlyteType):
         return not (self == other)
 
     def __repr__(self):
-        return self.short_string()
+        return str(self.to_flyte_idl())
 
     def __str__(self):
-        return self.verbose_string()
+        return self.short_string()
 
     def __hash__(self):
         return hash(self.to_flyte_idl().SerializeToString(deterministic=True))
@@ -89,12 +89,6 @@ class FlyteIdlEntity(object, metaclass=FlyteType):
         str_repr = _repr_idl_yaml_like(self.to_flyte_idl(), indent=2).rstrip(os.linesep)
         type_str = type(self).__name__
         return f"Flyte Serialized object ({type_str}):" + os.linesep + str_repr
-
-    def verbose_string(self):
-        """
-        :rtype: Text
-        """
-        return self.short_string()
 
     def serialize_to_string(self) -> str:
         return self.to_flyte_idl().SerializeToString()

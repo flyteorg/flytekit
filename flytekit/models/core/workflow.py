@@ -423,7 +423,7 @@ class ArrayNode(_common.FlyteIdlEntity):
             execution_mode=self._execution_mode,
             is_original_sub_node_interface=BoolValue(value=self._is_original_sub_node_interface),
             data_mode=self._data_mode,
-            bound_inputs=self._bound_inputs,
+            bound_inputs=sorted(self._bound_inputs) if self._bound_inputs else None,
         )
 
     @classmethod

@@ -107,6 +107,10 @@ L4 = GPUAccelerator("nvidia-l4")
 L4_VWS = GPUAccelerator("nvidia-l4-vws")
 
 #: use this constant to specify that the task should run on an
+#: `NVIDIA L40S Tensor Core GPU https://www.nvidia.com/en-us/data-center/l40s
+L40S = GPUAccelerator("nvidia-l40s")
+
+#: use this constant to specify that the task should run on an
 #: `NVIDIA Tesla K80 GPU https://www.nvidia.com/en-gb/data-center/tesla-k80
 K80 = GPUAccelerator("nvidia-tesla-k80")
 
@@ -129,6 +133,18 @@ T4 = GPUAccelerator("nvidia-tesla-t4")
 #: use this constant to specify that the task should run on an
 #: `NVIDIA Tesla V100 GPU https://images.nvidia.com/content/technologies/volta/pdf/tesla-volta-v100-datasheet-letter-fnl-web.pdf
 V100 = GPUAccelerator("nvidia-tesla-v100")
+
+#: use this constant to specify that the task should run on an
+#: `NVIDIA H100 GPU https://www.nvidia.com/en-us/data-center/h100
+H100 = GPUAccelerator("nvidia-h100")
+
+#: use this constant to specify that the task should run on an
+#: `NVIDIA H200 GPU https://www.nvidia.com/en-us/data-center/h200
+H200 = GPUAccelerator("nvidia-h200")
+
+#: use this constant to specify that the task should run on an
+#: `NVIDIA RTX-PRO-6000 GPU https://www.nvidia.com/en-us/products/workstations/professional-desktop-gpus/rtx-pro-6000/
+RTX_PRO_6000 = GPUAccelerator("nvidia-rtx-pro-6000")
 
 
 class MultiInstanceGPUAccelerator(BaseAccelerator):

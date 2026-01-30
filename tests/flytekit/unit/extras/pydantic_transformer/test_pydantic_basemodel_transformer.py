@@ -1022,3 +1022,155 @@ def test_modify_literal_uris_call(mock_resolver):
 
     bm_revived = TypeEngine.to_python_value(ctx, lit, BM)
     assert bm_revived.s.literal.uri == "/my/replaced/val"
+
+def test_pydantic_model_with_locally_defined_nested_model():
+    import typing
+
+    ctx = FlyteContextManager.current_context()
+
+    # Define nested model inside the function - not in module globals
+    class LocalNestedModel(BaseModel):
+        x: int = 1
+        y: str = "hello"
+
+    # Model with forward reference using string annotation
+    class ModelWithLocalForwardRef(BaseModel):
+        nested: "LocalNestedModel"
+        value: int = 42
+
+    # Verify that get_type_hints fails with locally defined forward references
+    with pytest.raises(NameError, match="LocalNestedModel"):
+        typing.get_type_hints(ModelWithLocalForwardRef)
+
+    # But __annotations__ works fine - it returns raw annotations without resolution
+    annotations = ModelWithLocalForwardRef.__annotations__
+    assert "nested" in annotations
+    assert "value" in annotations
+
+    # Test get_literal_type
+    lt = TypeEngine.to_literal_type(ModelWithLocalForwardRef)
+    assert lt is not None
+    assert lt.structure is not None
+
+    # Test to_literal
+    original = ModelWithLocalForwardRef(
+        nested=LocalNestedModel(x=10, y="world"),
+        value=100
+    )
+    lit = TypeEngine.to_literal(ctx, original, ModelWithLocalForwardRef, lt)
+    assert lit is not None
+    assert lit.scalar is not None
+
+    # Test to_python_value
+    revived = TypeEngine.to_python_value(ctx, lit, ModelWithLocalForwardRef)
+    assert revived is not None
+    assert isinstance(revived, ModelWithLocalForwardRef)
+    assert revived.value == 100
+    assert revived.nested.x == 10
+    assert revived.nested.y == "world"
+
+
+def test_flytefile_pydantic_model_dump_validate_cycle():
+    class BM(BaseModel):
+        ff: FlyteFile
+
+    bm = BM(ff=FlyteFile.from_source("s3://my-bucket/file.txt"))
+
+    assert bm.ff.remote_source == "s3://my-bucket/file.txt"
+
+    bm_dict = bm.model_dump()
+    bm2 = BM.model_validate(bm_dict)
+
+    assert isinstance(bm2.ff, FlyteFile)
+    assert bm2.ff.remote_source == "s3://my-bucket/file.txt"
+
+    bm2_dict = bm2.model_dump()
+    assert bm_dict == bm2_dict
+
+
+def test_flytefile_pydantic_with_local_file(local_dummy_file):
+    class BM(BaseModel):
+        ff: FlyteFile
+
+    bm = BM(ff=FlyteFile(path=local_dummy_file))
+
+    bm_dict = bm.model_dump()
+    bm2 = BM.model_validate(bm_dict)
+
+    assert isinstance(bm2.ff, FlyteFile)
+    assert hasattr(bm2.ff, "_downloader")
+    assert hasattr(bm2.ff, "_remote_source")
+
+    bm2.model_dump()
+
+
+def test_flytefile_pydantic_with_metadata(local_dummy_file):
+    class BM(BaseModel):
+        ff: FlyteFile
+
+    bm = BM(ff=FlyteFile(path=local_dummy_file, metadata={"key": "value"}))
+
+    bm_dict = bm.model_dump()
+    bm2 = BM.model_validate(bm_dict)
+
+    assert isinstance(bm2.ff, FlyteFile)
+    assert hasattr(bm2.ff, "_downloader")
+    assert hasattr(bm2.ff, "_remote_source")
+    assert bm2.ff.metadata == {"key": "value"}
+
+    bm2.model_dump()
+
+
+def test_flytefile_pydantic_direct_dict_validate(local_dummy_file):
+    class BM(BaseModel):
+        ff: FlyteFile
+
+    bm = BM.model_validate({"ff": {"path": local_dummy_file}})
+
+    assert isinstance(bm.ff, FlyteFile)
+    assert hasattr(bm.ff, "_downloader")
+    assert hasattr(bm.ff, "_remote_source")
+
+
+def test_flytedirectory_pydantic_direct_dict_validate(local_dummy_directory):
+    class BM(BaseModel):
+        fd: FlyteDirectory
+
+    bm = BM.model_validate({"fd": {"path": local_dummy_directory}})
+
+    assert isinstance(bm.fd, FlyteDirectory)
+    assert hasattr(bm.fd, "_downloader")
+    assert hasattr(bm.fd, "_remote_source")
+
+
+def test_flytedirectory_pydantic_model_dump_validate_cycle():
+    class BM(BaseModel):
+        fd: FlyteDirectory
+
+    bm = BM(fd=FlyteDirectory.from_source("s3://my-bucket/my-dir"))
+
+    assert bm.fd.remote_source == "s3://my-bucket/my-dir"
+
+    bm_dict = bm.model_dump()
+    bm2 = BM.model_validate(bm_dict)
+
+    assert isinstance(bm2.fd, FlyteDirectory)
+    assert bm2.fd.remote_source == "s3://my-bucket/my-dir"
+
+    bm2.model_dump()
+
+
+def test_flytedirectory_pydantic_with_local_directory(local_dummy_directory):
+    class BM(BaseModel):
+        fd: FlyteDirectory
+
+    bm = BM(fd=FlyteDirectory(path=local_dummy_directory))
+
+    bm_dict = bm.model_dump()
+    bm2 = BM.model_validate(bm_dict)
+
+    assert isinstance(bm2.fd, FlyteDirectory)
+    assert hasattr(bm2.fd, "_downloader")
+    assert hasattr(bm2.fd, "_remote_source")
+
+    bm2.model_dump()

@@ -93,6 +93,29 @@ def test_image_spec(mock_image_spec_builder, monkeypatch):
     assert image_spec.commands == ["echo hello"]
 
 
+@pytest.mark.skipif(
+    os.environ.get("_FLYTEKIT_TEST_IMAGE_BUILD_ENGINE", "0") == "0",
+    reason="Set _FLYTEKIT_TEST_IMAGE_BUILD_ENGINE=1 to run this test",
+)
+def test_nested_build(monkeypatch):
+    monkeypatch.setenv("FLYTE_PUSH_IMAGE_SPEC", "0")
+    base_image = ImageSpec(
+        name="base",
+        packages=["torch"],
+        python_version="3.11"
+    )
+
+    image_spec = ImageSpec(
+        name="final",
+        packages=["pandas"],
+        python_version="3.11",
+        base_image=base_image,
+    )
+    assert image_spec._is_force_push is False
+
+    ImageBuildEngine.build(image_spec)
+
+
 def test_image_spec_engine_priority():
     new_image_name = "fqn.xyz/flytekit"
     mock_image_builder_10 = Mock()
@@ -336,3 +359,38 @@ def test_with_builder_options():
         "existing_builder_option_1": "existing_builder_option_value_1",
         "new_builder_option_1": "new_builder_option_value_1"
     }
+
+def test_noop_builder_updates_image_name_mapping():
+    from flytekit.image_spec.noop_builder import NoOpBuilder
+
+    # Clear any existing mappings to ensure clean test state
+    ImageBuildEngine._REGISTRY.pop("noop", None)
+    ImageBuildEngine._IMAGE_NAME_TO_REAL_NAME.clear()
+
+    # Register NoOpBuilder
+    ImageBuildEngine.register("noop", NoOpBuilder())
+
+    # Create an image spec with NoOpBuilder
+    expected_image_name = "localhost:30000/test_image:latest"
+    image_spec = ImageSpec(
+        name="test_image",
+        builder="noop",
+        base_image=expected_image_name
+    )
+
+    # Get the image name before building
+    img_name = image_spec.image_name()
+
+    # Build the image
+    ImageBuildEngine.build(image_spec)
+
+    # Verify that the mapping was created in _IMAGE_NAME_TO_REAL_NAME
+    assert img_name in ImageBuildEngine._IMAGE_NAME_TO_REAL_NAME
+
+    # Verify the mapping value is correct
+    actual_real_name = ImageBuildEngine._IMAGE_NAME_TO_REAL_NAME[img_name]
+    assert actual_real_name == expected_image_name
+
+    # Clean up
+    ImageBuildEngine._REGISTRY.pop("noop", None)
+    ImageBuildEngine._IMAGE_NAME_TO_REAL_NAME.clear()

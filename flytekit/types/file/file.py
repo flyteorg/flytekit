@@ -7,7 +7,6 @@ import pathlib
 import typing
 from contextlib import contextmanager
 from dataclasses import dataclass, field
-from functools import partial
 from typing import Dict, cast
 from urllib.parse import unquote
 
@@ -38,6 +37,22 @@ from flytekit.types.pickle.pickle import FlytePickleTransformer
 
 
 def noop(): ...
+
+
+class _FlyteFileDownloader:
+    """Downloader for FlyteFile that uses current context when called."""
+
+    def __init__(self, remote_path: str, local_path: str, is_multipart: bool = False):
+        self.remote_path = remote_path
+        self.local_path = local_path
+        self.is_multipart = is_multipart
+
+    def __call__(self):
+        """Download the file using current context's synced get_data method."""
+        current_ctx = FlyteContextManager.current_context()
+        return current_ctx.file_access.get_data(
+            remote_path=self.remote_path, local_path=self.local_path, is_multipart=self.is_multipart
+        )
 
 
 T = typing.TypeVar("T")
@@ -178,10 +193,25 @@ class FlyteFile(SerializableType, os.PathLike, typing.Generic[T], DataClassJSONM
             out["metadata"] = lv.metadata
         return out
 
+    def _was_initialized_via_init(self) -> bool:
+        """Check if object was initialized via __init__ or deserialized by Pydantic.
+
+        When Pydantic deserializes a FlyteFile, it bypasses __init__ and directly
+        sets the 'path' attribute. This means the _downloader and _remote_source attributes
+        won't exist. We use this check to determine if we need to go through the transformer
+        to properly set up these internal attributes.
+
+        Returns:
+            bool: True if __init__ was called (normal initialization), False if created via
+                Pydantic deserialization and needs to pass through transformer.
+        """
+        return hasattr(self, "_downloader") and hasattr(self, "_remote_source")
+
     @model_validator(mode="after")
     def deserialize_flyte_file(self, info) -> "FlyteFile":
         if info.context is None or info.context.get("deserialize") is not True:
-            return self
+            if self._was_initialized_via_init():
+                return self
 
         pv = FlyteFilePathTransformer().to_python_value(
             FlyteContextManager.current_context(),
@@ -318,11 +348,9 @@ class FlyteFile(SerializableType, os.PathLike, typing.Generic[T], DataClassJSONM
         if ctx.file_access.is_remote(self.path):
             self._remote_source = self.path
             self._local_path = ctx.file_access.get_random_local_path(self._remote_source)
-            self._downloader = partial(
-                ctx.file_access.get_data,
-                ctx=ctx,
-                remote_path=self._remote_source,  # type: ignore
-                local_path=self._local_path,
+            self._downloader = _FlyteFileDownloader(
+                remote_path=str(self._remote_source),  # type: ignore
+                local_path=str(self._local_path),
             )
 
     def __fspath__(self):
@@ -755,7 +783,7 @@ class FlyteFilePathTransformer(AsyncTypeTransformer[FlyteFile]):
         # For the remote case, return an FlyteFile object that can download
         local_path = ctx.file_access.get_random_local_path(uri)
 
-        _downloader = partial(ctx.file_access.get_data, remote_path=uri, local_path=local_path, is_multipart=False)
+        _downloader = _FlyteFileDownloader(remote_path=uri, local_path=local_path, is_multipart=False)
 
         expected_format = FlyteFilePathTransformer.get_format(expected_python_type)
         ff = FlyteFile.__class_getitem__(expected_format)(path=local_path, downloader=_downloader, metadata=metadata)
