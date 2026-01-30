@@ -157,6 +157,11 @@ class Credentials(object):
     - None: No auth will be attempted.
     """
 
+    AUDIENCE = ConfigEntry(LegacyConfigEntry(SECTION, "audience"), YamlConfigEntry("admin.audience"))
+    """
+    This setting can be used to manually pass in the audience into authenticator flows.
+    """
+
 
 class Platform(object):
     SECTION = "platform"
