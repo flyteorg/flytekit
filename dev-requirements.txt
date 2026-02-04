@@ -6,6 +6,10 @@
 #
 -e file:.
     # via -r dev-requirements.in
+absl-py==2.4.0
+    # via
+    #   tensorboard
+    #   tensorflow
 adlfs==2024.4.1
     # via flytekit
 aiobotocore==2.13.0
@@ -24,10 +28,16 @@ aiosignal==1.3.1
     # via aiohttp
 annotated-types==0.7.0
     # via pydantic
+anyio==4.12.1
+    # via httpx
 asn1crypto==1.5.1
     # via snowflake-connector-python
 asttokens==2.4.1
     # via stack-data
+astunparse==1.6.3
+    # via tensorflow
+async-timeout==5.0.1
+    # via aiohttp
 attrs==23.2.0
     # via
     #   aiohttp
@@ -46,12 +56,18 @@ azure-identity==1.16.0
     # via adlfs
 azure-storage-blob==12.20.0
     # via adlfs
+backports-tarfile==1.2.0
+    # via jaraco-context
 botocore==1.34.106
     # via aiobotocore
 cachetools==5.3.3
-    # via google-auth
+    # via
+    #   flytekit
+    #   google-auth
 certifi==2024.7.4
     # via
+    #   httpcore
+    #   httpx
     #   kubernetes
     #   requests
     #   snowflake-connector-python
@@ -107,15 +123,23 @@ docker==6.1.3
     # via flytekit
 docstring-parser==0.16
     # via flytekit
+exceptiongroup==1.3.1
+    # via
+    #   anyio
+    #   hypothesis
+    #   ipython
+    #   pytest
 execnet==2.1.1
     # via pytest-xdist
 executing==2.0.1
     # via stack-data
-filelock==3.14.0
+filelock==3.20.3
     # via
     #   snowflake-connector-python
     #   virtualenv
-flyteidl==1.14.3
+flatbuffers==25.12.19
+    # via tensorflow
+flyteidl==1.16.3
     # via flytekit
 frozenlist==1.4.1
     # via
@@ -127,6 +151,8 @@ fsspec==2024.5.0
     #   flytekit
     #   gcsfs
     #   s3fs
+gast==0.7.0
+    # via tensorflow
 gcsfs==2024.5.0
     # via flytekit
 google-api-core[grpc]==2.19.0
@@ -145,8 +171,11 @@ google-auth==2.29.0
     #   google-cloud-core
     #   google-cloud-storage
     #   kubernetes
+    #   tensorboard
 google-auth-oauthlib==1.2.0
-    # via gcsfs
+    # via
+    #   gcsfs
+    #   tensorboard
 google-cloud-bigquery==3.23.1
     # via -r dev-requirements.in
 google-cloud-bigquery-storage==2.25.0
@@ -161,6 +190,8 @@ google-crc32c==1.5.0
     # via
     #   google-cloud-storage
     #   google-resumable-media
+google-pasta==0.2.0
+    # via tensorflow
 google-resumable-media==2.7.0
     # via
     #   google-cloud-bigquery
@@ -177,10 +208,20 @@ grpcio==1.64.0
     #   flytekit
     #   google-api-core
     #   grpcio-status
+    #   tensorboard
+    #   tensorflow
 grpcio-status==1.62.2
     # via
     #   flytekit
     #   google-api-core
+h11==0.16.0
+    # via httpcore
+h5py==3.15.1
+    # via tensorflow
+httpcore==1.0.9
+    # via httpx
+httpx==0.28.1
+    # via -r dev-requirements.in
 hypothesis==6.103.0
     # via -r dev-requirements.in
 icdiff==2.0.7
@@ -189,11 +230,15 @@ identify==2.5.36
     # via pre-commit
 idna==3.7
     # via
+    #   anyio
+    #   httpx
     #   requests
     #   snowflake-connector-python
     #   yarl
 importlib-metadata==7.1.0
-    # via flytekit
+    # via
+    #   flytekit
+    #   keyring
 iniconfig==2.0.0
     # via pytest
 ipykernel==6.29.5
@@ -239,18 +284,24 @@ jupyter-core==5.7.2
     # via
     #   ipykernel
     #   jupyter-client
+keras==2.15.0
+    # via tensorflow
 keyring==25.2.1
     # via flytekit
 keyrings-alt==5.0.1
     # via -r dev-requirements.in
 kubernetes==29.0.0
-    # via
-    #   -r dev-requirements.in
-    #   flytekit
+    # via -r dev-requirements.in
+libclang==18.1.1
+    # via tensorflow
+markdown==3.10.1
+    # via tensorboard
 markdown-it-py==3.0.0
     # via
     #   flytekit
     #   rich
+markupsafe==3.0.3
+    # via werkzeug
 marshmallow==3.21.2
     # via
     #   dataclasses-json
@@ -270,6 +321,8 @@ matplotlib-inline==0.1.7
     #   ipython
 mdurl==0.1.2
     # via markdown-it-py
+ml-dtypes==0.3.2
+    # via tensorflow
 mock==5.1.0
     # via -r dev-requirements.in
 more-itertools==10.2.0
@@ -302,14 +355,20 @@ nodeenv==1.9.0
 numpy==1.26.4
     # via
     #   -r dev-requirements.in
+    #   h5py
+    #   ml-dtypes
     #   pandas
     #   pyarrow
     #   scikit-learn
     #   scipy
+    #   tensorboard
+    #   tensorflow
 oauthlib==3.2.2
     # via
     #   kubernetes
     #   requests-oauthlib
+opt-einsum==3.4.0
+    # via tensorflow
 orjson==3.10.3
     # via -r dev-requirements.in
 packaging==24.0
@@ -322,6 +381,8 @@ packaging==24.0
     #   pytest
     #   setuptools-scm
     #   snowflake-connector-python
+    #   tensorflow
+    #   wheel
 pandas==2.2.2
     # via -r dev-requirements.in
 parso==0.8.4
@@ -353,7 +414,7 @@ proto-plus==1.23.0
     # via
     #   google-api-core
     #   google-cloud-bigquery-storage
-protobuf==4.25.3
+protobuf==4.25.8
     # via
     #   -r dev-requirements.in
     #   flyteidl
@@ -364,6 +425,8 @@ protobuf==4.25.3
     #   grpcio-status
     #   proto-plus
     #   protoc-gen-openapiv2
+    #   tensorboard
+    #   tensorflow
 protoc-gen-openapiv2==0.0.1
     # via flyteidl
 psutil==6.1.0
@@ -462,6 +525,7 @@ requests==2.32.3
     #   msal
     #   requests-oauthlib
     #   snowflake-connector-python
+    #   tensorboard
 requests-oauthlib==2.0.0
     # via
     #   google-auth-oauthlib
@@ -487,10 +551,14 @@ setuptools-scm==8.1.0
 six==1.16.0
     # via
     #   asttokens
+    #   astunparse
     #   azure-core
+    #   google-pasta
     #   isodate
     #   kubernetes
     #   python-dateutil
+    #   tensorboard
+    #   tensorflow
 snowflake-connector-python==3.13.1
     # via -r dev-requirements.in
 sortedcontainers==2.4.0
@@ -501,10 +569,31 @@ stack-data==0.6.3
     # via ipython
 statsd==3.3.0
     # via flytekit
+tensorboard==2.15.2
+    # via tensorflow
+tensorboard-data-server==0.7.2
+    # via tensorboard
+tensorflow==2.15.1 ; python_version < "3.12"
+    # via -r dev-requirements.in
+tensorflow-estimator==2.15.0
+    # via tensorflow
+tensorflow-io-gcs-filesystem==0.37.1
+    # via tensorflow
+termcolor==3.3.0
+    # via tensorflow
 threadpoolctl==3.5.0
     # via scikit-learn
+tomli==2.4.0
+    # via
+    #   autoflake
+    #   coverage
+    #   mypy
+    #   pytest
+    #   setuptools-scm
 tomlkit==0.13.2
     # via snowflake-connector-python
+torch==1.12.1 ; python_version < "3.12"
+    # via -r dev-requirements.in
 tornado==6.4.1
     # via
     #   ipykernel
@@ -517,6 +606,8 @@ traitlets==5.14.3
     #   jupyter-client
     #   jupyter-core
     #   matplotlib-inline
+types-cachetools==6.2.0.20251022
+    # via -r dev-requirements.in
 types-croniter==2.0.0.20240423
     # via -r dev-requirements.in
 types-decorator==5.1.8.20240310
@@ -527,18 +618,24 @@ types-protobuf==4.25.0.20240417
     # via -r dev-requirements.in
 types-requests==2.32.0.20240523
     # via -r dev-requirements.in
-typing-extensions==4.12.0
+typing-extensions==4.15.0
     # via
+    #   anyio
     #   azure-core
     #   azure-storage-blob
+    #   exceptiongroup
     #   flytekit
+    #   ipython
     #   mashumaro
     #   mypy
     #   pydantic
     #   pydantic-core
     #   rich-click
     #   snowflake-connector-python
+    #   tensorflow
+    #   torch
     #   typing-inspect
+    #   virtualenv
 typing-inspect==0.9.0
     # via dataclasses-json
 tzdata==2024.1
@@ -551,7 +648,7 @@ urllib3==2.2.1
     #   kubernetes
     #   requests
     #   types-requests
-virtualenv==20.26.6
+virtualenv==20.36.1
     # via pre-commit
 wcwidth==0.2.13
     # via prompt-toolkit
@@ -559,8 +656,14 @@ websocket-client==1.8.0
     # via
     #   docker
     #   kubernetes
-wrapt==1.16.0
-    # via aiobotocore
+werkzeug==3.1.5
+    # via tensorboard
+wheel==0.46.3
+    # via astunparse
+wrapt==1.14.2
+    # via
+    #   aiobotocore
+    #   tensorflow
 yarl==1.18.3
     # via aiohttp
 zipp==3.19.1

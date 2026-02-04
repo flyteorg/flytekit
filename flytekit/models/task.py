@@ -701,13 +701,14 @@ class TaskSpec(_common.FlyteIdlEntity):
 
 
 class Task(_common.FlyteIdlEntity):
-    def __init__(self, id, closure):
+    def __init__(self, id, closure, short_description=None):
         """
         :param flytekit.models.core.identifier.Identifier id: The (project, domain, name) identifier for this task.
         :param TaskClosure closure: The closure for the underlying workload.
         """
         self._id = id
         self._closure = closure
+        self._short_description = short_description
 
     @property
     def id(self):
@@ -725,6 +726,14 @@ class Task(_common.FlyteIdlEntity):
         """
         return self._closure
 
+    @property
+    def short_description(self):
+        """
+        The short description of the task.
+        :rtype: str
+        """
+        return self._short_description
+
     def to_flyte_idl(self):
         """
         :rtype: flyteidl.admin.task_pb2.Task
@@ -732,6 +741,7 @@ class Task(_common.FlyteIdlEntity):
         return _admin_task.Task(
             closure=self.closure.to_flyte_idl(),
             id=self.id.to_flyte_idl(),
+            short_description=self.short_description,
         )
 
     @classmethod
@@ -743,6 +753,7 @@ class Task(_common.FlyteIdlEntity):
         return cls(
             closure=TaskClosure.from_flyte_idl(pb2_object.closure),
             id=_identifier.Identifier.from_flyte_idl(pb2_object.id),
+            short_description=pb2_object.short_description,
         )
 
 

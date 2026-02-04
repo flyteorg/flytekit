@@ -99,7 +99,14 @@ from flytekit.models.matchable_resource import ExecutionClusterLabel
 from flytekit.models.project import Project
 from flytekit.remote.backfill import create_backfill_workflow
 from flytekit.remote.data import download_literal
-from flytekit.remote.entities import FlyteLaunchPlan, FlyteNode, FlyteTask, FlyteTaskNode, FlyteWorkflow
+from flytekit.remote.entities import (
+    FlyteBranchNode,
+    FlyteLaunchPlan,
+    FlyteNode,
+    FlyteTask,
+    FlyteTaskNode,
+    FlyteWorkflow,
+)
 from flytekit.remote.executions import FlyteNodeExecution, FlyteTaskExecution, FlyteWorkflowExecution
 from flytekit.remote.interface import TypedInterface
 from flytekit.remote.lazy_entity import LazyEntity
@@ -1330,7 +1337,11 @@ class FlyteRemote(object):
         return base64.urlsafe_b64encode(h.digest()).decode("ascii").rstrip("=")
 
     @staticmethod
-    def _get_image_names(entity: typing.Union[PythonAutoContainerTask, WorkflowBase]) -> typing.List[str]:
+    def _get_image_names(
+        entity: typing.Union[PythonAutoContainerTask, WorkflowBase, LaunchPlan, ReferenceEntity],
+    ) -> typing.List[str]:
+        if isinstance(entity, ReferenceEntity):
+            return []
         if isinstance(entity, PythonAutoContainerTask) and isinstance(entity.container_image, ImageSpec):
             return [entity.container_image.image_name()]
         if isinstance(entity, WorkflowBase):
@@ -2619,7 +2630,11 @@ class FlyteRemote(object):
             raise ValueError(f"Missing node from mapping: {node_id}")
 
         # Get the node execution data
-        node_execution_get_data_response = self.client.get_node_execution_data(execution.id)
+        try:
+            node_execution_get_data_response = self.client.get_node_execution_data(execution.id)
+        except FlyteEntityNotExistException:
+            logger.warning(f"Skipping node {execution.id.node_id} because node data not found")
+            return execution
 
         # Calling a launch plan directly case
         # If a node ran a launch plan directly (i.e. not through a dynamic task or anything) then
@@ -2685,11 +2700,23 @@ class FlyteRemote(object):
 
             # Handle the case where it's a branch node
             elif execution._node.branch_node is not None:
-                logger.info(
-                    "Skipping branch node execution for now - branch nodes will "
-                    "not have inputs and outputs filled in"
-                )
-                return execution
+                sub_flyte_workflow = typing.cast(FlyteBranchNode, execution._node.flyte_entity)
+                sub_node_mapping = {}
+                if sub_flyte_workflow.if_else.case.then_node:
+                    then_node = sub_flyte_workflow.if_else.case.then_node
+                    sub_node_mapping[then_node.id] = then_node
+                if sub_flyte_workflow.if_else.other:
+                    for case in sub_flyte_workflow.if_else.other:
+                        then_node = case.then_node
+                        sub_node_mapping[then_node.id] = then_node
+                if sub_flyte_workflow.if_else.else_node:
+                    else_node = sub_flyte_workflow.if_else.else_node
+                    sub_node_mapping[else_node.id] = else_node
+
+                execution._underlying_node_executions = [
+                    self.sync_node_execution(FlyteNodeExecution.promote_from_model(cne), sub_node_mapping)
+                    for cne in child_node_executions
+                ]
             else:
                 logger.error(f"NE {execution} undeterminable, {type(execution._node)}, {execution._node}")
                 raise ValueError(f"Node execution undeterminable, entity has type {type(execution._node)}")
@@ -2736,11 +2763,42 @@ class FlyteRemote(object):
             logger.info("Skipping gate node execution for now - gate nodes don't have inputs and outputs filled in")
             return execution
 
+            # Handle the case where it's a branch node
+        elif execution._node.branch_node is not None:
+            # We'll need to query child node executions regardless since this is a parent node
+            child_node_executions = iterate_node_executions(
+                self.client,
+                workflow_execution_identifier=execution.id.execution_id,
+                unique_parent_id=execution.id.node_id,
+            )
+            child_node_executions = [x for x in child_node_executions]
+
+            sub_flyte_workflow = typing.cast(FlyteBranchNode, execution._node.flyte_entity)
+            sub_node_mapping = {}
+            if sub_flyte_workflow.if_else.case.then_node:
+                then_node = sub_flyte_workflow.if_else.case.then_node
+                sub_node_mapping[then_node.id] = then_node
+            if sub_flyte_workflow.if_else.other:
+                for case in sub_flyte_workflow.if_else.other:
+                    then_node = case.then_node
+                    sub_node_mapping[then_node.id] = then_node
+            if sub_flyte_workflow.if_else.else_node:
+                else_node = sub_flyte_workflow.if_else.else_node
+                sub_node_mapping[else_node.id] = else_node
+
+            execution._underlying_node_executions = [
+                self.sync_node_execution(FlyteNodeExecution.promote_from_model(cne), sub_node_mapping)
+                for cne in child_node_executions
+            ]
+
         # This is the plain ol' task execution case
         else:
             execution._task_executions = [
+                # Sync task execution but only get inputs/outputs if the overall execution is done
                 self.sync_task_execution(
-                    FlyteTaskExecution.promote_from_model(t), node_mapping[node_id].task_node.flyte_task.interface
+                    FlyteTaskExecution.promote_from_model(t),
+                    node_mapping[node_id].task_node.flyte_task.interface,
+                    get_task_exec_data=execution.is_done,
                 )
                 for t in iterate_task_executions(self.client, execution.id)
             ]
@@ -2755,16 +2813,26 @@ class FlyteRemote(object):
         return execution
 
     def sync_task_execution(
-        self, execution: FlyteTaskExecution, entity_interface: typing.Optional[TypedInterface] = None
+        self,
+        execution: FlyteTaskExecution,
+        entity_interface: typing.Optional[TypedInterface] = None,
+        get_task_exec_data: bool = True,
     ) -> FlyteTaskExecution:
         """Sync a FlyteTaskExecution object with its corresponding remote state."""
+
         execution._closure = self.client.get_task_execution(execution.id).closure
-        execution_data = self.client.get_task_execution_data(execution.id)
         task_id = execution.id.task_id
         if entity_interface is None:
             entity_definition = self.fetch_task(task_id.project, task_id.domain, task_id.name, task_id.version)
             entity_interface = entity_definition.interface
-        return self._assign_inputs_and_outputs(execution, execution_data, entity_interface)
+        if get_task_exec_data:
+            try:
+                execution_data = self.client.get_task_execution_data(execution.id)
+                return self._assign_inputs_and_outputs(execution, execution_data, entity_interface)
+            except Exception as e:
+                logger.error(f"Failed to get data for successful task execution: {execution.id}, error: {e}")
+                raise
+        return execution
 
     #############################
     # Terminate Execution State #
@@ -2818,15 +2886,19 @@ class FlyteRemote(object):
         self,
         execution: typing.Union[FlyteWorkflowExecution, FlyteNodeExecution, FlyteTaskExecution],
         execution_data,
-        interface: TypedInterface,
+        interface: typing.Optional[TypedInterface] = None,
     ):
         """Helper for assigning synced inputs and outputs to an execution object."""
         input_literal_map = self._get_input_literal_map(execution_data)
-        execution._inputs = LiteralsResolver(input_literal_map.literals, interface.inputs, self.context)
+        execution._inputs = LiteralsResolver(
+            input_literal_map.literals, interface.inputs if interface else None, self.context
+        )
 
         if execution.is_done and not execution.error:
             output_literal_map = self._get_output_literal_map(execution_data)
-            execution._outputs = LiteralsResolver(output_literal_map.literals, interface.outputs, self.context)
+            execution._outputs = LiteralsResolver(
+                output_literal_map.literals, interface.outputs if interface else None, self.context
+            )
         return execution
 
     def _get_input_literal_map(self, execution_data: ExecutionDataResponse) -> literal_models.LiteralMap:

@@ -120,6 +120,7 @@ def test_remote_fetch_execution(remote):
     )
     mock_client = MagicMock()
     mock_client.get_execution.return_value = admin_workflow_execution
+    mock_client.get_workflow.return_value.closure.compiled_workflow.primary.template.failure_node = None
     remote._client = mock_client
     flyte_workflow_execution = remote.fetch_execution(name="n1")
     assert flyte_workflow_execution.id == admin_workflow_execution.id
@@ -390,12 +391,15 @@ def get_compiled_workflow_closure():
 def test_fetch_lazy(remote):
     mock_client = remote._client
     mock_client.get_task.return_value = Task(
-        id=Identifier(ResourceType.TASK, "p", "d", "n", "v"), closure=LIST_OF_TASK_CLOSURES[0]
+        id=Identifier(ResourceType.TASK, "p", "d", "n", "v"),
+        closure=LIST_OF_TASK_CLOSURES[0],
+        short_description="task description",
     )
 
     mock_client.get_workflow.return_value = Workflow(
         id=Identifier(ResourceType.TASK, "p", "d", "n", "v"),
         closure=WorkflowClosure(compiled_workflow=get_compiled_workflow_closure()),
+        short_description="workflow description",
     )
 
     lw = remote.fetch_workflow_lazy(name="wn", version="v")
@@ -453,8 +457,9 @@ def test_launch_backfill(remote):
     mock_client.get_workflow.return_value = Workflow(
         id=Identifier(ResourceType.WORKFLOW, "p", "d", "daily2", "v"),
         closure=WorkflowClosure(
-            compiled_workflow=CompiledWorkflowClosure(primary=ser_wf, sub_workflows=[], tasks=tasks)
+            compiled_workflow=CompiledWorkflowClosure(primary=ser_wf, sub_workflows=[], tasks=tasks),
         ),
+        short_description="workflow description",
     )
 
     wf = remote.launch_backfill(
@@ -478,6 +483,7 @@ def test_fetch_workflow_with_branch(mock_promote, mock_workflow, remote):
     mock_client.get_workflow.return_value = Workflow(
         id=Identifier(ResourceType.TASK, "p", "d", "n", "v"),
         closure=WorkflowClosure(compiled_workflow=MagicMock()),
+        short_description="workflow description",
     )
 
     admin_launch_plan = MagicMock()
@@ -496,6 +502,7 @@ def test_fetch_workflow_with_nested_branch(mock_promote, mock_workflow, remote):
     mock_client.get_workflow.return_value = Workflow(
         id=Identifier(ResourceType.TASK, "p", "d", "n", "v"),
         closure=WorkflowClosure(compiled_workflow=MagicMock()),
+        short_description="workflow description",
     )
     admin_launch_plan = MagicMock()
     admin_launch_plan.spec = {"workflow_id": 123}
@@ -562,6 +569,7 @@ def mock_flyte_remote_client():
     with patch("flytekit.remote.remote.FlyteRemote.client") as mock_flyte_remote_client:
         mock_flyte_remote_client.get_task.return_value.closure.compiled_task.template.sql = None
         mock_flyte_remote_client.get_task.return_value.closure.compiled_task.template.k8s_pod = None
+        mock_flyte_remote_client.get_workflow.return_value.closure.compiled_workflow.primary.template.failure_node = None
         yield mock_flyte_remote_client
 
 
@@ -865,7 +873,6 @@ def test_register_task_with_node_dependency_hints(mock_flyte_remote_client):
     registered_workflow = rr.register_workflow(workflow1, ss)
     assert isinstance(registered_workflow, FlyteWorkflow)
     assert registered_workflow.id == Identifier(ResourceType.WORKFLOW, "flytesnacks", "development", "tests.flytekit.unit.remote.test_remote.workflow1", "dummy_version")
-
 
 @mock.patch("flytekit.remote.remote.get_serializable")
 @mock.patch("flytekit.remote.remote.FlyteRemote.fetch_launch_plan")

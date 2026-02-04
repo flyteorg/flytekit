@@ -885,16 +885,22 @@ async def binding_data_from_python_std(
         # akin to what the Type Engine does when it finds a Union type (see the UnionTransformer), but we can't rely on
         # that in this case, because of the mix and match of realized values, and Promises.
         for i in range(len(expected_literal_type.union_type.variants)):
+            lt_type = expected_literal_type.union_type.variants[i]
+            python_type = get_args(t_value_type)[i] if t_value_type else None
             try:
-                lt_type = expected_literal_type.union_type.variants[i]
-                python_type = get_args(t_value_type)[i] if t_value_type else None
                 return await binding_data_from_python_std(ctx, lt_type, t_value, python_type, nodes)
-            except Exception:
+            except Exception as e:
                 logger.debug(
-                    f"failed to bind data {t_value} with literal type {expected_literal_type.union_type.variants[i]}."
+                    f"Failed to bind data {t_value} "
+                    f"using variant[{i}] literal type={repr(lt_type)} (expected overall {expected_literal_type}) "
+                    f"and python type={python_type} (expected overall {t_value_type}). "
+                    f"Error: {e}"
                 )
         raise AssertionError(
-            f"Failed to bind data {t_value} with literal type {expected_literal_type.union_type.variants}."
+            f"Failed to bind data {t_value} "
+            f"to any of the expected union variants.\n"
+            f"Value python type: {type(t_value).__name__}, declared python types: {t_value_type}\n"
+            f"Expected literal type: {repr(expected_literal_type)}"
         )
 
     elif (
