@@ -124,7 +124,9 @@ class RawSynchronousFlyteClient(object):
 
         :param: flyteidl.admin.common_pb2.NamedEntityIdentifierListRequest identifier_list_request:
         :rtype: flyteidl.admin.common_pb2.NamedEntityIdentifierList
-        :raises: TODO
+        :raises flytekit.exceptions.user.FlyteAuthenticationException: If the request is not authenticated.
+        :raises flytekit.exceptions.user.FlyteInvalidInputException: If the request contains invalid parameters.
+        :raises flytekit.exceptions.system.FlyteSystemException: If an unexpected error occurs.
         """
         return self._stub.ListTaskIds(identifier_list_request, metadata=self._metadata)
 
@@ -143,7 +145,9 @@ class RawSynchronousFlyteClient(object):
 
         :param: flyteidl.admin.common_pb2.ResourceListRequest resource_list_request:
         :rtype: flyteidl.admin.task_pb2.TaskList
-        :raises: TODO
+        :raises flytekit.exceptions.user.FlyteAuthenticationException: If the request is not authenticated.
+        :raises flytekit.exceptions.user.FlyteInvalidInputException: If the request contains invalid parameters.
+        :raises flytekit.exceptions.system.FlyteSystemException: If an unexpected error occurs.
         """
         return self._stub.ListTasks(resource_list_request, metadata=self._metadata)
 
@@ -153,7 +157,10 @@ class RawSynchronousFlyteClient(object):
 
         :param: flyteidl.admin.common_pb2.ObjectGetRequest get_object_request:
         :rtype: flyteidl.admin.task_pb2.Task
-        :raises: TODO
+        :raises flytekit.exceptions.user.FlyteEntityNotExistException: If the task does not exist.
+        :raises flytekit.exceptions.user.FlyteAuthenticationException: If the request is not authenticated.
+        :raises flytekit.exceptions.user.FlyteInvalidInputException: If the request contains invalid parameters.
+        :raises flytekit.exceptions.system.FlyteSystemException: If an unexpected error occurs.
         """
         return self._stub.GetTask(get_object_request, metadata=self._metadata)
 
@@ -212,7 +219,9 @@ class RawSynchronousFlyteClient(object):
 
         :param: flyteidl.admin.common_pb2.NamedEntityIdentifierListRequest identifier_list_request:
         :rtype: flyteidl.admin.common_pb2.NamedEntityIdentifierList
-        :raises: TODO
+        :raises flytekit.exceptions.user.FlyteAuthenticationException: If the request is not authenticated.
+        :raises flytekit.exceptions.user.FlyteInvalidInputException: If the request contains invalid parameters.
+        :raises flytekit.exceptions.system.FlyteSystemException: If an unexpected error occurs.
         """
         return self._stub.ListWorkflowIds(identifier_list_request, metadata=self._metadata)
 
@@ -231,7 +240,9 @@ class RawSynchronousFlyteClient(object):
 
         :param: flyteidl.admin.common_pb2.ResourceListRequest resource_list_request:
         :rtype: flyteidl.admin.workflow_pb2.WorkflowList
-        :raises: TODO
+        :raises flytekit.exceptions.user.FlyteAuthenticationException: If the request is not authenticated.
+        :raises flytekit.exceptions.user.FlyteInvalidInputException: If the request contains invalid parameters.
+        :raises flytekit.exceptions.system.FlyteSystemException: If an unexpected error occurs.
         """
         return self._stub.ListWorkflows(resource_list_request, metadata=self._metadata)
 
@@ -241,7 +252,10 @@ class RawSynchronousFlyteClient(object):
 
         :param: flyteidl.admin.common_pb2.ObjectGetRequest get_object_request:
         :rtype: flyteidl.admin.workflow_pb2.Workflow
-        :raises: TODO
+        :raises flytekit.exceptions.user.FlyteEntityNotExistException: If the workflow does not exist.
+        :raises flytekit.exceptions.user.FlyteAuthenticationException: If the request is not authenticated.
+        :raises flytekit.exceptions.user.FlyteInvalidInputException: If the request contains invalid parameters.
+        :raises flytekit.exceptions.system.FlyteSystemException: If an unexpected error occurs.
         """
         return self._stub.GetWorkflow(get_object_request, metadata=self._metadata)
 
