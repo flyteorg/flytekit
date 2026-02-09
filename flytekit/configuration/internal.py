@@ -55,6 +55,10 @@ class AWS(object):
         LegacyConfigEntry(SECTION, "backoff_seconds", datetime.timedelta),
         transform=lambda x: datetime.timedelta(seconds=int(x)),
     )
+    S3_ADDRESSING_STYLE = ConfigEntry(
+        LegacyConfigEntry(SECTION, "addressing_style"),
+        YamlConfigEntry("storage.connection.addressing-style"),
+    )
 
 
 class GCP(object):
