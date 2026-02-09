@@ -3821,8 +3821,7 @@ def test_strict_type_matching_error():
         strict_type_hint_matching(xs, lt)
 
 
-@pytest.mark.asyncio
-async def test_dict_transformer_annotated_type():
+def test_dict_transformer_annotated_type():
     ctx = FlyteContext.current_context()
 
     # Test case 1: Regular Dict type
@@ -3831,7 +3830,7 @@ async def test_dict_transformer_annotated_type():
     expected_type = TypeEngine.to_literal_type(regular_dict_type)
 
     # This should work fine
-    literal1 = await TypeEngine.async_to_literal(ctx, regular_dict, regular_dict_type, expected_type)
+    literal1 = TypeEngine.to_literal(ctx, regular_dict, regular_dict_type, expected_type)
     assert literal1.map.literals["a"].scalar.primitive.integer == 1
     assert literal1.map.literals["b"].scalar.primitive.integer == 2
 
@@ -3840,7 +3839,7 @@ async def test_dict_transformer_annotated_type():
     annotated_dict_type = Annotated[Dict[str, int], "some_metadata"]
     expected_type = TypeEngine.to_literal_type(annotated_dict_type)
 
-    literal2 = await TypeEngine.async_to_literal(ctx, annotated_dict, annotated_dict_type, expected_type)
+    literal2 = TypeEngine.to_literal(ctx, annotated_dict, annotated_dict_type, expected_type)
     assert literal2.map.literals["x"].scalar.primitive.integer == 10
     assert literal2.map.literals["y"].scalar.primitive.integer == 20
 
@@ -3849,7 +3848,7 @@ async def test_dict_transformer_annotated_type():
     nested_dict_type = Dict[str, Annotated[Dict[str, int], "inner_metadata"]]
     expected_type = TypeEngine.to_literal_type(nested_dict_type)
 
-    literal3 = await TypeEngine.async_to_literal(ctx, nested_dict, nested_dict_type, expected_type)
+    literal3 = TypeEngine.to_literal(ctx, nested_dict, nested_dict_type, expected_type)
     assert literal3.map.literals["outer"].map.literals["inner"].scalar.primitive.integer == 42
 
 @pytest.fixture(autouse=True)

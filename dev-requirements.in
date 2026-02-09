@@ -62,3 +62,4 @@ ipykernel
 orjson
 kubernetes>=12.0.1
 httpx
+marshmallow-jsonschema
