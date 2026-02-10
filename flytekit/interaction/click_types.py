@@ -17,7 +17,7 @@ import rich_click as click
 import yaml
 from click import Parameter
 from click import __version__ as click_version
-from dataclasses_json import DataClassJsonMixin, dataclass_json
+from flytekit.core.type_engine import _deserialize_with_dataclass_json_config_patch
 from packaging.version import Version
 from pytimeparse import parse
 
@@ -439,11 +439,9 @@ class JsonParamType(click.ParamType):
             # The behavior of the Pydantic v1 plugin.
             return self._python_type.parse_raw(json.dumps(parsed_value))
 
-        # Ensure that the python type has `from_json` function
-        if not hasattr(self._python_type, "from_json"):
-            self._python_type = dataclass_json(self._python_type)
-
-        return cast(DataClassJsonMixin, self._python_type).from_json(json.dumps(parsed_value))
+        # Use mashumaro's JSONDecoder to deserialize the dataclass
+        # Use the patching helper to handle dataclasses-json 0.6.x compatibility
+        return _deserialize_with_dataclass_json_config_patch(self._python_type, json.dumps(parsed_value))
 
 
 def modify_literal_uris(lit: Literal):
