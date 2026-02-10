@@ -15,6 +15,7 @@ from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, cast
 from flyteidl.core import tasks_pb2 as _core_task
 
 from flytekit.configuration import SerializationSettings
+from flytekit.core import constants
 from flytekit.core.pod_template import PodTemplate
 from flytekit.core.resources import ResourceSpec, _check_resource_is_singular
 from flytekit.loggers import logger
@@ -405,3 +406,15 @@ def str2bool(value: typing.Optional[str]) -> bool:
     if value is None:
         return False
     return value.lower() in ("true", "t", "1")
+
+
+def is_start_node(name: str) -> bool:
+    return constants.START_NODE_ID in name
+
+
+def is_end_node(name: str) -> bool:
+    return constants.END_NODE_ID in name
+
+
+def is_start_or_end_node(name: str) -> bool:
+    return is_start_node(name) or is_end_node(name)
