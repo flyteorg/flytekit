@@ -150,6 +150,9 @@ extend-exclude = ["tests/", "**/tests/**"]
 ignore-words-list = "ot,te,raison,fo,lits,assertIn"
 skip = "./docs/build,./.git,*.txt"
 
+[tool.uv.extra-build-dependencies]
+pandas = ["setuptools<70"]
+
 [project.optional-dependencies]
 # TODO: Remove it when we remove all the agent code
 agent = [
