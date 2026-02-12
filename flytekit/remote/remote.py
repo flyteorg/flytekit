@@ -1257,7 +1257,9 @@ class FlyteRemote(object):
         content_length = os.stat(local_file_path).st_size
 
         upload_package_progress = Progress(TimeElapsedColumn(), TextColumn("[progress.description]{task.description}"))
-        t1 = upload_package_progress.add_task(f"Uploading package of size {content_length/1024/1024:.2f} MBs", total=1)
+        t1 = upload_package_progress.add_task(
+            f"Uploading package of size {content_length / 1024 / 1024:.2f} MBs", total=1
+        )
         upload_package_progress.start_task(t1)
         if is_display_progress_enabled():
             upload_package_progress.start()
@@ -1284,7 +1286,7 @@ class FlyteRemote(object):
             upload_package_progress.update(
                 t1,
                 completed=1,
-                description=f"Uploaded package of size {content_length/1024/1024:.2f}MB",
+                description=f"Uploaded package of size {content_length / 1024 / 1024:.2f}MB",
                 refresh=True,
             )
             upload_package_progress.stop_task(t1)
@@ -2474,9 +2476,7 @@ class FlyteRemote(object):
             timedelta or a duration in seconds as int.
         :param sync_nodes: passed along to the sync call for the workflow execution
         """
-        logger.debug(
-            f"Beginning wait for {execution.id} with {timeout=}, {poll_interval=}, and {sync_nodes=}."
-        )
+        logger.info(f"Beginning wait for {execution.id} with {timeout=}, {poll_interval=}, and {sync_nodes=}.")
 
         if poll_interval is not None and not isinstance(poll_interval, timedelta):
             poll_interval = timedelta(seconds=poll_interval)
@@ -2489,8 +2489,8 @@ class FlyteRemote(object):
         poll_count = 0
         while datetime.now() < time_to_give_up:
             if poll_count % 10 == 0:
-                logger.debug(f"Waiting for execution {execution.id} to complete.")
-                logger.debug(f"Current phase: {execution.closure.phase}, {execution.closure.updated_at=}")
+                logger.info(f"Waiting for execution {execution.id} to complete.")
+                logger.info(f"Current phase: {execution.closure.phase}, {execution.closure.updated_at=}")
 
             execution = self.sync_execution(execution, sync_nodes=sync_nodes)
             if execution.is_done:
@@ -2501,16 +2501,17 @@ class FlyteRemote(object):
         if datetime.now() > time_to_give_up:
             logger.info("Wait timeout exceeded. Syncing execution one final time.")
             refetched_exec = self.fetch_execution(
-                project=execution.id.project,
-                domain=execution.id.domain,
-                name=execution.id.name)
+                project=execution.id.project, domain=execution.id.domain, name=execution.id.name
+            )
             if refetched_exec.is_done:
                 logger.info("Re-sync'ed execution found to be complete!")
                 if sync_nodes:
                     self.sync_execution(refetched_exec, sync_nodes=True)
                 return refetched_exec
             else:
-                logger.debug(f"Execution {execution.id} not complete after timeout, phase is {refetched_exec.closure.phase}")
+                logger.debug(
+                    f"Execution {execution.id} not complete after timeout, phase is {refetched_exec.closure.phase}"
+                )
 
         raise user_exceptions.FlyteTimeout(f"Execution {self} did not complete before timeout.")
 
