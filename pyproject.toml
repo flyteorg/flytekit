@@ -35,6 +35,7 @@ dependencies = [
     "jsonpickle",
     "keyring>=18.0.1",
     "markdown-it-py",
+    "marshmallow>=3,<4",
     "marshmallow-enum",
     "marshmallow-jsonschema>=0.12.0",
     "setuptools<70",
