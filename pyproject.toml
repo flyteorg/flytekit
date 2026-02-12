@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools", "setuptools_scm"]
+requires = ["setuptools<70", "setuptools_scm"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -35,8 +35,10 @@ dependencies = [
     "jsonpickle",
     "keyring>=18.0.1",
     "markdown-it-py",
+    "marshmallow>=3,<4",
     "marshmallow-enum",
     "marshmallow-jsonschema>=0.12.0",
+    "setuptools<70",
     "mashumaro>=3.15",
     "msgpack>=1.1.0",
     "protobuf!=4.25.0",
