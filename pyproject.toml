@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools", "setuptools_scm"]
+requires = ["setuptools<70", "setuptools_scm"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -9,7 +9,7 @@ authors = [{ name = "Flyte Contributors", email = "admin@flyte.org" }]
 description = "Flyte SDK for Python"
 license = { text = "Apache-2.0" }
 readme = { file = "README.md", content-type = "text/markdown" }
-requires-python = ">=3.9,<3.13"
+requires-python = ">=3.10,<3.13"
 dependencies = [
     # Please maintain an alphabetical order in the following list
     "adlfs>=2023.3.0",
@@ -35,8 +35,10 @@ dependencies = [
     "jsonpickle",
     "keyring>=18.0.1",
     "markdown-it-py",
+    "marshmallow>=3,<4",
     "marshmallow-enum",
     "marshmallow-jsonschema>=0.12.0",
+    "setuptools<70",
     "mashumaro>=3.15",
     "msgpack>=1.1.0",
     "protobuf!=4.25.0",
@@ -56,7 +58,6 @@ classifiers = [
     "Intended Audience :: Science/Research",
     "Intended Audience :: Developers",
     "License :: OSI Approved :: Apache Software License",
-    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",

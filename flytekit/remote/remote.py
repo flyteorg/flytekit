@@ -2788,6 +2788,34 @@ class FlyteRemote(object):
             logger.info("Skipping gate node execution for now - gate nodes don't have inputs and outputs filled in")
             return execution
 
+            # Handle the case where it's a branch node
+        elif execution._node.branch_node is not None:
+            # We'll need to query child node executions regardless since this is a parent node
+            child_node_executions = iterate_node_executions(
+                self.client,
+                workflow_execution_identifier=execution.id.execution_id,
+                unique_parent_id=execution.id.node_id,
+            )
+            child_node_executions = [x for x in child_node_executions]
+
+            sub_flyte_workflow = typing.cast(FlyteBranchNode, execution._node.flyte_entity)
+            sub_node_mapping = {}
+            if sub_flyte_workflow.if_else.case.then_node:
+                then_node = sub_flyte_workflow.if_else.case.then_node
+                sub_node_mapping[then_node.id] = then_node
+            if sub_flyte_workflow.if_else.other:
+                for case in sub_flyte_workflow.if_else.other:
+                    then_node = case.then_node
+                    sub_node_mapping[then_node.id] = then_node
+            if sub_flyte_workflow.if_else.else_node:
+                else_node = sub_flyte_workflow.if_else.else_node
+                sub_node_mapping[else_node.id] = else_node
+
+            execution._underlying_node_executions = [
+                self.sync_node_execution(FlyteNodeExecution.promote_from_model(cne), sub_node_mapping)
+                for cne in child_node_executions
+            ]
+
         # This is the plain ol' task execution case
         else:
             execution._task_executions = [
