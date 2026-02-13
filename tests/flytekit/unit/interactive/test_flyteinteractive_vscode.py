@@ -47,7 +47,8 @@ def vscode_patches():
     with mock.patch("multiprocessing.Process") as mock_process, mock.patch(
         "flytekit.interactive.vscode_lib.decorator.prepare_interactive_python"
     ) as mock_prepare_interactive_python, mock.patch(
-        "flytekit.interactive.vscode_lib.decorator.exit_handler"
+        "flytekit.interactive.vscode_lib.decorator.exit_handler",
+        return_value=None,
     ) as mock_exit_handler, mock.patch(
         "flytekit.interactive.vscode_lib.decorator.download_vscode"
     ) as mock_download_vscode, mock.patch("signal.signal") as mock_signal, mock.patch(
