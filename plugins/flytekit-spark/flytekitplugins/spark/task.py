@@ -71,19 +71,25 @@ class Databricks(Spark):
 
 @dataclass
 class DatabricksV2(Spark):
-    """
-    Use this to configure a Databricks task. Task's marked with this will automatically execute
-    natively onto databricks platform as a distributed execution of spark
+    """Use this to configure a Databricks task.
 
-    Args:
-        databricks_conf: Databricks job configuration compliant with API version 2.1, supporting 2.0 use cases.
-        For the configuration structure, visit here.https://docs.databricks.com/dev-tools/api/2.0/jobs.html#request-structure
-        For updates in API 2.1, refer to: https://docs.databricks.com/en/workflows/jobs/jobs-api-updates.html
-        databricks_instance: Domain name of your deployment. Use the form <account>.cloud.databricks.com.
+    Tasks marked with this will automatically execute natively onto the Databricks
+    platform as a distributed execution of Spark.
+
+    Attributes:
+        databricks_conf (Optional[Dict[str, Union[str, dict]]]): Databricks job configuration
+            compliant with API version 2.1, supporting 2.0 use cases.
+            See https://docs.databricks.com/dev-tools/api/2.0/jobs.html#request-structure
+            and https://docs.databricks.com/en/workflows/jobs/jobs-api-updates.html
+        databricks_instance (Optional[str]): Domain name of your deployment.
+            Use the form <account>.cloud.databricks.com.
+        databricks_token_secret (Optional[str]): Custom name for the K8s secret containing
+            the Databricks token. Defaults to 'databricks-token' if not specified.
     """
 
     databricks_conf: Optional[Dict[str, Union[str, dict]]] = None
     databricks_instance: Optional[str] = None
+    databricks_token_secret: Optional[str] = None
 
 
 # This method does not reset the SparkSession since it's a bit hard to handle multiple
@@ -187,7 +193,16 @@ class PysparkFunctionTask(AsyncConnectorExecutorMixin, PythonFunctionTask[Spark]
             job._databricks_conf = cfg.databricks_conf
             job._databricks_instance = cfg.databricks_instance
 
-        return MessageToDict(job.to_flyte_idl())
+        # Serialize to dict
+        custom_dict = MessageToDict(job.to_flyte_idl())
+
+        # Add custom secret name if specified (not part of protobuf, so add separately)
+        if isinstance(self.task_config, (Databricks, DatabricksV2)):
+            cfg = cast(DatabricksV2, self.task_config)
+            if hasattr(cfg, "databricks_token_secret") and cfg.databricks_token_secret:
+                custom_dict["databricksTokenSecret"] = cfg.databricks_token_secret
+
+        return custom_dict
 
     def to_k8s_pod(self, pod_template: Optional[PodTemplate] = None) -> Optional[K8sPod]:
         """
