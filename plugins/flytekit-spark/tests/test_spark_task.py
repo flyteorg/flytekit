@@ -1,3 +1,4 @@
+import os
 import os.path
 from unittest import mock
 
@@ -493,3 +494,216 @@ def test_spark_driver_executor_podSpec(reset_spark_session):
     configs = my_spark.sess.sparkContext.getConf().getAll()
     assert ("spark.driver.memory", "1000M") in configs
     assert ("spark.app.name", "FlyteSpark: ex:local:local:local") in configs
+
+
+# ==================== Serverless Detection Tests ====================
+
+
+def test_databricks_v2_serverless_detection_with_env_var(reset_spark_session):
+    """Test that serverless is detected when DATABRICKS_SERVERLESS env var is set."""
+    databricks_conf = {
+        "run_name": "test",
+        "new_cluster": {"spark_version": "13.3.x-scala2.12"},  # Has cluster config
+    }
+
+    @task(
+        task_config=DatabricksV2(
+            databricks_conf=databricks_conf,
+            databricks_instance="test.cloud.databricks.com",
+        )
+    )
+    def my_task(a: int) -> int:
+        return a
+
+    # Without env var, should NOT be serverless (has new_cluster)
+    assert my_task._is_databricks_serverless() is False
+
+    # With env var set, should BE serverless
+    os.environ["DATABRICKS_SERVERLESS"] = "true"
+    try:
+        assert my_task._is_databricks_serverless() is True
+    finally:
+        del os.environ["DATABRICKS_SERVERLESS"]
+
+
+def test_databricks_v2_serverless_detection_with_config(reset_spark_session):
+    """Test that serverless is detected based on DatabricksV2 config."""
+    # Serverless config: has environment_key, no cluster config
+    serverless_conf = {
+        "run_name": "serverless-test",
+        "environment_key": "my-env",
+    }
+
+    @task(
+        task_config=DatabricksV2(
+            databricks_conf=serverless_conf,
+            databricks_instance="test.cloud.databricks.com",
+        )
+    )
+    def serverless_task(a: int) -> int:
+        return a
+
+    # Should detect serverless from config
+    assert serverless_task._is_databricks_serverless() is True
+
+    # Classic config: has new_cluster
+    classic_conf = {
+        "run_name": "classic-test",
+        "new_cluster": {"spark_version": "13.3.x-scala2.12"},
+    }
+
+    @task(
+        task_config=DatabricksV2(
+            databricks_conf=classic_conf,
+            databricks_instance="test.cloud.databricks.com",
+        )
+    )
+    def classic_task(a: int) -> int:
+        return a
+
+    # Should NOT detect serverless
+    assert classic_task._is_databricks_serverless() is False
+
+
+def test_databricks_v2_serverless_detection_with_environments_array(reset_spark_session):
+    """Test serverless detection with inline environments array."""
+    serverless_conf = {
+        "run_name": "serverless-inline",
+        "environments": [{
+            "environment_key": "default",
+            "spec": {"client": "1", "dependencies": ["pandas"]}
+        }],
+    }
+
+    @task(
+        task_config=DatabricksV2(
+            databricks_conf=serverless_conf,
+            databricks_instance="test.cloud.databricks.com",
+        )
+    )
+    def serverless_task(a: int) -> int:
+        return a
+
+    assert serverless_task._is_databricks_serverless() is True
+
+
+def test_databricks_v2_classic_not_detected_as_serverless(reset_spark_session):
+    """Test that classic compute is not incorrectly detected as serverless."""
+    # Classic with existing_cluster_id
+    existing_cluster_conf = {
+        "run_name": "existing-cluster",
+        "existing_cluster_id": "abc-123",
+    }
+
+    @task(
+        task_config=DatabricksV2(
+            databricks_conf=existing_cluster_conf,
+            databricks_instance="test.cloud.databricks.com",
+        )
+    )
+    def existing_cluster_task(a: int) -> int:
+        return a
+
+    assert existing_cluster_task._is_databricks_serverless() is False
+
+    # Classic with new_cluster AND environment_key (cluster takes precedence)
+    mixed_conf = {
+        "run_name": "mixed",
+        "new_cluster": {"spark_version": "13.3.x-scala2.12"},
+        "environment_key": "my-env",  # Should be ignored
+    }
+
+    @task(
+        task_config=DatabricksV2(
+            databricks_conf=mixed_conf,
+            databricks_instance="test.cloud.databricks.com",
+        )
+    )
+    def mixed_task(a: int) -> int:
+        return a
+
+    assert mixed_task._is_databricks_serverless() is False
+
+
+def test_databricks_v2_service_credential_provider():
+    """Test that service credential provider is properly serialized."""
+    serverless_conf = {
+        "run_name": "serverless-with-creds",
+        "environment_key": "my-env",
+    }
+
+    @task(
+        task_config=DatabricksV2(
+            databricks_conf=serverless_conf,
+            databricks_instance="test.cloud.databricks.com",
+            databricks_service_credential_provider="my-credential-provider",
+        )
+    )
+    def task_with_creds(a: int) -> int:
+        return a
+
+    default_img = Image(name="default", fqn="test", tag="tag")
+    settings = SerializationSettings(
+        project="project",
+        domain="domain",
+        version="version",
+        env={},
+        image_config=ImageConfig(default_image=default_img, images=[default_img]),
+    )
+
+    custom = task_with_creds.get_custom(settings)
+    assert custom.get("databricksServiceCredentialProvider") == "my-credential-provider"
+
+
+def test_databricks_v2_no_service_credential_provider():
+    """Test that custom dict doesn't have credential provider when not set."""
+    serverless_conf = {
+        "run_name": "serverless-no-creds",
+        "environment_key": "my-env",
+    }
+
+    @task(
+        task_config=DatabricksV2(
+            databricks_conf=serverless_conf,
+            databricks_instance="test.cloud.databricks.com",
+        )
+    )
+    def task_no_creds(a: int) -> int:
+        return a
+
+    default_img = Image(name="default", fqn="test", tag="tag")
+    settings = SerializationSettings(
+        project="project",
+        domain="domain",
+        version="version",
+        env={},
+        image_config=ImageConfig(default_image=default_img, images=[default_img]),
+    )
+
+    custom = task_no_creds.get_custom(settings)
+    assert "databricksServiceCredentialProvider" not in custom
+
+
+def test_spark_classic_not_affected_by_serverless_code(reset_spark_session):
+    """Test that regular Spark tasks (non-Databricks) are not affected by serverless code."""
+    @task(
+        task_config=Spark(
+            spark_conf={"spark.driver.memory": "512M"},
+        )
+    )
+    def spark_task(a: int) -> int:
+        return a
+
+    # Regular Spark task should NOT be detected as serverless
+    assert spark_task._is_databricks_serverless() is False
+
+    # pre_execute should work normally
+    pb = ExecutionParameters.new_builder()
+    pb.working_dir = "/tmp"
+    pb.execution_id = "ex:local:local:local"
+    p = pb.build()
+    new_p = spark_task.pre_execute(p)
+    
+    assert new_p is not None
+    assert new_p.has_attr("SPARK_SESSION")
+    assert spark_task.sess is not None

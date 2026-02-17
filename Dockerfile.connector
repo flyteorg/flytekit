@@ -7,8 +7,15 @@ ARG VERSION
 
 RUN apt-get update && apt-get install build-essential -y \
     && pip install uv
-
-RUN uv pip install --system --no-cache-dir -U flytekit[connector]==$VERSION \
+# Pin pendulum<3.0: Apache Airflow (via flytekitplugins-airflow) imports
+# pendulum.tz.timezone() at module load time (airflow/settings.py).
+# Pendulum 3.x changed the tz API, causing the connector to crash on startup:
+#   airflow/settings.py → TIMEZONE = pendulum.tz.timezone("UTC") → AttributeError
+# Without this pin, uv resolves to pendulum 3.x which breaks the import chain:
+#   pyflyte serve connector → load_implicit_plugins → airflow → pendulum → crash
+RUN uv pip install --system --no-cache-dir -U \
+  "pendulum>=2.0.0,<3.0" \
+  flytekit[connector]==$VERSION \
   flytekitplugins-airflow==$VERSION \
   flytekitplugins-bigquery==$VERSION \
   flytekitplugins-k8sdataservice==$VERSION \
