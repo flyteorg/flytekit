@@ -246,7 +246,7 @@ class FileAccessProvider(object):
         protocol = get_protocol(str(path))
         if protocol is None:
             return False
-        return protocol != "file"
+        return protocol != "file" or str(path).startswith("/union-persistent-data")
 
     @property
     def local_sandbox_dir(self) -> os.PathLike:
