@@ -225,6 +225,29 @@ class TypeTransformer(typing.Generic[T]):
             f"Conversion to python value expected type {expected_python_type} from literal not implemented"
         )
 
+    def schema_match(self, schema: dict) -> bool:
+        """Check if a JSON schema fragment matches this transformer's python_type.
+
+        For BaseModel subclasses, automatically compares the schema's title, type, and
+        required fields against the type's own JSON schema. For other types, returns
+        False by default — override if needed.
+        """
+        if not isinstance(schema, dict):
+            return False
+        try:
+            from pydantic import BaseModel
+
+            if hasattr(self.python_type, "model_json_schema") and self.python_type is not BaseModel:
+                this_schema = self.python_type.model_json_schema()  # type: ignore[attr-defined]
+                return (
+                    schema.get("title") == this_schema.get("title")
+                    and schema.get("type") == this_schema.get("type")
+                    and set(schema.get("required", [])) == set(this_schema.get("required", []))
+                )
+        except Exception:
+            pass
+        return False
+
     def from_binary_idl(self, binary_idl_object: Binary, expected_python_type: Type[T]) -> Optional[T]:
         """
         This function primarily handles deserialization for untyped dicts, dataclasses, Pydantic BaseModels, and attribute access.｀
@@ -1209,6 +1232,9 @@ def _handle_json_schema_property(
         elif property_val.get("title"):
             # For nested dataclass
             sub_schema_name = property_val["title"]
+            matched_type = _match_registered_type_from_schema(property_val)
+            if matched_type is not None:
+                return (property_key, typing.cast(GenericAlias, matched_type))
             return (
                 property_key,
                 typing.cast(GenericAlias, convert_mashumaro_json_schema_to_python_class(property_val, sub_schema_name)),
@@ -1221,6 +1247,14 @@ def _handle_json_schema_property(
     # Handle None, int, float, bool or str
     else:
         return (property_key, _get_element_type(property_val, schema))  # type: ignore
+
+
+def _match_registered_type_from_schema(schema: dict) -> typing.Optional[type]:
+    """Check if a JSON schema fragment matches any registered TypeTransformer."""
+    for transformer in TypeEngine._REGISTRY.values():
+        if transformer.schema_match(schema):
+            return transformer.python_type
+    return None
 
 
 def generate_attribute_list_from_dataclass_json_mixin(
@@ -1242,6 +1276,11 @@ def generate_attribute_list_from_dataclass_json_mixin(
                 # Check if the $ref points to an enum definition (no properties)
                 if ref_schema.get("enum"):
                     attribute_list.append((property_key, str))
+                    continue
+                # Check if the $ref matches a registered custom type
+                matched_type = _match_registered_type_from_schema(ref_schema)
+                if matched_type is not None:
+                    attribute_list.append((property_key, typing.cast(GenericAlias, matched_type)))
                     continue
                 # Include $defs so nested models can resolve their own $refs
                 if "$defs" not in ref_schema and defs:
@@ -2553,6 +2592,9 @@ def _get_element_type(
             # Guard the nested enum elements inside containers
             if ref_schema.get("enum"):
                 return str
+            # Check if the $ref matches a registered custom type
+            if (matched_type := _match_registered_type_from_schema(ref_schema)) is not None:
+                return matched_type
             # if defs not in the schema, they need to be propagated into the resolved schema
             if "$defs" not in ref_schema and defs:
                 ref_schema["$defs"] = defs
