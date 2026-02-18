@@ -1251,7 +1251,7 @@ def _handle_json_schema_property(
 
 def _match_registered_type_from_schema(schema: dict) -> typing.Optional[type]:
     """Check if a JSON schema fragment matches any registered TypeTransformer."""
-    for transformer in TypeEngine._REGISTRY.values():
+    for transformer in TypeEngine._REGISTRY.values():  # type: ignore[misc]
         if transformer.schema_match(schema):
             return transformer.python_type
     return None
