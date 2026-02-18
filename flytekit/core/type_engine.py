@@ -1180,6 +1180,12 @@ def _handle_json_schema_property(
         attr_union_type = reduce(lambda x, y: typing.Union[x, y], attr_types)
         return (property_key, attr_union_type)  # type: ignore
 
+    # Handle $ref (e.g. when anyOf recurses with a $ref variant like Optional[Inner])
+    # v1 iterates all properties (not just required), so $ref inside anyOf must be resolved here
+    if property_val.get("$ref"):
+        resolved_type = _get_element_type(property_val, schema)
+        return (property_key, resolved_type)
+
     # Handle enum
     if property_val.get("enum"):
         property_type = "enum"
@@ -2535,32 +2541,50 @@ def convert_mashumaro_json_schema_to_python_class(schema: dict, schema_name: typ
 def _get_element_type(
     element_property: typing.Dict[str, typing.Any], schema: typing.Optional[typing.Dict[str, typing.Any]] = None
 ) -> Type:
-    # Handle $ref for nested models in arrays (e.g., List[NestedModel])
-    # Pydantic generates JSON schema like: {'items': {'$ref': '#/$defs/NestedModel'}, 'type': 'array'}
-    if element_property.get("$ref"):
-        if schema is None:
-            raise ValueError(f"Cannot resolve $ref '{element_property['$ref']}' without schema context")
-        ref_path = element_property["$ref"]
-        ref_name = ref_path.split("/")[-1]
+    # Handle $ref for nested models and enums
+    # Ensure that the element is actually a $ref and we have the entire schema to look up
+    if element_property.get("$ref") and schema is not None:
+        ref_name = element_property["$ref"].split("/")[-1]
         defs = schema.get("$defs", schema.get("definitions", {}))
+        # Look up for ref_name in the defs defined in the schema
         if ref_name in defs:
+            # Don't mutate the original schema
             ref_schema = defs[ref_name].copy()
-            # Include $defs so nested models can resolve their own $refs
+            # Guard the nested enum elements inside containers
+            if ref_schema.get("enum"):
+                return str
+            # if defs not in the schema, they need to be propagated into the resolved schema
             if "$defs" not in ref_schema and defs:
                 ref_schema["$defs"] = defs
+            # build a dataclass from the resolved schema
             return convert_mashumaro_json_schema_to_python_class(ref_schema, ref_name)
-        else:
-            raise ValueError(f"Cannot find definition for $ref '{ref_path}' in schema")
+        # default to str on failure. Shouldn't happen with valid pydantic schemas
+        return str
 
-    element_type = (
-        [e_property["type"] for e_property in element_property["anyOf"]]  # type: ignore
-        if element_property.get("anyOf")
-        else element_property["type"]
-    )
-    element_format = element_property["format"] if "format" in element_property else None
+    # Handle anyOf (e.g. Optional[int], Optional[Inner])
+    # Early return block replacing the previous list comprehension which would fail when an anyOf reference was a $ref
+    # (meaning no $type key).
+    if element_property.get("anyOf"):
+        # Separate non null variants. Note a $ref variant would have type None NOT null. A {"type": "null"} variant is
+        # filtered out.
+        variants = element_property["anyOf"]
+        non_null = [v for v in variants if v.get("type") != "null"]
+        # Detect if this is an Optional pattern here
+        has_null = len(non_null) < len(variants)
+        # This recurses on the first non-null variant which would handle the $ref, nested_arrays, nested_objects...
+        # anything. Wrap it in Optional if has_null.
+        if non_null:
+            inner_type = _get_element_type(non_null[0], schema)
+            return typing.Optional[inner_type] if has_null else inner_type  # type: ignore
+        # return None if all types are None
+        return type(None)
 
+    element_type = element_property.get("type", "string")
+    element_format = element_property.get("format")
+
+    # Handle marshmallow-style Optional types where "type" is a list e.g. ["integer", "null"]
+    # This pattern is not used by Pydantic (which uses anyOf) but is used by the marshmallow/DataClassJsonMixin path in v1
     if isinstance(element_type, list):
-        # Element type of Optional[int] is [integer, None]
         return typing.Optional[_get_element_type({"type": element_type[0]}, schema)]  # type: ignore
 
     if element_type == "string":
@@ -2574,6 +2598,16 @@ def _get_element_type(
             return int
         else:
             return float
+    # Recursively discover the types when an array or object element type is discovered
+    elif element_type == "array":
+        return typing.List[_get_element_type(element_property.get("items", {}), schema)]  # type: ignore
+    elif element_type == "object":
+        if element_property.get("additionalProperties"):
+            return typing.Dict[str, _get_element_type(element_property["additionalProperties"], schema)]  # type: ignore
+        return dict
+    # Corner case - practically useless but List[None] is a legal Python type
+    elif element_type == "null":
+        return type(None)
     return str
 
 
