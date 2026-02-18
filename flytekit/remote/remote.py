@@ -409,6 +409,16 @@ class FlyteRemote(object):
 
         logger.info(f"Nothing found from {flyte_uri}")
 
+    def fetch(self, uri: str, download_to: str, recursive: bool = True):
+        """
+        :param uri: This URI can be retrieved from the Flyte Console or by invoking the get_data API.
+        :param download_to: Local path to download to
+        :param recursive: Fetch recursively, all variables in the URI (required for fetching directory outputs)
+        Much like `pyflyte fetch` this downloads the literals from a "flyte://..." flyte data URI.
+        """
+        literal = self.get(uri)
+        return self.download(literal, download_to, recursive)
+
     def remote_context(self):
         """Context manager with remote-specific configuration."""
         return FlyteContextManager.with_context(
