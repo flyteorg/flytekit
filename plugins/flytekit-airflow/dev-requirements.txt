@@ -1005,7 +1005,7 @@ sqlalchemy-spanner==1.7.0
     # via apache-airflow-providers-google
 sqlalchemy-utils==0.41.2
     # via flask-appbuilder
-sqlparse==0.5.1
+sqlparse==0.5.4
     # via
     #   apache-airflow-providers-common-sql
     #   google-cloud-spanner
