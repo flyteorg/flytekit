@@ -380,8 +380,14 @@ class FlyteRemote(object):
             data_response = self.client.get_data(flyte_uri)
 
             if data_response.HasField("literal_map"):
+                from flytekit.models.interface import VariableMap
+
                 lm = LiteralMap.from_flyte_idl(data_response.literal_map)
-                return LiteralsResolver(lm.literals)
+                if data_response.variable_map is not None:
+                    vm = VariableMap.from_flyte_idl(data_response.variable_map)
+                    return LiteralsResolver(lm.literals, vm.variables)
+                else:
+                    return LiteralsResolver(lm.literals)
             elif data_response.HasField("literal"):
                 return Literal.from_flyte_idl(data_response.literal)
             elif data_response.HasField("pre_signed_urls"):
