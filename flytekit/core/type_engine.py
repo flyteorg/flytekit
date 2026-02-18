@@ -2582,6 +2582,11 @@ def _get_element_type(
     element_type = element_property.get("type", "string")
     element_format = element_property.get("format")
 
+    # Handle marshmallow-style Optional types where "type" is a list e.g. ["integer", "null"]
+    # This pattern is not used by Pydantic (which uses anyOf) but is used by the marshmallow/DataClassJsonMixin path in v1
+    if isinstance(element_type, list):
+        return typing.Optional[_get_element_type({"type": element_type[0]}, schema)]  # type: ignore
+
     if element_type == "string":
         return str
     elif element_type == "integer":
