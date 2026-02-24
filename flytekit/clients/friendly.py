@@ -106,7 +106,9 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
             If you previously retrieved a page response with token="foo" and you want the next page,
             specify token="foo". Please see the notes for this function about the caveats of the paginated API.
         :param flytekit.models.admin.common.Sort sort_by: [Optional] If provided, the results will be sorted.
-        :raises: TODO
+        :raises flytekit.exceptions.user.FlyteAuthenticationException: If the request is not authenticated.
+        :raises flytekit.exceptions.user.FlyteInvalidInputException: If the request contains invalid parameters.
+        :raises flytekit.exceptions.system.FlyteSystemException: If an unexpected error occurs.
         :rtype: list[flytekit.models.common.NamedEntityIdentifier], Text
         """
         identifier_list = super(SynchronousFlyteClient, self).list_task_ids_paginated(
@@ -146,7 +148,9 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
         :param list[flytekit.models.filters.Filter] filters: [Optional] If specified, the filters will be applied to
             the query.  If the filter is not supported, an exception will be raised.
         :param flytekit.models.admin.common.Sort sort_by: [Optional] If provided, the results will be sorted.
-        :raises: TODO
+        :raises flytekit.exceptions.user.FlyteAuthenticationException: If the request is not authenticated.
+        :raises flytekit.exceptions.user.FlyteInvalidInputException: If the request contains invalid parameters.
+        :raises flytekit.exceptions.system.FlyteSystemException: If an unexpected error occurs.
         :rtype: list[flytekit.models.task.Task], Text
         """
         task_list = super(SynchronousFlyteClient, self).list_tasks_paginated(
@@ -172,7 +176,10 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
         This returns a single task for a given identifier.
 
         :param flytekit.models.core.identifier.Identifier id: The ID representing a given task.
-        :raises: TODO
+        :raises flytekit.exceptions.user.FlyteEntityNotExistException: If the task does not exist.
+        :raises flytekit.exceptions.user.FlyteAuthenticationException: If the request is not authenticated.
+        :raises flytekit.exceptions.user.FlyteInvalidInputException: If the request contains invalid parameters.
+        :raises flytekit.exceptions.system.FlyteSystemException: If an unexpected error occurs.
         :rtype: flytekit.models.task.Task
         """
         return _task.Task.from_flyte_idl(
@@ -231,7 +238,9 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
             If you previously retrieved a page response with token="foo" and you want the next page,
             specify token="foo". Please see the notes for this function about the caveats of the paginated API.
         :param flytekit.models.admin.common.Sort sort_by: [Optional] If provided, the results will be sorted.
-        :raises: TODO
+        :raises flytekit.exceptions.user.FlyteAuthenticationException: If the request is not authenticated.
+        :raises flytekit.exceptions.user.FlyteInvalidInputException: If the request contains invalid parameters.
+        :raises flytekit.exceptions.system.FlyteSystemException: If an unexpected error occurs.
         :rtype: list[flytekit.models.common.NamedEntityIdentifier], Text
         """
         identifier_list = super(SynchronousFlyteClient, self).list_workflow_ids_paginated(
@@ -271,7 +280,9 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
         :param list[flytekit.models.filters.Filter] filters: [Optional] If specified, the filters will be applied to
             the query.  If the filter is not supported, an exception will be raised.
         :param flytekit.models.admin.common.Sort sort_by: [Optional] If provided, the results will be sorted.
-        :raises: TODO
+        :raises flytekit.exceptions.user.FlyteAuthenticationException: If the request is not authenticated.
+        :raises flytekit.exceptions.user.FlyteInvalidInputException: If the request contains invalid parameters.
+        :raises flytekit.exceptions.system.FlyteSystemException: If an unexpected error occurs.
         :rtype: list[flytekit.models.admin.workflow.Workflow], Text
         """
         wf_list = super(SynchronousFlyteClient, self).list_workflows_paginated(
@@ -297,7 +308,10 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
         This returns a single workflow for a given ID.
 
         :param flytekit.models.core.identifier.Identifier id: The ID representing a given task.
-        :raises: TODO
+        :raises flytekit.exceptions.user.FlyteEntityNotExistException: If the workflow does not exist.
+        :raises flytekit.exceptions.user.FlyteAuthenticationException: If the request is not authenticated.
+        :raises flytekit.exceptions.user.FlyteInvalidInputException: If the request contains invalid parameters.
+        :raises flytekit.exceptions.system.FlyteSystemException: If an unexpected error occurs.
         :rtype: flytekit.models.admin.workflow.Workflow
         """
         return _workflow.Workflow.from_flyte_idl(
@@ -383,7 +397,9 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
             If you previously retrieved a page response with token="foo" and you want the next page,
             specify token="foo". Please see the notes for this function about the caveats of the paginated API.
         :param flytekit.models.admin.common.Sort sort_by: [Optional] If provided, the results will be sorted.
-        :raises: TODO
+        :raises flytekit.exceptions.user.FlyteAuthenticationException: If the request is not authenticated.
+        :raises flytekit.exceptions.user.FlyteInvalidInputException: If the request contains invalid parameters.
+        :raises flytekit.exceptions.system.FlyteSystemException: If an unexpected error occurs.
         :rtype: list[flytekit.models.common.NamedEntityIdentifier], Text
         """
         identifier_list = super(SynchronousFlyteClient, self).list_launch_plan_ids_paginated(
@@ -423,7 +439,9 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
         :param list[flytekit.models.filters.Filter] filters: [Optional] If specified, the filters will be applied to
             the query.  If the filter is not supported, an exception will be raised.
         :param flytekit.models.admin.common.Sort sort_by: [Optional] If provided, the results will be sorted.
-        :raises: TODO
+        :raises flytekit.exceptions.user.FlyteAuthenticationException: If the request is not authenticated.
+        :raises flytekit.exceptions.user.FlyteInvalidInputException: If the request contains invalid parameters.
+        :raises flytekit.exceptions.system.FlyteSystemException: If an unexpected error occurs.
         :rtype: list[flytekit.models.launch_plan.LaunchPlan], str
         """
         lp_list = super(SynchronousFlyteClient, self).list_launch_plans_paginated(
@@ -467,7 +485,9 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
             If you previously retrieved a page response with token="foo" and you want the next page,
             specify token="foo". Please see the notes for this function about the caveats of the paginated API.
         :param flytekit.models.admin.common.Sort sort_by: [Optional] If provided, the results will be sorted.
-        :raises: TODO
+        :raises flytekit.exceptions.user.FlyteAuthenticationException: If the request is not authenticated.
+        :raises flytekit.exceptions.user.FlyteInvalidInputException: If the request contains invalid parameters.
+        :raises flytekit.exceptions.system.FlyteSystemException: If an unexpected error occurs.
         :rtype: list[flytekit.models.launch_plan.LaunchPlan], str
         """
         lp_list = super(SynchronousFlyteClient, self).list_active_launch_plans_paginated(
@@ -615,7 +635,9 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
         :param list[flytekit.models.filters.Filter] filters: [Optional] If specified, the filters will be applied to
             the query.  If the filter is not supported, an exception will be raised.
         :param flytekit.models.admin.common.Sort sort_by: [Optional] If provided, the results will be sorted.
-        :raises: TODO
+        :raises flytekit.exceptions.user.FlyteAuthenticationException: If the request is not authenticated.
+        :raises flytekit.exceptions.user.FlyteInvalidInputException: If the request contains invalid parameters.
+        :raises flytekit.exceptions.system.FlyteSystemException: If an unexpected error occurs.
         :rtype: (list[flytekit.models.execution.Execution], Text)
         """
         exec_list = super(SynchronousFlyteClient, self).list_executions_paginated(
