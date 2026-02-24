@@ -57,6 +57,9 @@ def s3_setup_args(s3_cfg: configuration.S3Config, anonymous: bool = False) -> Di
     if s3_cfg.endpoint is not None:
         kwargs["client_kwargs"] = {"endpoint_url": s3_cfg.endpoint}
 
+    if s3_cfg.adressing_style:
+        kwargs["config_kwargs"] = {"s3": {"addressing_style": "virtual"}}
+
     if anonymous:
         kwargs[_ANON] = True
 
