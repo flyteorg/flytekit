@@ -225,6 +225,29 @@ class TypeTransformer(typing.Generic[T]):
             f"Conversion to python value expected type {expected_python_type} from literal not implemented"
         )
 
+    def schema_match(self, schema: dict) -> bool:
+        """Check if a JSON schema fragment matches this transformer's python_type.
+
+        For BaseModel subclasses, automatically compares the schema's title, type, and
+        required fields against the type's own JSON schema. For other types, returns
+        False by default — override if needed.
+        """
+        if not isinstance(schema, dict):
+            return False
+        try:
+            from pydantic import BaseModel
+
+            if hasattr(self.python_type, "model_json_schema") and self.python_type is not BaseModel:
+                this_schema = self.python_type.model_json_schema()  # type: ignore[attr-defined]
+                return (
+                    schema.get("title") == this_schema.get("title")
+                    and schema.get("type") == this_schema.get("type")
+                    and set(schema.get("required", [])) == set(this_schema.get("required", []))
+                )
+        except Exception:
+            pass
+        return False
+
     def from_binary_idl(self, binary_idl_object: Binary, expected_python_type: Type[T]) -> Optional[T]:
         """
         This function primarily handles deserialization for untyped dicts, dataclasses, Pydantic BaseModels, and attribute access.｀
@@ -1147,10 +1170,17 @@ class LiteralTypeTransformer(TypeTransformer[object]):
 
 def _handle_json_schema_property(
     property_key: str,
-    property_val: dict,
+    property_val: typing.Dict[str, typing.Any],
+    schema: typing.Optional[typing.Dict[str, typing.Any]] = None,
 ) -> typing.Tuple[str, typing.Any]:
     """
     A helper to handle the properties of a JSON schema and returns their equivalent Flyte attribute name and type.
+
+    :param property_key: The property name
+    :param property_val: The JSON schema definition for this property
+    :param schema: The full JSON schema (needed to resolve $ref references in nested types like List[NestedModel])
+    :return: A tuple of the attribute name and its Python type.
+    :raises ValueError: If the property has a nested Optional or Union type, which is not supported.
     """
 
     # Handle Optional[T] or Union[T1, T2, ...] at the top level for proper recursion
@@ -1166,12 +1196,18 @@ def _handle_json_schema_property(
             )
         attr_types = []
         for item in property_val["anyOf"]:
-            _, attr_type = _handle_json_schema_property(property_key, item)
+            _, attr_type = _handle_json_schema_property(property_key, item, schema)
             attr_types.append(attr_type)
 
         # Gather all the types and return a Union[T1, T2, ...]
         attr_union_type = reduce(lambda x, y: typing.Union[x, y], attr_types)
         return (property_key, attr_union_type)  # type: ignore
+
+    # Handle $ref (e.g. when anyOf recurses with a $ref variant like Optional[Inner])
+    # v1 iterates all properties (not just required), so $ref inside anyOf must be resolved here
+    if property_val.get("$ref"):
+        resolved_type = _get_element_type(property_val, schema)
+        return (property_key, resolved_type)
 
     # Handle enum
     if property_val.get("enum"):
@@ -1181,7 +1217,7 @@ def _handle_json_schema_property(
 
     # Handle list
     if property_type == "array":
-        return (property_key, typing.List[_get_element_type(property_val["items"])])  # type: ignore
+        return (property_key, typing.List[_get_element_type(property_val["items"], schema)])  # type: ignore
     # Handle null types (i.e. None)
     elif property_type == "null":
         return (property_key, type(None))  # type: ignore
@@ -1191,11 +1227,14 @@ def _handle_json_schema_property(
         # those are handled in the top level of the function with recursion.
         if property_val.get("additionalProperties"):
             # For typing.Dict type
-            elem_type = _get_element_type(property_val["additionalProperties"])
+            elem_type = _get_element_type(property_val["additionalProperties"], schema)
             return (property_key, typing.Dict[str, elem_type])  # type: ignore
         elif property_val.get("title"):
             # For nested dataclass
             sub_schema_name = property_val["title"]
+            matched_type = _match_registered_type_from_schema(property_val)
+            if matched_type is not None:
+                return (property_key, typing.cast(GenericAlias, matched_type))
             return (
                 property_key,
                 typing.cast(GenericAlias, convert_mashumaro_json_schema_to_python_class(property_val, sub_schema_name)),
@@ -1207,16 +1246,52 @@ def _handle_json_schema_property(
         return (property_key, str)  # type: ignore
     # Handle None, int, float, bool or str
     else:
-        return (property_key, _get_element_type(property_val))  # type: ignore
+        return (property_key, _get_element_type(property_val, schema))  # type: ignore
+
+
+def _match_registered_type_from_schema(schema: dict) -> typing.Optional[type]:
+    """Check if a JSON schema fragment matches any registered TypeTransformer."""
+    for transformer in TypeEngine._REGISTRY.values():  # type: ignore[misc]
+        if transformer.schema_match(schema):
+            return transformer.python_type
+    return None
 
 
 def generate_attribute_list_from_dataclass_json_mixin(
-    schema: dict,
+    schema: typing.Dict[str, typing.Any],
     schema_name: typing.Any,
 ):
     attribute_list: typing.List[typing.Tuple[Any, Any]] = []
     for property_key, property_val in schema["properties"].items():
-        attribute_list.append(_handle_json_schema_property(property_key, property_val))
+        # Handle $ref for nested Pydantic models
+        # Pydantic generates JSON schemas with $ref to reference definitions in $defs
+        if property_val.get("$ref"):
+            ref_path = property_val["$ref"]
+            # Extract the definition name from the $ref path (e.g., "#/$defs/MyNestedModel" -> "MyNestedModel")
+            ref_name = ref_path.split("/")[-1]
+            # Get the referenced schema from $defs (or definitions for older schemas)
+            defs = schema.get("$defs", schema.get("definitions", {}))
+            if ref_name in defs:
+                ref_schema = defs[ref_name].copy()
+                # Check if the $ref points to an enum definition (no properties)
+                if ref_schema.get("enum"):
+                    attribute_list.append((property_key, str))
+                    continue
+                # Check if the $ref matches a registered custom type
+                matched_type = _match_registered_type_from_schema(ref_schema)
+                if matched_type is not None:
+                    attribute_list.append((property_key, typing.cast(GenericAlias, matched_type)))
+                    continue
+                # Include $defs so nested models can resolve their own $refs
+                if "$defs" not in ref_schema and defs:
+                    ref_schema["$defs"] = defs
+                nested_class = convert_mashumaro_json_schema_to_python_class(ref_schema, ref_name)
+                attribute_list.append((property_key, typing.cast(GenericAlias, nested_class)))
+                continue
+            else:
+                raise ValueError(f"Cannot find definition for $ref '{ref_path}' in schema")
+
+        attribute_list.append(_handle_json_schema_property(property_key, property_val, schema))
     return attribute_list
 
 
@@ -2502,17 +2577,57 @@ def convert_mashumaro_json_schema_to_python_class(schema: dict, schema_name: typ
     return dataclass_json(dataclasses.make_dataclass(schema_name, attribute_list))
 
 
-def _get_element_type(element_property: typing.Dict[str, str]) -> Type:
-    element_type = (
-        [e_property["type"] for e_property in element_property["anyOf"]]  # type: ignore
-        if element_property.get("anyOf")
-        else element_property["type"]
-    )
-    element_format = element_property["format"] if "format" in element_property else None
+def _get_element_type(
+    element_property: typing.Dict[str, typing.Any], schema: typing.Optional[typing.Dict[str, typing.Any]] = None
+) -> Type:
+    # Handle $ref for nested models and enums
+    # Ensure that the element is actually a $ref and we have the entire schema to look up
+    if element_property.get("$ref") and schema is not None:
+        ref_name = element_property["$ref"].split("/")[-1]
+        defs = schema.get("$defs", schema.get("definitions", {}))
+        # Look up for ref_name in the defs defined in the schema
+        if ref_name in defs:
+            # Don't mutate the original schema
+            ref_schema = defs[ref_name].copy()
+            # Guard the nested enum elements inside containers
+            if ref_schema.get("enum"):
+                return str
+            # Check if the $ref matches a registered custom type
+            if (matched_type := _match_registered_type_from_schema(ref_schema)) is not None:
+                return matched_type
+            # if defs not in the schema, they need to be propagated into the resolved schema
+            if "$defs" not in ref_schema and defs:
+                ref_schema["$defs"] = defs
+            # build a dataclass from the resolved schema
+            return convert_mashumaro_json_schema_to_python_class(ref_schema, ref_name)
+        # default to str on failure. Shouldn't happen with valid pydantic schemas
+        return str
 
+    # Handle anyOf (e.g. Optional[int], Optional[Inner])
+    # Early return block replacing the previous list comprehension which would fail when an anyOf reference was a $ref
+    # (meaning no $type key).
+    if element_property.get("anyOf"):
+        # Separate non null variants. Note a $ref variant would have type None NOT null. A {"type": "null"} variant is
+        # filtered out.
+        variants = element_property["anyOf"]
+        non_null = [v for v in variants if v.get("type") != "null"]
+        # Detect if this is an Optional pattern here
+        has_null = len(non_null) < len(variants)
+        # This recurses on the first non-null variant which would handle the $ref, nested_arrays, nested_objects...
+        # anything. Wrap it in Optional if has_null.
+        if non_null:
+            inner_type = _get_element_type(non_null[0], schema)
+            return typing.Optional[inner_type] if has_null else inner_type  # type: ignore
+        # return None if all types are None
+        return type(None)
+
+    element_type = element_property.get("type", "string")
+    element_format = element_property.get("format")
+
+    # Handle marshmallow-style Optional types where "type" is a list e.g. ["integer", "null"]
+    # This pattern is not used by Pydantic (which uses anyOf) but is used by the marshmallow/DataClassJsonMixin path in v1
     if isinstance(element_type, list):
-        # Element type of Optional[int] is [integer, None]
-        return typing.Optional[_get_element_type({"type": element_type[0]})]  # type: ignore
+        return typing.Optional[_get_element_type({"type": element_type[0]}, schema)]  # type: ignore
 
     if element_type == "string":
         return str
@@ -2525,6 +2640,16 @@ def _get_element_type(element_property: typing.Dict[str, str]) -> Type:
             return int
         else:
             return float
+    # Recursively discover the types when an array or object element type is discovered
+    elif element_type == "array":
+        return typing.List[_get_element_type(element_property.get("items", {}), schema)]  # type: ignore
+    elif element_type == "object":
+        if element_property.get("additionalProperties"):
+            return typing.Dict[str, _get_element_type(element_property["additionalProperties"], schema)]  # type: ignore
+        return dict
+    # Corner case - practically useless but List[None] is a legal Python type
+    elif element_type == "null":
+        return type(None)
     return str
 
 

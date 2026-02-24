@@ -1257,7 +1257,9 @@ class FlyteRemote(object):
         content_length = os.stat(local_file_path).st_size
 
         upload_package_progress = Progress(TimeElapsedColumn(), TextColumn("[progress.description]{task.description}"))
-        t1 = upload_package_progress.add_task(f"Uploading package of size {content_length/1024/1024:.2f} MBs", total=1)
+        t1 = upload_package_progress.add_task(
+            f"Uploading package of size {content_length / 1024 / 1024:.2f} MBs", total=1
+        )
         upload_package_progress.start_task(t1)
         if is_display_progress_enabled():
             upload_package_progress.start()
@@ -1284,7 +1286,7 @@ class FlyteRemote(object):
             upload_package_progress.update(
                 t1,
                 completed=1,
-                description=f"Uploaded package of size {content_length/1024/1024:.2f}MB",
+                description=f"Uploaded package of size {content_length / 1024 / 1024:.2f}MB",
                 refresh=True,
             )
             upload_package_progress.stop_task(t1)
@@ -2474,6 +2476,8 @@ class FlyteRemote(object):
             timedelta or a duration in seconds as int.
         :param sync_nodes: passed along to the sync call for the workflow execution
         """
+        logger.info(f"Beginning wait for {execution.id} with {timeout=}, {poll_interval=}, and {sync_nodes=}.")
+
         if poll_interval is not None and not isinstance(poll_interval, timedelta):
             poll_interval = timedelta(seconds=poll_interval)
         poll_interval = poll_interval or timedelta(seconds=30)
@@ -2482,11 +2486,32 @@ class FlyteRemote(object):
             timeout = timedelta(seconds=timeout)
         time_to_give_up = datetime.max if timeout is None else datetime.now() + timeout
 
+        poll_count = 0
         while datetime.now() < time_to_give_up:
+            if poll_count % 10 == 0:
+                logger.info(f"Waiting for execution {execution.id} to complete.")
+                logger.info(f"Current phase: {execution.closure.phase}, {execution.closure.updated_at=}")
+
             execution = self.sync_execution(execution, sync_nodes=sync_nodes)
             if execution.is_done:
                 return execution
             time.sleep(poll_interval.total_seconds())
+            poll_count += 1
+
+        if datetime.now() > time_to_give_up:
+            logger.info("Wait timeout exceeded. Syncing execution one final time.")
+            refetched_exec = self.fetch_execution(
+                project=execution.id.project, domain=execution.id.domain, name=execution.id.name
+            )
+            if refetched_exec.is_done:
+                logger.info("Re-sync'ed execution found to be complete!")
+                if sync_nodes:
+                    self.sync_execution(refetched_exec, sync_nodes=True)
+                return refetched_exec
+            else:
+                logger.debug(
+                    f"Execution {execution.id} not complete after timeout, phase is {refetched_exec.closure.phase}"
+                )
 
         raise user_exceptions.FlyteTimeout(f"Execution {self} did not complete before timeout.")
 
@@ -2762,6 +2787,34 @@ class FlyteRemote(object):
         elif execution._node.gate_node is not None:
             logger.info("Skipping gate node execution for now - gate nodes don't have inputs and outputs filled in")
             return execution
+
+            # Handle the case where it's a branch node
+        elif execution._node.branch_node is not None:
+            # We'll need to query child node executions regardless since this is a parent node
+            child_node_executions = iterate_node_executions(
+                self.client,
+                workflow_execution_identifier=execution.id.execution_id,
+                unique_parent_id=execution.id.node_id,
+            )
+            child_node_executions = [x for x in child_node_executions]
+
+            sub_flyte_workflow = typing.cast(FlyteBranchNode, execution._node.flyte_entity)
+            sub_node_mapping = {}
+            if sub_flyte_workflow.if_else.case.then_node:
+                then_node = sub_flyte_workflow.if_else.case.then_node
+                sub_node_mapping[then_node.id] = then_node
+            if sub_flyte_workflow.if_else.other:
+                for case in sub_flyte_workflow.if_else.other:
+                    then_node = case.then_node
+                    sub_node_mapping[then_node.id] = then_node
+            if sub_flyte_workflow.if_else.else_node:
+                else_node = sub_flyte_workflow.if_else.else_node
+                sub_node_mapping[else_node.id] = else_node
+
+            execution._underlying_node_executions = [
+                self.sync_node_execution(FlyteNodeExecution.promote_from_model(cne), sub_node_mapping)
+                for cne in child_node_executions
+            ]
 
         # This is the plain ol' task execution case
         else:

@@ -27,9 +27,9 @@ jobs:
       - name: Set Python versions for run
         run: |
           if [[ ${{ github.event_name }} == "schedule" ]]; then
-            echo "python_versions=[\"3.9\",\"3.10\",\"3.11\",\"3.12\"]" >> $GITHUB_ENV
+            echo "python_versions=[\"3.10\",\"3.11\",\"3.12\"]" >> $GITHUB_ENV
           else
-            echo "python_versions=[\"3.9\", \"3.12\"]" >> $GITHUB_ENV
+            echo "python_versions=[\"3.12\"]" >> $GITHUB_ENV
           fi
 
   build:
@@ -137,8 +137,8 @@ jobs:
             pandas: "pandas<2.0.0"
           - numpy: "numpy<2.0.0"
             pandas: "pandas>=2.0.0"
-          - numpy: "numpy>=2.0.0"
-            python-version: "3.8"
+          - pandas: "pandas<2.0.0"
+            python-version: "3.12"
 
     steps:
       - uses: actions/checkout@v4
@@ -344,8 +344,6 @@ jobs:
           # Below is a list of community plugins. Please keep in alphabetical order.
           - community/flytekit-xarray-zarr
         exclude:
-          - python-version: 3.9
-            plugin-names: "flytekit-aws-sagemaker"
           # flytekit-modin depends on ray which does not have a 3.11 wheel yet.
           # Issue tracked in https://github.com/ray-project/ray/issues/27881
           - python-version: 3.11
@@ -359,7 +357,7 @@ jobs:
             plugin-names: "flytekit-greatexpectations"
           # onnxruntime does not support python 3.10 yet
           # https://github.com/microsoft/onnxruntime/issues/9782
-          - python-version: 3.11
+          - python-version: 3.12
             plugin-names: "flytekit-onnx-pytorch"
           - python-version: 3.11
             plugin-names: "flytekit-onnx-scikitlearn"

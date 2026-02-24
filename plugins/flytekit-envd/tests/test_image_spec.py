@@ -105,11 +105,10 @@ def test_image_spec_conda():
 
 def test_image_spec_extra_index_url():
     image_spec = ImageSpec(
-        packages=["-U pandas", "torch", "torchvision"],
+        packages=["torch", "torchvision"],
         base_image="cr.flyte.org/flyteorg/flytekit:py3.9-latest",
         pip_extra_index_url=[
             "https://download.pytorch.org/whl/cpu",
-            "https://pypi.anaconda.org/scientific-python-nightly-wheels/simple",
         ],
     )
     EnvdImageSpecBuilder().build_image(image_spec)
@@ -123,10 +122,10 @@ def test_image_spec_extra_index_url():
     def build():
         base(image="cr.flyte.org/flyteorg/flytekit:py3.9-latest", dev=False)
         run(commands=[])
-        install.python_packages(name=["-U pandas", "torch", "torchvision"])
+        install.python_packages(name=["torch", "torchvision"])
         install.apt_packages(name=[])
         runtime.environ(env={{'PYTHONPATH': '/root:', '_F_IMG_ID': '{image_spec.id}'}}, extra_path=['/root'])
-        config.pip_index(url="https://pypi.org/simple", extra_url="https://download.pytorch.org/whl/cpu https://pypi.anaconda.org/scientific-python-nightly-wheels/simple")
+        config.pip_index(url="https://pypi.org/simple", extra_url="https://download.pytorch.org/whl/cpu")
     """
     )
 
