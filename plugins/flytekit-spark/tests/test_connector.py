@@ -118,6 +118,7 @@ async def test_databricks_agent(task_template: TaskTemplate):
     databricks_metadata = DatabricksJobMetadata(
         databricks_instance="test-account.cloud.databricks.com",
         run_id="123",
+        auth_token=mocked_token,
     )
 
     mock_create_response = {"run_id": "123"}
@@ -135,7 +136,7 @@ async def test_databricks_agent(task_template: TaskTemplate):
         res = await agent.create(task_template, None)
         spec = _get_databricks_job_spec(task_template)
         data = json.dumps(spec)
-        mocked.assert_called_with(create_url, method="POST", data=data, headers=get_header())
+        mocked.assert_called_with(create_url, method="POST", data=data, headers=get_header(auth_token=mocked_token))
         spark_envs = spec["new_cluster"]["spark_env_vars"]
         assert spark_envs["foo"] == "bar"
         assert spark_envs[FLYTE_FAIL_ON_ERROR] == "true"
@@ -152,7 +153,7 @@ async def test_databricks_agent(task_template: TaskTemplate):
         mocked.post(delete_url, status=http.HTTPStatus.OK, payload=mock_delete_response)
         await agent.delete(databricks_metadata)
 
-    assert get_header() == {"Authorization": f"Bearer {mocked_token}", "content-type": "application/json"}
+    assert get_header(auth_token=mocked_token) == {"Authorization": f"Bearer {mocked_token}", "content-type": "application/json"}
 
     mock.patch.stopall()
 
@@ -176,6 +177,7 @@ async def test_agent_create_with_default_instance(task_template: TaskTemplate):
     databricks_metadata = DatabricksJobMetadata(
         databricks_instance="test-account.cloud.databricks.com",
         run_id="123",
+        auth_token=mocked_token,
     )
 
     mock_create_response = {"run_id": "123"}
@@ -188,7 +190,7 @@ async def test_agent_create_with_default_instance(task_template: TaskTemplate):
         res = await agent.create(task_template, None)
         spec = _get_databricks_job_spec(task_template)
         data = json.dumps(spec)
-        mocked.assert_called_with(create_url, method="POST", data=data, headers=get_header())
+        mocked.assert_called_with(create_url, method="POST", data=data, headers=get_header(auth_token=mocked_token))
         assert res == databricks_metadata
 
     mock.patch.stopall()
