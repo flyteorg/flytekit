@@ -50,25 +50,33 @@ jobs:
       - name: "Clear action cache"
         uses: ./.github/actions/clear-action-cache
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
       - name: Cache pip
         uses: actions/cache@v4
         with:
-          # This path is specific to Ubuntu
-          path: ~/.cache/pip
-          # Look to see if there is a cache hit for the corresponding requirements files
+          path: |
+            ~/.cache/pip
+            ~/Library/Caches/pip
+            ~\AppData\Local\pip\Cache
           key: ${{ format('{0}-pip-{1}', runner.os, hashFiles('dev-requirements.in', 'requirements.in')) }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          enable-cache: true
       - name: Install dependencies
         run: |
-          pip install uv
           make setup-global-uv
           uv pip uninstall --system pandas pyarrow
           uv pip freeze
       - name: Test with coverage
         run: |
           make unit_test_codecov
+        env:
+          PYTEST_XDIST_AUTO_NUM_WORKERS: ${{ matrix.os == 'ubuntu-latest' && '4' || '2' }}
       - name: Codecov
         uses: codecov/codecov-action@v3.1.4
         with:
@@ -93,19 +101,25 @@ jobs:
       - name: "Clear action cache"
         uses: ./.github/actions/clear-action-cache
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
       - name: Cache pip
         uses: actions/cache@v4
         with:
-          # This path is specific to Ubuntu
-          path: ~/.cache/pip
-          # Look to see if there is a cache hit for the corresponding requirements files
+          path: |
+            ~/.cache/pip
+            ~/Library/Caches/pip
+            ~\AppData\Local\pip\Cache
           key: ${{ format('{0}-pip-{1}', runner.os, hashFiles('dev-requirements.in', 'requirements.in')) }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          enable-cache: true
       - name: Install dependencies
         run: |
-          pip install uv
           make setup-global-uv
           uv pip uninstall --system pandas pyarrow
           uv pip freeze
@@ -115,6 +129,8 @@ jobs:
         if: ${{ matrix.python-version != '3.12' }}
         run: |
           make unit_test_extras_codecov
+        env:
+          PYTEST_XDIST_AUTO_NUM_WORKERS: ${{ matrix.os == 'ubuntu-latest' && '4' || '2' }}
       - name: Codecov
         uses: codecov/codecov-action@v3.1.4
         with:
@@ -145,16 +161,29 @@ jobs:
       - name: "Clear action cache"
         uses: ./.github/actions/clear-action-cache
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
       - name: Cache pip
         uses: actions/cache@v4
         with:
-          # This path is specific to Ubuntu
-          path: ~/.cache/pip
-          # Look to see if there is a cache hit for the corresponding requirements files
+          path: |
+            ~/.cache/pip
+            ~/Library/Caches/pip
+            ~\AppData\Local\pip\Cache
           key: ${{ format('{0}-pip-{1}', runner.os, hashFiles('dev-requirements.in', 'requirements.in')) }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+      - name: Cache uv
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/uv
+            ~/Library/Caches/uv
+            ~\AppData\Local\uv\Cache
+          key: ${{ format('{0}-uv-{1}', runner.os, hashFiles('dev-requirements.in', 'requirements.in')) }}
+          restore-keys: |
+            ${{ runner.os }}-uv-
       - name: Install dependencies
         run: |
           pip install uv
@@ -164,6 +193,8 @@ jobs:
       - name: Test with coverage
         run: |
           make unit_test_codecov
+        env:
+          PYTEST_XDIST_AUTO_NUM_WORKERS: 4
       - name: Codecov
         uses: codecov/codecov-action@v3.1.4
         with:
@@ -182,16 +213,29 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
       - name: Cache pip
         uses: actions/cache@v4
         with:
-          # This path is specific to Ubuntu
-          path: ~/.cache/pip
-          # Look to see if there is a cache hit for the corresponding requirements files
+          path: |
+            ~/.cache/pip
+            ~/Library/Caches/pip
+            ~\AppData\Local\pip\Cache
           key: ${{ format('{0}-pip-{1}', runner.os, hashFiles('dev-requirements.in', 'requirements.in')) }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+      - name: Cache uv
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/uv
+            ~/Library/Caches/uv
+            ~\AppData\Local\uv\Cache
+          key: ${{ format('{0}-uv-{1}', runner.os, hashFiles('dev-requirements.in', 'requirements.in')) }}
+          restore-keys: |
+            ${{ runner.os }}-uv-
       - name: Install dependencies
         run: |
           pip install uv
@@ -200,6 +244,8 @@ jobs:
       - name: Test with coverage
         run: |
           make test_serialization_codecov
+        env:
+          PYTEST_XDIST_AUTO_NUM_WORKERS: 4
       - name: Codecov
         uses: codecov/codecov-action@v3.1.4
         with:
@@ -226,16 +272,29 @@ jobs:
       - name: "Clear action cache"
         uses: ./.github/actions/clear-action-cache # sandbox has disk pressure, so we need to clear the cache to get more disk space.
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
       - name: Cache pip
         uses: actions/cache@v4
         with:
-          # This path is specific to Ubuntu
-          path: ~/.cache/pip
-          # Look to see if there is a cache hit for the corresponding requirements files
+          path: |
+            ~/.cache/pip
+            ~/Library/Caches/pip
+            ~\AppData\Local\pip\Cache
           key: ${{ format('{0}-pip-{1}', runner.os, hashFiles('dev-requirements.in', 'requirements.in')) }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+      - name: Cache uv
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/uv
+            ~/Library/Caches/uv
+            ~\AppData\Local\uv\Cache
+          key: ${{ format('{0}-uv-{1}', runner.os, hashFiles('dev-requirements.in', 'requirements.in')) }}
+          restore-keys: |
+            ${{ runner.os }}-uv-
       - name: Install dependencies
         run: |
           pip install uv
@@ -393,19 +452,25 @@ jobs:
       - name: "Clear action cache"
         uses: ./.github/actions/clear-action-cache
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
       - name: Cache pip
         uses: actions/cache@v4
         with:
-          # This path is specific to Ubuntu
-          path: ~/.cache/pip
-          # Look to see if there is a cache hit for the corresponding requirements files
+          path: |
+            ~/.cache/pip
+            ~/Library/Caches/pip
+            ~\AppData\Local\pip\Cache
           key: ${{ format('{0}-pip-{1}', runner.os, hashFiles('dev-requirements.txt', format('plugins/{0}/requirements.txt', matrix.plugin-names ))) }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          enable-cache: true
       - name: Install dependencies
         run: |
-          pip install uv
           # TODO: double-check if checking out all tags solves the issue
           export SETUPTOOLS_SCM_PRETEND_VERSION="1.999.999"
           make setup-global-uv
@@ -440,19 +505,25 @@ jobs:
       - name: Fetch the code
         uses: actions/checkout@v4
       - name: Set up Python 3.12
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: 3.12
-      - uses: actions/cache@v4
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
         with:
-          path: ~/.cache/pip
+          enable-cache: true
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/pip
+            ~/Library/Caches/pip
+            ~\AppData\Local\pip\Cache
           key: ${{ runner.os }}-pip-${{ hashFiles('**/dev-requirements.in') }}
           restore-keys: |
             ${{ runner.os }}-pip-
       - name: Install dependencies
         run: |
-          python -m pip install --upgrade pip
-          pip install uv
           make setup-global-uv
           uv pip freeze
       - name: Lint
