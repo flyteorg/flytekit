@@ -5,6 +5,7 @@ from abc import abstractmethod
 from datetime import timedelta
 from typing import Dict, List, Optional, Union
 
+from flytekit.core import utils
 from flytekit.core.type_engine import LiteralsResolver
 from flytekit.exceptions import user as user_exceptions
 from flytekit.models import execution as execution_models
@@ -105,10 +106,15 @@ class FlyteWorkflowExecution(RemoteExecutionBase, execution_models.Execution):
         **kwargs,
     ):
         super(FlyteWorkflowExecution, self).__init__(*args, **kwargs)
-        self._node_executions = None
+        self._node_executions: Optional[Dict[str, FlyteNodeExecution]] = None
         self._flyte_workflow: Optional[FlyteWorkflow] = None
         self._remote = remote
         self._type_hints = type_hints
+
+    def traverse_node_executions(self, exclude_start_end_nodes=True):
+        for root_node in self.node_executions.values():
+            for node in root_node.traverse(exclude_start_end_nodes):
+                yield node
 
     @property
     def flyte_workflow(self) -> Optional[FlyteWorkflow]:
@@ -226,9 +232,16 @@ class FlyteNodeExecution(RemoteExecutionBase, node_execution_models.NodeExecutio
         super(FlyteNodeExecution, self).__init__(*args, **kwargs)
         self._task_executions = None
         self._workflow_executions = []
-        self._underlying_node_executions = None
+        self._underlying_node_executions: typing.Optional[List[FlyteNodeExecution]] = None
         self._interface: typing.Optional[TypedInterface] = None
         self._flyte_node = None
+
+    def traverse(self, exclude_start_end_nodes=True):
+        if exclude_start_end_nodes and utils.is_start_or_end_node(self.id.node_id):
+            return
+        yield self
+        for underlying_node in self._underlying_node_executions or []:
+            yield from underlying_node.traverse(exclude_start_end_nodes)
 
     @property
     def task_executions(self) -> List[FlyteTaskExecution]:
