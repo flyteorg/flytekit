@@ -367,7 +367,8 @@ class AuthorizationClient(metaclass=_SingletonPerEndpoint):
 
             self._request_authorization_code()
 
-            server.handle_request(q)
+            while q.empty():
+                server.handle_request(q)
             server.server_close()
 
             # Send the call to request the authorization code in the background
