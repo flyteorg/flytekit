@@ -119,6 +119,7 @@ def get_additional_fsspec_call_kwargs(protocol: typing.Union[str, tuple], method
     if method_name == "put" and protocol in ["s3", "gs"]:
         kwargs["chunksize"] = _WRITE_SIZE_CHUNK_BYTES
 
+    kwargs["skip_instance_cache"] = True
     return kwargs
 
 
@@ -215,9 +216,15 @@ class FileAccessProvider(object):
             s3kwargs.update(kwargs)
             return fsspec.filesystem(protocol, **s3kwargs)  # type: ignore
         elif protocol == "gs":
+            kwargs["skip_instance_cache"] = True
+            print(f"skip_instance_cacheskip_instance_cacheskip_instance_cache {kwargs}", flush=True)
+
             if anonymous:
                 kwargs["token"] = _ANON
-            return fsspec.filesystem(protocol, **kwargs)  # type: ignore
+            fs = fsspec.filesystem(protocol, **kwargs)
+            print(fs, flush=True)
+            print("kwargs", kwargs, flush=True)
+            return fs  # type: ignore
         elif protocol == "ftp":
             kwargs.update(fsspec.implementations.ftp.FTPFileSystem._get_kwargs_from_urls(path))
             return fsspec.filesystem(protocol, **kwargs)
@@ -227,6 +234,7 @@ class FileAccessProvider(object):
         )
         kwargs.update(storage_options)
 
+        print("testtttttttttttttttttttttttt", flush=True)
         return fsspec.filesystem(protocol, **kwargs)
 
     async def get_async_filesystem_for_path(
@@ -321,6 +329,7 @@ class FileAccessProvider(object):
                 )
             logger.info(f"Getting {from_path} to {to_path}")
             if isinstance(file_system, AsyncFileSystem):
+                kwargs["skip_instance_cache"] = "True"
                 dst = await file_system._get(from_path, to_path, recursive=recursive, **kwargs)  # pylint: disable=W0212
             else:
                 dst = file_system.get(from_path, to_path, recursive=recursive, **kwargs)
