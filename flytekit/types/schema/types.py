@@ -11,10 +11,8 @@ from pathlib import Path
 from typing import Dict, Optional, Type
 
 import msgpack
-from dataclasses_json import config
 from google.protobuf import json_format as _json_format
 from google.protobuf.struct_pb2 import Struct
-from marshmallow import fields
 from mashumaro.mixins.json import DataClassJSONMixin
 from mashumaro.types import SerializableType
 
@@ -184,7 +182,7 @@ class SchemaEngine(object):
 
 @dataclass
 class FlyteSchema(SerializableType, DataClassJSONMixin):
-    remote_path: typing.Optional[str] = field(default=None, metadata=config(mm_field=fields.String()))
+    remote_path: typing.Optional[str] = field(default=None)
     """
     This is the main schema class that users should use.
     """
