@@ -2871,6 +2871,18 @@ class FlyteRemote(object):
         """
         self.client.terminate_execution(execution.id, cause)
 
+    #############################
+    # Delete Execution Phase #
+    #############################
+
+    def delete_execution_phase(self, execution: FlyteWorkflowExecution, phase: str):
+        """Delete a phase from executions.
+
+        :param execution: workflow execution to delete phase from
+        :param phase: phase to delete
+        """
+        self.client.delete_execution_phase(execution.id.project, execution.id.domain, phase)
+
     ############
     # Projects #
     ############
