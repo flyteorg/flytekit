@@ -20,7 +20,7 @@ packaging==23.2
     # via onnxruntime
 pillow==10.3.0
     # via -r dev-requirements.in
-protobuf==4.25.0
+protobuf==5.29.6
     # via onnxruntime
 sympy==1.12
     # via onnxruntime
