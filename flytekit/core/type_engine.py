@@ -1438,7 +1438,11 @@ class TypeEngine(typing.Generic[T]):
                 from flytekit.extras import pydantic_transformer  # noqa: F401
             if is_imported("pandas"):
                 try:
-                    from flytekit.types.schema.types_pandas import PandasSchemaReader, PandasSchemaWriter  # noqa: F401
+                    from flytekit.types.schema.types_pandas import (  # noqa: F401
+                        PandasSchemaReader,
+                        PandasSchemaWriter,
+                        PandasTimestampTransformer,
+                    )
                 except ValueError:
                     logger.debug("Transformer for pandas is already registered.")
             if is_imported("numpy"):
