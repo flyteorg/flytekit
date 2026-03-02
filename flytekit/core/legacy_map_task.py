@@ -60,7 +60,10 @@ class MapPythonTask(PythonTask):
             # TODO: We should be able to support partial tasks with lists as inputs
             for arg in python_function_task.keywords.values():
                 if isinstance(arg, list):
-                    raise ValueError("Map tasks do not support partial tasks with lists as inputs. ")
+                    # Validate the lengths of all list inputs during initialization
+                    input_lengths = [len(val) for val in python_function_task.keywords.values() if isinstance(val, list)]
+                    if len(set(input_lengths)) > 1:
+                        raise ValueError("Input arrays have different lengths: cannot use partial tasks with mismatched array lengths.")
             self._partial = python_function_task
             actual_task = self._partial.func
         else:
