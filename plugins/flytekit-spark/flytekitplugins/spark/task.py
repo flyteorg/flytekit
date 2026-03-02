@@ -18,6 +18,7 @@ from flytekit.image_spec import DefaultImageBuilder, ImageSpec
 from flytekit.models.task import K8sPod
 
 from .models import SparkJob, SparkType
+from .utils import is_serverless_config
 
 pyspark_sql = lazy_module("pyspark.sql")
 SparkSession = pyspark_sql.SparkSession
@@ -349,11 +350,7 @@ class PysparkFunctionTask(AsyncConnectorExecutorMixin, PythonFunctionTask[Spark]
         # Additional check: if using DatabricksV2 with serverless config
         if isinstance(self.task_config, DatabricksV2):
             conf = self.task_config.databricks_conf or {}
-            has_serverless_config = (
-                "environment_key" in conf or 
-                "environments" in conf
-            ) and "new_cluster" not in conf and "existing_cluster_id" not in conf
-            if has_serverless_config:
+            if is_serverless_config(conf):
                 return True
         
         return is_databricks and "SPARK_HOME" not in os.environ
