@@ -41,6 +41,7 @@ class ArrayNode:
         min_successes: Optional[int] = None,
         min_success_ratio: Optional[float] = None,
         metadata: Optional[_workflow_model.NodeMetadata] = None,
+        run_all_sub_nodes: bool = False,
     ):
         """
         :param target: The target Flyte entity to map over
@@ -52,11 +53,13 @@ class ArrayNode:
             min_success_ratio
         :param min_success_ratio: The minimum ratio of successful executions.
         :param metadata: The metadata for the underlying node
+        :param run_all_sub_nodes: If True, all sub-nodes will run to completion even after the failure threshold is met
         """
         from flytekit.remote import FlyteLaunchPlan
 
         self.target = target
         self._concurrency = concurrency
+        self._run_all_sub_nodes = run_all_sub_nodes
         self.id = target.name
         self._bindings = bindings or []
         self.metadata = metadata
@@ -227,6 +230,10 @@ class ArrayNode:
         return self._concurrency
 
     @property
+    def run_all_sub_nodes(self) -> bool:
+        return self._run_all_sub_nodes
+
+    @property
     def execution_mode(self) -> _core_workflow.ArrayNode.ExecutionMode:
         return self._execution_mode
 
@@ -275,6 +282,7 @@ def array_node(
     concurrency: Optional[int] = None,
     min_success_ratio: Optional[float] = None,
     min_successes: Optional[int] = None,
+    run_all_sub_nodes: bool = False,
 ):
     """
     ArrayNode implementation that maps over tasks and other Flyte entities
@@ -287,6 +295,7 @@ def array_node(
     :param min_successes: The minimum number of successful executions. If set, this takes precedence over
         min_success_ratio
     :param min_success_ratio: The minimum ratio of successful executions
+    :param run_all_sub_nodes: If True, all sub-nodes will run to completion even after the failure threshold is met
     :return: A callable function that takes in keyword arguments and returns a Promise created by
         flyte_entity_call_handler
     """
@@ -300,6 +309,7 @@ def array_node(
         concurrency=concurrency,
         min_successes=min_successes,
         min_success_ratio=min_success_ratio,
+        run_all_sub_nodes=run_all_sub_nodes,
     )
 
     return node
