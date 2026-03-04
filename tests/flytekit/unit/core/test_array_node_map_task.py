@@ -578,6 +578,7 @@ def test_serialization_metadata2(serialization_settings):
     assert array_node.array_node._parallelism == 10
     assert not array_node.array_node._is_original_sub_node_interface
     assert array_node.array_node._execution_mode == _core_workflow.ArrayNode.MINIMAL_STATE
+    assert not array_node.array_node._run_all_sub_nodes
     task_spec = od[arraynode_maptask]
     assert task_spec.template.metadata.retries.retries == 2
     assert task_spec.template.metadata.interruptible
@@ -586,6 +587,67 @@ def test_serialization_metadata2(serialization_settings):
     wf1_spec = get_serializable(od, serialization_settings, wf1)
     array_node = wf1_spec.template.nodes[0]
     assert array_node.array_node._execution_mode == _core_workflow.ArrayNode.FULL_STATE
+
+
+def test_run_all_sub_nodes_default():
+    @task
+    def t1(a: int) -> int:
+        return a + 1
+
+    mt = map_task(t1)
+    assert mt.run_all_sub_nodes is False
+
+
+def test_run_all_sub_nodes_set():
+    @task
+    def t1(a: int) -> int:
+        return a + 1
+
+    mt = map_task(t1, run_all_sub_nodes=True)
+    assert mt.run_all_sub_nodes is True
+
+
+def test_run_all_sub_nodes_serialization(serialization_settings):
+    @task
+    def t1(a: int) -> int:
+        return a + 1
+
+    arraynode_maptask = map_task(t1, run_all_sub_nodes=True)
+
+    @workflow
+    def wf(x: typing.List[int]):
+        return arraynode_maptask(a=x)
+
+    od = OrderedDict()
+    wf_spec = get_serializable(od, serialization_settings, wf)
+
+    array_node = wf_spec.template.nodes[0]
+    assert array_node.array_node._run_all_sub_nodes is True
+
+    # Verify it serializes to the protobuf correctly
+    pb = array_node.array_node.to_flyte_idl()
+    assert pb.run_all_sub_nodes is True
+
+
+def test_run_all_sub_nodes_serialization_default(serialization_settings):
+    @task
+    def t1(a: int) -> int:
+        return a + 1
+
+    arraynode_maptask = map_task(t1)
+
+    @workflow
+    def wf(x: typing.List[int]):
+        return arraynode_maptask(a=x)
+
+    od = OrderedDict()
+    wf_spec = get_serializable(od, serialization_settings, wf)
+
+    array_node = wf_spec.template.nodes[0]
+    assert array_node.array_node._run_all_sub_nodes is False
+
+    pb = array_node.array_node.to_flyte_idl()
+    assert pb.run_all_sub_nodes is False
 
 
 def test_serialization_extended_resources(serialization_settings):

@@ -378,3 +378,47 @@ def test_map_task_wrapper():
 
     mapped_lp = map_task(lp)(a=[1, 3, 5], b=[2, 4, 6], c=[7, 8, 9])
     assert mapped_lp == [14, 96, 270]
+
+
+def test_run_all_sub_nodes_default():
+    node = array_node(lp, concurrency=10, min_success_ratio=0.9)
+    assert node.run_all_sub_nodes is False
+
+
+def test_run_all_sub_nodes_set():
+    node = array_node(lp, concurrency=10, min_success_ratio=0.9, run_all_sub_nodes=True)
+    assert node.run_all_sub_nodes is True
+
+
+def test_run_all_sub_nodes_serialization(serialization_settings):
+    @workflow
+    def wf_run_all() -> typing.List[int]:
+        return map_task(lp, concurrency=10, min_success_ratio=0.9, run_all_sub_nodes=True)(
+            a=[1, 3, 5], b=["two", 4, "six"], c=[7, 8, 9]
+        )
+
+    od = OrderedDict()
+    wf_spec = get_serializable(od, serialization_settings, wf_run_all)
+
+    parent_node = wf_spec.template.nodes[0]
+    assert parent_node.array_node._run_all_sub_nodes is True
+
+    pb = parent_node.array_node.to_flyte_idl()
+    assert pb.run_all_sub_nodes is True
+
+
+def test_run_all_sub_nodes_serialization_default(serialization_settings):
+    @workflow
+    def wf_no_run_all() -> typing.List[int]:
+        return map_task(lp, concurrency=10, min_success_ratio=0.9)(
+            a=[1, 3, 5], b=["two", 4, "six"], c=[7, 8, 9]
+        )
+
+    od = OrderedDict()
+    wf_spec = get_serializable(od, serialization_settings, wf_no_run_all)
+
+    parent_node = wf_spec.template.nodes[0]
+    assert parent_node.array_node._run_all_sub_nodes is False
+
+    pb = parent_node.array_node.to_flyte_idl()
+    assert pb.run_all_sub_nodes is False
