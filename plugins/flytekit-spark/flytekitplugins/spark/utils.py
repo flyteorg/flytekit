@@ -6,11 +6,13 @@ def is_serverless_config(databricks_conf: dict) -> bool:
     without any cluster config (``existing_cluster_id`` or ``new_cluster``).
 
     Args:
-        databricks_conf: The databricks job configuration dict.
+        databricks_conf (dict): The databricks job configuration dict.
 
     Returns:
-        True if the configuration targets serverless compute.
+        bool: True if the configuration targets serverless compute.
     """
-    has_cluster_config = "existing_cluster_id" in databricks_conf or "new_cluster" in databricks_conf
+    has_cluster_config = (
+        databricks_conf.get("existing_cluster_id") is not None or databricks_conf.get("new_cluster") is not None
+    )
     has_serverless_config = bool(databricks_conf.get("environment_key") or databricks_conf.get("environments"))
     return not has_cluster_config and has_serverless_config

@@ -15,9 +15,9 @@ from flytekit.models.core.execution import TaskLog
 from flytekit.models.literals import LiteralMap
 from flytekit.models.task import TaskTemplate
 
-aiohttp = lazy_module("aiohttp")
-
 from .utils import is_serverless_config as _is_serverless_config
+
+aiohttp = lazy_module("aiohttp")
 
 DATABRICKS_API_ENDPOINT = "/api/2.1/jobs"
 DEFAULT_DATABRICKS_INSTANCE_ENV_KEY = "FLYTE_DATABRICKS_INSTANCE"
@@ -57,11 +57,11 @@ def _configure_serverless(databricks_job: dict, envs: dict) -> str:
     analogous to how ``job_cluster_key`` links a task to a shared cluster.
 
     Args:
-        databricks_job: The databricks job configuration dict.
-        envs: Environment variables to inject into the environment spec.
+        databricks_job (dict): The databricks job configuration dict.
+        envs (dict): Environment variables to inject into the environment spec.
 
     Returns:
-        The environment_key to use in the task definition.
+        str: The environment_key to use in the task definition.
     """
     environment_key = databricks_job.get("environment_key", "default")
     environments = databricks_job.get("environments", [])
@@ -76,7 +76,7 @@ def _configure_serverless(databricks_job: dict, envs: dict) -> str:
             "environment_key": environment_key,
             "spec": {
                 "client": "1",  # Required: Databricks serverless client version
-            }
+            },
         }
         environments.append(new_env)
         databricks_job["environments"] = environments
@@ -97,15 +97,15 @@ def _configure_serverless(databricks_job: dict, envs: dict) -> str:
     return environment_key
 
 
-def _configure_classic_cluster(databricks_job: dict, custom: dict, container, envs: dict) -> None:
+def _configure_classic_cluster(databricks_job: dict, custom: dict, container: typing.Any, envs: dict) -> None:
     """
     Configure classic compute (existing cluster or new cluster).
 
     Args:
-        databricks_job: The databricks job configuration dict
-        custom: The custom config from task template
-        container: The container config from task template
-        envs: Environment variables to inject
+        databricks_job (dict): The databricks job configuration dict.
+        custom (dict): The custom config from task template.
+        container (typing.Any): The container config from task template.
+        envs (dict): Environment variables to inject.
     """
     if databricks_job.get("existing_cluster_id") is not None:
         # Using an existing cluster, no additional configuration needed
@@ -126,7 +126,7 @@ def _configure_classic_cluster(databricks_job: dict, custom: dict, container, en
 
 
 def _build_notebook_job_spec(
-    databricks_job: dict, custom: dict, container, envs: dict, is_serverless: bool
+    databricks_job: dict, custom: dict, container: typing.Any, envs: dict, is_serverless: bool
 ) -> dict:
     """Build the Databricks job spec for a notebook task."""
     notebook_path = custom["notebookPath"]
@@ -160,7 +160,7 @@ def _build_notebook_job_spec(
 
 
 def _build_python_file_job_spec(
-    databricks_job: dict, custom: dict, container, envs: dict, is_serverless: bool
+    databricks_job: dict, custom: dict, container: typing.Any, envs: dict, is_serverless: bool
 ) -> dict:
     """Build the Databricks job spec for a python file (spark_python_task)."""
     user_git_source = databricks_job.get("git_source")
@@ -183,8 +183,7 @@ def _build_python_file_job_spec(
         parameters = list(container.args) if container.args else []
 
         service_credential_provider = custom.get(
-            "databricksServiceCredentialProvider",
-            os.getenv(DEFAULT_DATABRICKS_SERVICE_CREDENTIAL_PROVIDER_ENV_KEY)
+            "databricksServiceCredentialProvider", os.getenv(DEFAULT_DATABRICKS_SERVICE_CREDENTIAL_PROVIDER_ENV_KEY)
         )
         if service_credential_provider:
             parameters.append(f"--flyte-credential-provider={service_credential_provider}")
@@ -229,7 +228,7 @@ def _get_databricks_job_spec(task_template: TaskTemplate) -> dict:
     envs[FLYTE_FAIL_ON_ERROR] = "true"
     databricks_job = custom["databricksConf"]
 
-    has_cluster = "existing_cluster_id" in databricks_job or "new_cluster" in databricks_job
+    has_cluster = databricks_job.get("existing_cluster_id") is not None or databricks_job.get("new_cluster") is not None
     has_serverless = bool(databricks_job.get("environment_key") or databricks_job.get("environments"))
     if not has_cluster and not has_serverless:
         raise ValueError(

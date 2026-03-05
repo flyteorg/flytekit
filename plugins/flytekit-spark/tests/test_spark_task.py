@@ -5,41 +5,39 @@ from unittest import mock
 import pandas as pd
 import pyspark
 import pytest
-import tempfile
-
-from google.protobuf.json_format import MessageToDict
-from flytekit import PodTemplate
-from flytekit.core import context_manager
 from flytekitplugins.spark import Spark
 from flytekitplugins.spark.task import Databricks, DatabricksV2, new_spark_session
+from google.protobuf.json_format import MessageToDict
+from kubernetes.client.models import (
+    V1Container,
+    V1EnvVar,
+    V1PodSpec,
+    V1Toleration,
+)
 from pyspark.sql import SparkSession
 
 import flytekit
 from flytekit import (
+    ImageSpec,
+    PodTemplate,
     StructuredDataset,
     StructuredDatasetTransformerEngine,
     task,
-    ImageSpec,
 )
 from flytekit.configuration import (
+    DefaultImages,
+    FastSerializationSettings,
     Image,
     ImageConfig,
     SerializationSettings,
-    FastSerializationSettings,
-    DefaultImages,
 )
+from flytekit.core import context_manager
 from flytekit.core.context_manager import (
     ExecutionParameters,
-    FlyteContextManager,
     ExecutionState,
+    FlyteContextManager,
 )
 from flytekit.models.task import K8sObjectMetadata, K8sPod
-from kubernetes.client.models import (
-    V1Container,
-    V1PodSpec,
-    V1Toleration,
-    V1EnvVar,
-)
 
 
 @pytest.fixture(scope="function")
@@ -51,6 +49,7 @@ def reset_spark_session() -> None:
     if SparkSession._instantiatedSession:
         SparkSession.builder.getOrCreate().stop()
         SparkSession._instantiatedSession = None
+
 
 def test_spark_task(reset_spark_session):
     databricks_conf = {
@@ -97,10 +96,7 @@ def test_spark_task(reset_spark_session):
     retrieved_settings = my_spark.get_custom(settings)
     assert retrieved_settings["sparkConf"] == {"spark": "1"}
     assert retrieved_settings["executorPath"] == "/usr/bin/python3"
-    assert (
-        retrieved_settings["mainApplicationFile"]
-        == "local:///usr/local/bin/entrypoint.py"
-    )
+    assert retrieved_settings["mainApplicationFile"] == "local:///usr/local/bin/entrypoint.py"
 
     pb = ExecutionParameters.new_builder()
     pb.working_dir = "/tmp"
@@ -193,9 +189,7 @@ def test_to_html():
     df = spark.createDataFrame([("Bob", 10)], ["name", "age"])
     sd = StructuredDataset(dataframe=df)
     tf = StructuredDatasetTransformerEngine()
-    output = tf.to_html(
-        FlyteContextManager.current_context(), sd, pyspark.sql.DataFrame
-    )
+    output = tf.to_html(FlyteContextManager.current_context(), sd, pyspark.sql.DataFrame)
     assert pd.DataFrame(df.schema, columns=["StructField"]).to_html() == output
 
 
@@ -228,9 +222,7 @@ def test_spark_addPyFile(mock_add_pyfile, mock_shutil_make_archive, mock_tempfil
     ctx = context_manager.FlyteContextManager.current_context()
     with context_manager.FlyteContextManager.with_context(
         ctx.with_execution_state(
-            ctx.new_execution_state().with_params(
-                mode=ExecutionState.Mode.TASK_EXECUTION
-            )
+            ctx.new_execution_state().with_params(mode=ExecutionState.Mode.TASK_EXECUTION)
         ).with_serialization_settings(serialization_settings)
     ) as new_ctx:
         my_spark.pre_execute(new_ctx.user_space_params)
@@ -238,6 +230,7 @@ def test_spark_addPyFile(mock_add_pyfile, mock_shutil_make_archive, mock_tempfil
         mock_tempfile_mkdtemp.assert_called_once()
         mock_shutil_make_archive.assert_called_once_with("/tmp/123/flyte_wf", "zip", os.getcwd())
         mock_add_pyfile.assert_called_once_with("/tmp/123/flyte_wf.zip")
+
 
 def test_spark_with_image_spec():
     custom_image = ImageSpec(
@@ -428,7 +421,7 @@ def test_spark_driver_executor_podSpec(reset_spark_session):
             annotations={"aKeyA_d": "aValA", "aKeyB_d": "aValB"},
         ),
         pod_spec=driver_pod_spec_dict_remove_None,  # type: ignore
-        primary_container_name="driver-primary"
+        primary_container_name="driver-primary",
     )
 
     target_executor_k8sPod = K8sPod(
@@ -437,7 +430,7 @@ def test_spark_driver_executor_podSpec(reset_spark_session):
             annotations={"aKeyA_e": "aValA", "aKeyB_e": "aValB"},
         ),
         pod_spec=executor_pod_spec_dict_remove_None,  # type: ignore
-        primary_container_name="executor-primary"
+        primary_container_name="executor-primary",
     )
 
     @task(
@@ -471,16 +464,9 @@ def test_spark_driver_executor_podSpec(reset_spark_session):
     retrieved_settings = my_spark.get_custom(settings)
     assert retrieved_settings["sparkConf"] == {"spark.driver.memory": "1000M"}
     assert retrieved_settings["executorPath"] == "/usr/bin/python3"
-    assert (
-        retrieved_settings["mainApplicationFile"]
-        == "local:///usr/local/bin/entrypoint.py"
-    )
-    assert retrieved_settings["driverPod"] == MessageToDict(
-        target_driver_k8sPod.to_flyte_idl()
-    )
-    assert retrieved_settings["executorPod"] == MessageToDict(
-        target_executor_k8sPod.to_flyte_idl()
-    )
+    assert retrieved_settings["mainApplicationFile"] == "local:///usr/local/bin/entrypoint.py"
+    assert retrieved_settings["driverPod"] == MessageToDict(target_driver_k8sPod.to_flyte_idl())
+    assert retrieved_settings["executorPod"] == MessageToDict(target_executor_k8sPod.to_flyte_idl())
 
     pb = ExecutionParameters.new_builder()
     pb.working_dir = "/tmp"
@@ -527,8 +513,7 @@ def test_databricks_v2_serverless_detection_with_env_var(reset_spark_session):
 
 
 def test_databricks_v2_serverless_detection_with_config(reset_spark_session):
-    """Test that serverless is detected based on DatabricksV2 config."""
-    # Serverless config: has environment_key, no cluster config
+    """Test that serverless is detected based on DatabricksV2 config when on Databricks."""
     serverless_conf = {
         "run_name": "serverless-test",
         "environment_key": "my-env",
@@ -543,10 +528,16 @@ def test_databricks_v2_serverless_detection_with_config(reset_spark_session):
     def serverless_task(a: int) -> int:
         return a
 
-    # Should detect serverless from config
-    assert serverless_task._is_databricks_serverless() is True
+    # Serverless config alone is not enough; must also be on Databricks
+    assert serverless_task._is_databricks_serverless() is False
 
-    # Classic config: has new_cluster
+    # With DATABRICKS_RUNTIME_VERSION set (simulating Databricks env), should detect serverless
+    os.environ["DATABRICKS_RUNTIME_VERSION"] = "15.4"
+    try:
+        assert serverless_task._is_databricks_serverless() is True
+    finally:
+        del os.environ["DATABRICKS_RUNTIME_VERSION"]
+
     classic_conf = {
         "run_name": "classic-test",
         "new_cluster": {"spark_version": "13.3.x-scala2.12"},
@@ -561,18 +552,20 @@ def test_databricks_v2_serverless_detection_with_config(reset_spark_session):
     def classic_task(a: int) -> int:
         return a
 
-    # Should NOT detect serverless
+    # Should NOT detect serverless (classic config)
     assert classic_task._is_databricks_serverless() is False
 
 
 def test_databricks_v2_serverless_detection_with_environments_array(reset_spark_session):
-    """Test serverless detection with inline environments array."""
+    """Test serverless detection with inline environments array on Databricks."""
     serverless_conf = {
         "run_name": "serverless-inline",
-        "environments": [{
-            "environment_key": "default",
-            "spec": {"client": "1", "dependencies": ["pandas"]}
-        }],
+        "environments": [
+            {
+                "environment_key": "default",
+                "spec": {"client": "1", "dependencies": ["pandas"]},
+            }
+        ],
     }
 
     @task(
@@ -584,7 +577,12 @@ def test_databricks_v2_serverless_detection_with_environments_array(reset_spark_
     def serverless_task(a: int) -> int:
         return a
 
-    assert serverless_task._is_databricks_serverless() is True
+    # Must be on Databricks for config-based detection to work
+    os.environ["DATABRICKS_RUNTIME_VERSION"] = "15.4"
+    try:
+        assert serverless_task._is_databricks_serverless() is True
+    finally:
+        del os.environ["DATABRICKS_RUNTIME_VERSION"]
 
 
 def test_databricks_v2_classic_not_detected_as_serverless(reset_spark_session):
@@ -686,6 +684,7 @@ def test_databricks_v2_no_service_credential_provider():
 
 def test_spark_classic_not_affected_by_serverless_code(reset_spark_session):
     """Test that regular Spark tasks (non-Databricks) are not affected by serverless code."""
+
     @task(
         task_config=Spark(
             spark_conf={"spark.driver.memory": "512M"},
@@ -703,7 +702,7 @@ def test_spark_classic_not_affected_by_serverless_code(reset_spark_session):
     pb.execution_id = "ex:local:local:local"
     p = pb.build()
     new_p = spark_task.pre_execute(p)
-    
+
     assert new_p is not None
     assert new_p.has_attr("SPARK_SESSION")
     assert spark_task.sess is not None
