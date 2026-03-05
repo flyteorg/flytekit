@@ -17,7 +17,7 @@ from flytekit.core.dynamic_workflow_task import dynamic
 from flytekit.core.hash import HashMethod
 from flytekit.core.launch_plan import LaunchPlan
 from flytekit.core.task import task
-from flytekit.core.type_engine import TypeEngine
+from flytekit.core.type_engine import FileDownloadConfig, TypeEngine
 from flytekit.core.workflow import workflow
 from flytekit.models.core.types import BlobType
 from flytekit.models.literals import LiteralMap, Blob, BlobMetadata
@@ -762,6 +762,18 @@ def test_join():
 def test_headers():
     assert FlyteFilePathTransformer.get_additional_headers("xyz") == {}
     assert len(FlyteFilePathTransformer.get_additional_headers(".gz")) == 1
+
+
+def test_transform_flytefile_with_file_download_config():
+    csv_file_no_config = FlyteFile["csv"]
+    lt = FlyteFilePathTransformer().get_literal_type(csv_file_no_config)
+    assert lt.blob.file_extension == ""
+    assert lt.blob.enable_legacy_filename == False
+
+    legacy_file = Annotated[FlyteFile["csv"], FileDownloadConfig(file_extension="csv", enable_legacy_filename=True)]
+    lt = FlyteFilePathTransformer().get_literal_type(legacy_file)
+    assert lt.blob.file_extension == "csv"
+    assert lt.blob.enable_legacy_filename == True
 
 
 def test_new_remote_file():
