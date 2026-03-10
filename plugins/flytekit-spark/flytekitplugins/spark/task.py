@@ -87,6 +87,8 @@ class DatabricksV2(Spark):
             Use the form <account>.cloud.databricks.com.
         databricks_service_credential_provider (Optional[str]): Provider name for Databricks
             Service Credentials for S3 access. Falls back to FLYTE_DATABRICKS_SERVICE_CREDENTIAL_PROVIDER env var.
+        databricks_token_secret (Optional[str]): Custom name for the K8s secret containing
+            the Databricks token. Defaults to 'databricks-token' if not specified.
         notebook_path (Optional[str]): Path to Databricks notebook
             (e.g., "/Users/user@example.com/notebook").
         notebook_base_parameters (Optional[Dict[str, str]]): Parameters to pass to the notebook.
@@ -194,12 +196,11 @@ class DatabricksV2(Spark):
     """
 
     databricks_conf: Optional[Dict[str, Union[str, dict]]] = None
-    databricks_instance: Optional[str] = None  # Falls back to FLYTE_DATABRICKS_INSTANCE env var
-    databricks_service_credential_provider: Optional[str] = (
-        None  # Falls back to FLYTE_DATABRICKS_SERVICE_CREDENTIAL_PROVIDER env var
-    )
-    notebook_path: Optional[str] = None  # Path to Databricks notebook (e.g., "/Users/user@example.com/notebook")
-    notebook_base_parameters: Optional[Dict[str, str]] = None  # Parameters to pass to the notebook
+    databricks_instance: Optional[str] = None
+    databricks_service_credential_provider: Optional[str] = None
+    databricks_token_secret: Optional[str] = None
+    notebook_path: Optional[str] = None
+    notebook_base_parameters: Optional[Dict[str, str]] = None
 
 
 # This method does not reset the SparkSession since it's a bit hard to handle multiple
@@ -311,6 +312,8 @@ class PysparkFunctionTask(AsyncConnectorExecutorMixin, PythonFunctionTask[Spark]
             cfg = cast(DatabricksV2, self.task_config)
             if cfg.databricks_service_credential_provider:
                 custom_dict["databricksServiceCredentialProvider"] = cfg.databricks_service_credential_provider
+            if cfg.databricks_token_secret:
+                custom_dict["databricksTokenSecret"] = cfg.databricks_token_secret
             if cfg.notebook_path:
                 custom_dict["notebookPath"] = cfg.notebook_path
             if cfg.notebook_base_parameters:
@@ -479,7 +482,7 @@ class PysparkFunctionTask(AsyncConnectorExecutorMixin, PythonFunctionTask[Spark]
                 if ctx.execution_state and ctx.execution_state.is_local_execution():
                     return AsyncConnectorExecutorMixin.execute(self, **kwargs)
             except Exception as e:
-                click.secho(f"❌ Connector failed to run the task with error: {e}", fg="red")
+                click.secho(f"Connector failed to run the task with error: {e}", fg="red")
                 click.secho("Falling back to local execution", fg="red")
         return PythonFunctionTask.execute(self, **kwargs)
 

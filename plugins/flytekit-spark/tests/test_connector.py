@@ -1,29 +1,28 @@
 import http
 import json
+import os
 from datetime import timedelta
 from unittest import mock
 
 import pytest
 from aioresponses import aioresponses
 from flyteidl.core.execution_pb2 import TaskExecution
-
-from flytekit.core.constants import FLYTE_FAIL_ON_ERROR
 from flytekitplugins.spark.connector import (
     DATABRICKS_API_ENDPOINT,
+    DEFAULT_DATABRICKS_INSTANCE_ENV_KEY,
     DatabricksJobMetadata,
-    get_header,
+    _configure_serverless,
     _get_databricks_job_spec,
     _is_serverless_config,
-    _configure_serverless,
-    DEFAULT_DATABRICKS_INSTANCE_ENV_KEY,
+    get_header,
 )
 
+from flytekit.core.constants import FLYTE_FAIL_ON_ERROR
 from flytekit.extend.backend.base_agent import AgentRegistry
 from flytekit.interfaces.cli_identifiers import Identifier
 from flytekit.models import literals, task
 from flytekit.models.core.identifier import ResourceType
 from flytekit.models.task import Container, Resources, TaskTemplate
-import os
 
 
 @pytest.fixture(scope="function")
@@ -61,7 +60,7 @@ def task_template() -> TaskTemplate:
             },
             "timeout_seconds": 3600,
             "max_retries": 1,
-        }
+        },
     }
     container = Container(
         image="flyteorg/flytekit:databricks-0.18.0-py3.7",
@@ -125,6 +124,7 @@ async def test_databricks_agent(task_template: TaskTemplate):
     databricks_metadata = DatabricksJobMetadata(
         databricks_instance="test-account.cloud.databricks.com",
         run_id="123",
+        auth_token=mocked_token,
     )
 
     mock_create_response = {"run_id": "123"}
@@ -142,7 +142,7 @@ async def test_databricks_agent(task_template: TaskTemplate):
         res = await agent.create(task_template, None)
         spec = _get_databricks_job_spec(task_template)
         data = json.dumps(spec)
-        mocked.assert_called_with(create_url, method="POST", data=data, headers=get_header())
+        mocked.assert_called_with(create_url, method="POST", data=data, headers=get_header(auth_token=mocked_token))
         spark_envs = spec["new_cluster"]["spark_env_vars"]
         assert spark_envs["foo"] == "bar"
         assert spark_envs[FLYTE_FAIL_ON_ERROR] == "true"
@@ -159,7 +159,10 @@ async def test_databricks_agent(task_template: TaskTemplate):
         mocked.post(delete_url, status=http.HTTPStatus.OK, payload=mock_delete_response)
         await agent.delete(databricks_metadata)
 
-    assert get_header() == {"Authorization": f"Bearer {mocked_token}", "content-type": "application/json"}
+    assert get_header(auth_token=mocked_token) == {
+        "Authorization": f"Bearer {mocked_token}",
+        "content-type": "application/json",
+    }
 
     mock.patch.stopall()
 
@@ -168,7 +171,7 @@ async def test_databricks_agent(task_template: TaskTemplate):
 async def test_agent_create_with_no_instance(task_template: TaskTemplate):
     agent = AgentRegistry.get_agent("spark")
 
-    with pytest.raises(ValueError) as e:
+    with pytest.raises(ValueError):
         await agent.create(task_template, None)
 
 
@@ -183,6 +186,7 @@ async def test_agent_create_with_default_instance(task_template: TaskTemplate):
     databricks_metadata = DatabricksJobMetadata(
         databricks_instance="test-account.cloud.databricks.com",
         run_id="123",
+        auth_token=mocked_token,
     )
 
     mock_create_response = {"run_id": "123"}
@@ -195,7 +199,7 @@ async def test_agent_create_with_default_instance(task_template: TaskTemplate):
         res = await agent.create(task_template, None)
         spec = _get_databricks_job_spec(task_template)
         data = json.dumps(spec)
-        mocked.assert_called_with(create_url, method="POST", data=data, headers=get_header())
+        mocked.assert_called_with(create_url, method="POST", data=data, headers=get_header(auth_token=mocked_token))
         assert res == databricks_metadata
 
     mock.patch.stopall()
@@ -235,7 +239,7 @@ def serverless_task_template_with_env_key() -> TaskTemplate:
                 "git_branch": "main",
             },
             "python_file": "entrypoint_serverless.py",
-        }
+        },
     }
     container = Container(
         image="flyteorg/flytekit:databricks-0.18.0-py3.7",
@@ -280,13 +284,15 @@ def serverless_task_template_with_inline_env() -> TaskTemplate:
         "databricksConf": {
             "run_name": "flytekit serverless job with inline env",
             "environment_key": "default",
-            "environments": [{
-                "environment_key": "default",
-                "spec": {
-                    "client": "1",
-                    "dependencies": ["pandas==2.0.0"],
+            "environments": [
+                {
+                    "environment_key": "default",
+                    "spec": {
+                        "client": "1",
+                        "dependencies": ["pandas==2.0.0"],
+                    },
                 }
-            }],
+            ],
             "timeout_seconds": 3600,
             "git_source": {
                 "git_url": "https://github.com/test-org/test-repo",
@@ -294,7 +300,7 @@ def serverless_task_template_with_inline_env() -> TaskTemplate:
                 "git_branch": "main",
             },
             "python_file": "entrypoint_serverless.py",
-        }
+        },
     }
     container = Container(
         image="flyteorg/flytekit:databricks-0.18.0-py3.7",
@@ -339,14 +345,16 @@ def serverless_task_template_no_git_source() -> TaskTemplate:
         "databricksConf": {
             "run_name": "flytekit serverless job - no git source",
             "environment_key": "default",
-            "environments": [{
-                "environment_key": "default",
-                "spec": {
-                    "client": "4",
+            "environments": [
+                {
+                    "environment_key": "default",
+                    "spec": {
+                        "client": "4",
+                    },
                 }
-            }],
+            ],
             "timeout_seconds": 3600,
-        }
+        },
     }
     container = Container(
         image="flyteorg/flytekit:databricks-0.18.0-py3.7",
@@ -391,7 +399,7 @@ def invalid_task_template_no_compute() -> TaskTemplate:
         "databricksConf": {
             "run_name": "invalid job - no compute config",
             "timeout_seconds": 3600,
-        }
+        },
     }
     container = Container(
         image="flyteorg/flytekit:databricks-0.18.0-py3.7",
@@ -427,19 +435,15 @@ def test_is_serverless_config_detection():
     assert _is_serverless_config({"environments": [{"environment_key": "default"}]}) is True
 
     # Serverless with both environment_key and environments
-    assert _is_serverless_config({
-        "environment_key": "default",
-        "environments": [{"environment_key": "default"}]
-    }) is True
+    assert (
+        _is_serverless_config({"environment_key": "default", "environments": [{"environment_key": "default"}]}) is True
+    )
 
     # No compute config at all
     assert _is_serverless_config({"run_name": "test"}) is False
 
     # Has cluster AND environment (cluster takes precedence, not serverless)
-    assert _is_serverless_config({
-        "new_cluster": {"spark_version": "13.3"},
-        "environment_key": "my-env"
-    }) is False
+    assert _is_serverless_config({"new_cluster": {"spark_version": "13.3"}, "environment_key": "my-env"}) is False
 
 
 def test_configure_serverless_with_env_key_only():
@@ -466,13 +470,15 @@ def test_configure_serverless_with_inline_env():
     """Test serverless configuration with inline environment spec."""
     databricks_job = {
         "environment_key": "default",
-        "environments": [{
-            "environment_key": "default",
-            "spec": {
-                "client": "1",
-                "dependencies": ["pandas==2.0.0"],
+        "environments": [
+            {
+                "environment_key": "default",
+                "spec": {
+                    "client": "1",
+                    "dependencies": ["pandas==2.0.0"],
+                },
             }
-        }]
+        ],
     }
     envs = {"FOO": "bar", FLYTE_FAIL_ON_ERROR: "true"}
 
@@ -577,6 +583,7 @@ def test_get_databricks_job_spec_error_no_compute(invalid_task_template_no_compu
 async def test_databricks_agent_serverless(serverless_task_template_with_env_key: TaskTemplate):
     """Test the full agent flow with serverless compute."""
     import copy
+
     agent = AgentRegistry.get_agent("spark")
 
     serverless_task_template_with_env_key.custom["databricksInstance"] = "test-account.cloud.databricks.com"
@@ -601,6 +608,7 @@ async def test_databricks_agent_serverless(serverless_task_template_with_env_key
     databricks_metadata = DatabricksJobMetadata(
         databricks_instance="test-account.cloud.databricks.com",
         run_id="456",
+        auth_token=mocked_token,
     )
 
     mock_create_response = {"run_id": "456"}
@@ -659,7 +667,9 @@ def test_serverless_task_git_source_overrides_default(serverless_task_template_w
     assert task_def["spark_python_task"]["python_file"] == "entrypoint_serverless.py"
 
 
-def test_classic_and_serverless_use_same_repo(task_template: TaskTemplate, serverless_task_template_no_git_source: TaskTemplate):
+def test_classic_and_serverless_use_same_repo(
+    task_template: TaskTemplate, serverless_task_template_no_git_source: TaskTemplate
+):
     """Test that both classic and serverless default to the same flytetools repo."""
     classic_spec = _get_databricks_job_spec(task_template)
     serverless_spec = _get_databricks_job_spec(serverless_task_template_no_git_source)
@@ -670,4 +680,7 @@ def test_classic_and_serverless_use_same_repo(task_template: TaskTemplate, serve
     assert classic_spec["git_source"]["git_commit"] == serverless_spec["git_source"]["git_commit"]
     # Different python_file
     assert classic_spec["spark_python_task"]["python_file"] == "flytekitplugins/databricks/entrypoint.py"
-    assert serverless_spec["tasks"][0]["spark_python_task"]["python_file"] == "flytekitplugins/databricks/entrypoint_serverless.py"
+    assert (
+        serverless_spec["tasks"][0]["spark_python_task"]["python_file"]
+        == "flytekitplugins/databricks/entrypoint_serverless.py"
+    )
