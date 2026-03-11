@@ -305,6 +305,7 @@ markupsafe==3.0.3
 marshmallow==3.21.2
     # via
     #   dataclasses-json
+    #   flytekit
     #   marshmallow-enum
     #   marshmallow-jsonschema
 marshmallow-enum==1.5.1
@@ -594,7 +595,7 @@ tomlkit==0.13.2
     # via snowflake-connector-python
 torch==1.12.1 ; python_version < "3.12"
     # via -r dev-requirements.in
-tornado==6.4.1
+tornado==6.5.5
     # via
     #   ipykernel
     #   jupyter-client
