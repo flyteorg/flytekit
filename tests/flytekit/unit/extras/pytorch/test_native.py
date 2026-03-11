@@ -1,3 +1,10 @@
+import sys
+
+import pytest
+
+pytest.importorskip("torch", reason="torch is not available for Python 3.12+")
+pytestmark = pytest.mark.skipif(sys.version_info >= (3, 12), reason="torch is not available for Python 3.12+")
+
 import torch
 
 from flytekit import task, workflow
