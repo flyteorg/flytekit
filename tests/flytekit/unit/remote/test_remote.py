@@ -911,3 +911,54 @@ def test_register_launch_plan(mock_serialize_and_register, mock_raw_register,moc
     assert remote_lp is mock_remote_lp
     assert not mock_serialize_and_register.called
     assert mock_raw_register.called
+
+
+@mock.patch("flytekit.remote.remote.translate_inputs_to_literals")
+@mock.patch("flytekit.remote.remote.get_serializable")
+@mock.patch("flytekit.remote.remote.FlyteRemote.fetch_launch_plan")
+@mock.patch("flytekit.remote.remote.FlyteRemote.raw_register")
+@mock.patch("flytekit.remote.remote.FlyteRemote._serialize_and_register")
+def test_register_launch_plan_retranslates_fixed_inputs_with_remote_context(
+    mock_serialize_and_register, mock_raw_register, mock_fetch_launch_plan,
+    mock_get_serializable, mock_translate, mock_flyte_remote_client
+):
+    from flytekit.types.file import FlyteFile
+
+    @task
+    def t_with_file(f: FlyteFile) -> str:
+        return str(f)
+
+    @workflow
+    def wf_with_file(f: FlyteFile) -> str:
+        return t_with_file(f=f)
+
+    with tempfile.NamedTemporaryFile() as tmp:
+        ff = FlyteFile(path=tmp.name)
+        lp = LaunchPlan.get_or_create(
+            workflow=wf_with_file,
+            name="lp_with_flytefile_fixed",
+            fixed_inputs={"f": ff},
+        )
+
+    assert lp.raw_fixed_inputs == {"f": ff}
+
+    rr = FlyteRemote(
+        Config.for_sandbox(),
+        default_project="flytesnacks",
+        default_domain="development",
+    )
+
+    mock_translate.return_value = {"f": MagicMock()}
+    mock_get_serializable.return_value = MagicMock()
+    mock_flyte_remote_client.get_workflow.return_value = MagicMock()
+    mock_fetch_launch_plan.return_value = MagicMock()
+
+    ss = SerializationSettings(image_config=ImageConfig.auto_default_image(), version="v1")
+    rr.register_launch_plan(lp, version="v1", serialization_settings=ss)
+
+    mock_translate.assert_called_once_with(
+        rr.context,
+        incoming_values={"f": ff},
+        flyte_interface_types=wf_with_file.interface.inputs,
+        native_types=wf_with_file.python_interface.inputs,
+    )
