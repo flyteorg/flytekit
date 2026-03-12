@@ -48,6 +48,7 @@ from flytekit.core.context_manager import FlyteContext, FlyteContextManager
 from flytekit.core.data_persistence import FileAccessProvider
 from flytekit.core.launch_plan import LaunchPlan, ReferenceLaunchPlan
 from flytekit.core.node import Node as CoreNode
+from flytekit.core.promise import translate_inputs_to_literals
 from flytekit.core.python_auto_container import (
     PICKLE_FILE_PATH,
     PickledEntity,
@@ -1536,6 +1537,15 @@ class FlyteRemote(object):
             self.register_workflow(
                 entity.workflow, serialization_settings, version, default_launch_plan=False, options=options
             )
+
+        if entity.raw_fixed_inputs:
+            fixed_literals = translate_inputs_to_literals(
+                self.context,
+                incoming_values=entity.raw_fixed_inputs,
+                flyte_interface_types=entity.workflow.interface.inputs,
+                native_types=entity.workflow.python_interface.inputs,
+            )
+            entity._fixed_inputs = literal_models.LiteralMap(literals=fixed_literals)
 
         # Underlying workflow, exists, only register the launch plan itself
         launch_plan_model = get_serializable(

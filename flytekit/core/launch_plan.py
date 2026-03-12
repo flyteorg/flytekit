@@ -177,6 +177,7 @@ class LaunchPlan(object):
         # we don't have to reverse it back every time.
         default_inputs.update(fixed_inputs)
         lp._saved_inputs = default_inputs
+        lp._raw_fixed_inputs = fixed_inputs
 
         if name in cls.CACHE:
             raise AssertionError(f"Launch plan named {name} was already created! Make sure your names are unique.")
@@ -347,6 +348,7 @@ class LaunchPlan(object):
         self._fixed_inputs = fixed_inputs
         # See create() for additional information
         self._saved_inputs: Dict[str, Any] = {}
+        self._raw_fixed_inputs: Dict[str, Any] = {}
 
         self._schedule = schedule
         self._notifications = notifications or []
@@ -422,6 +424,10 @@ class LaunchPlan(object):
     @property
     def workflow(self) -> _annotated_workflow.WorkflowBase:
         return self._workflow
+
+    @property
+    def raw_fixed_inputs(self) -> Dict[str, Any]:
+        return self._raw_fixed_inputs.copy()
 
     @property
     def saved_inputs(self) -> Dict[str, Any]:
