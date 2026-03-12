@@ -171,7 +171,12 @@ def get_serializable_task(
             # ly for certain kinds of tasks. Specifically,
             # tasks that rely on user code defined in the container. This should be encapsulated by the auto container
             # parent class
-            container._args = prefix_with_fast_execute(settings, container.args)
+            if (
+                (not hasattr(entity, "container_image"))
+                or (entity.container_image is None)
+                or (isinstance(entity.container_image, ImageSpec) and entity.container_image.source_root is not None)
+            ):
+                container._args = prefix_with_fast_execute(settings, container.args)
 
         # If the pod spec is not None, we have to get it again, because the one we retrieved above will be incorrect.
         # The reason we have to call get_k8s_pod again, instead of just modifying the command in this file, is because
