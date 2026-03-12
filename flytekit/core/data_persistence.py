@@ -132,8 +132,9 @@ def retry_request(func, *args, **kwargs):
                 sleep(random.randint(0, min(2**retry, 32)))
             return func(*args, **kwargs)
         except Exception as e:
-            # Catch this specific error message from S3 since S3FS doesn't catch it and retry the request.
-            if "Please reduce your request rate" in str(e):
+            # Catch specific retryable error messages from S3 since S3FS doesn't catch and retry them.
+            err_msg = str(e)
+            if "Please reduce your request rate" in err_msg or "RequestTimeTooSkewed" in err_msg:
                 if retry == retries - 1:
                     raise e
             else:
