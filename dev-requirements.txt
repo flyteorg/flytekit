@@ -305,6 +305,7 @@ markupsafe==3.0.3
 marshmallow==3.21.2
     # via
     #   dataclasses-json
+    #   flytekit
     #   marshmallow-enum
     #   marshmallow-jsonschema
 marshmallow-enum==1.5.1
@@ -369,7 +370,7 @@ oauthlib==3.2.2
     #   requests-oauthlib
 opt-einsum==3.4.0
     # via tensorflow
-orjson==3.10.3
+orjson==3.11.6
     # via -r dev-requirements.in
 packaging==24.0
     # via
