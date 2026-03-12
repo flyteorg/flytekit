@@ -24,6 +24,7 @@ from flytekit.core.type_engine import (
     AsyncTypeTransformer,
     TypeEngine,
     TypeTransformerFailedError,
+    get_file_download_config,
     get_underlying_type,
 )
 from flytekit.exceptions.user import FlyteAssertion
@@ -477,8 +478,26 @@ class FlyteFilePathTransformer(AsyncTypeTransformer[FlyteFile]):
             return ""
         return cast(FlyteFile, t).extension()
 
-    def _blob_type(self, format: str) -> BlobType:
-        return BlobType(format=format, dimensionality=BlobType.BlobDimensionality.SINGLE)
+    @staticmethod
+    def get_file_extension(t: typing.Union[typing.Type[FlyteFile], os.PathLike]) -> str:
+        if t is os.PathLike:
+            return ""
+        file_download_config = get_file_download_config(t)
+        if file_download_config is None:
+            return ""
+        return file_download_config.file_extension or ""
+
+    @staticmethod
+    def get_enable_legacy_filename(t: typing.Union[typing.Type[FlyteFile], os.PathLike]) -> str:
+        if t is os.PathLike:
+            return False
+        file_download_config = get_file_download_config(t)
+        if file_download_config is None:
+            return False
+        return file_download_config.enable_legacy_filename or False
+
+    def _blob_type(self, format: str, file_extension: str = "", enable_legacy_filename: bool = False) -> BlobType:
+        return BlobType(format=format, dimensionality=BlobType.BlobDimensionality.SINGLE, file_extension=file_extension, enable_legacy_filename=enable_legacy_filename)
 
     def assert_type(
         self, t: typing.Union[typing.Type[FlyteFile], os.PathLike], v: typing.Union[FlyteFile, os.PathLike, str]
@@ -491,7 +510,11 @@ class FlyteFilePathTransformer(AsyncTypeTransformer[FlyteFile]):
         )
 
     def get_literal_type(self, t: typing.Union[typing.Type[FlyteFile], os.PathLike]) -> LiteralType:
-        return LiteralType(blob=self._blob_type(format=FlyteFilePathTransformer.get_format(t)))
+        return LiteralType(blob=self._blob_type(
+            format=FlyteFilePathTransformer.get_format(t),
+            file_extension=FlyteFilePathTransformer.get_file_extension(t),
+            enable_legacy_filename=FlyteFilePathTransformer.get_enable_legacy_filename(t),
+        ))
 
     def get_mime_type_from_extension(self, extension: str) -> typing.Union[str, typing.Sequence[str]]:
         extension_to_mime_type = {
@@ -565,7 +588,11 @@ class FlyteFilePathTransformer(AsyncTypeTransformer[FlyteFile]):
             raise ValueError(f"Incorrect type {python_type}, must be either a FlyteFile or os.PathLike")
 
         # information used by all cases
-        meta = BlobMetadata(type=self._blob_type(format=FlyteFilePathTransformer.get_format(python_type)))
+        meta = BlobMetadata(type=self._blob_type(
+            format=FlyteFilePathTransformer.get_format(python_type),
+            file_extension=FlyteFilePathTransformer.get_file_extension(python_type),
+            enable_legacy_filename=FlyteFilePathTransformer.get_enable_legacy_filename(python_type),
+        ))
 
         if isinstance(python_val, FlyteFile):
             # Cast the source path to str type to avoid error raised when the source path is used as the blob uri,
