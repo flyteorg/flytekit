@@ -11,6 +11,7 @@ result = run_sync(async_add, a=10, b=12)
 
 import asyncio
 import atexit
+import contextvars
 import functools
 import os
 import threading
@@ -95,8 +96,40 @@ class _AsyncLoopManager:
         """
         This should be called from synchronous functions to run an async function.
         """
-        name = threading.current_thread().name + f"PID:{os.getpid()}"
         coro = coro_func(*args, **kwargs)
+
+        # Detect if we're inside a running event loop (e.g., async web framework).
+        # In that case, the _TaskRunner approach can fail with
+        # "Cannot run the event loop while another loop is running",
+        # so we run the coroutine on a fresh thread with its own event loop.
+        try:
+            asyncio.get_running_loop()
+        except RuntimeError:
+            running_loop = False
+        else:
+            running_loop = True
+
+        if running_loop:
+            result: T | None = None
+            exception: BaseException | None = None
+            ctx = contextvars.copy_context()
+
+            def _run():
+                nonlocal result, exception
+                try:
+                    result = ctx.run(asyncio.run, coro)
+                except BaseException as e:
+                    exception = e
+
+            thread = threading.Thread(target=_run, daemon=True)
+            thread.start()
+            thread.join()
+
+            if exception is not None:
+                raise exception
+            return result  # type: ignore[return-value]
+
+        name = threading.current_thread().name + f"PID:{os.getpid()}"
         if name not in self._runner_map:
             if len(self._runner_map) > 500:
                 logger.warning(
