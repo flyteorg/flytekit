@@ -305,6 +305,7 @@ markupsafe==3.0.3
 marshmallow==3.21.2
     # via
     #   dataclasses-json
+    #   flytekit
     #   marshmallow-enum
     #   marshmallow-jsonschema
 marshmallow-enum==1.5.1
@@ -437,7 +438,7 @@ pure-eval==0.2.2
     # via stack-data
 pyarrow==16.1.0
     # via -r dev-requirements.in
-pyasn1==0.6.0
+pyasn1==0.6.3
     # via
     #   pyasn1-modules
     #   rsa
