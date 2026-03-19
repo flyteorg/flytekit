@@ -78,6 +78,9 @@ pyflyte-map-execute = "flytekit.bin.entrypoint:map_execute_task_cmd"
 pyflyte = "flytekit.clis.sdk_in_container.pyflyte:main"
 flyte-cli = "flytekit.clis.flyte_cli.main:_flyte_cli"
 
+[project.entry-points.pytest11]
+flytekit = "flytekit.testing.conftest"
+
 [tool.setuptools_scm]
 write_to = "flytekit/_version.py"
 
