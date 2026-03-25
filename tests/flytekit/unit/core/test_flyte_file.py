@@ -776,6 +776,22 @@ def test_transform_flytefile_with_file_download_config():
     assert lt.blob.enable_legacy_filename == True
 
 
+def test_file_download_config_valid_compound_extension():
+    config = FileDownloadConfig(file_extension="tar.gz")
+    assert config.file_extension == "tar.gz"
+
+
+@pytest.mark.parametrize("bad_ext", [
+    ".csv",
+    "my file",
+    "../../escape",
+    "csv!",
+])
+def test_file_download_config_rejects_invalid_extensions(bad_ext):
+    with pytest.raises(ValueError, match="Invalid file extension"):
+        FileDownloadConfig(file_extension=bad_ext)
+
+
 def test_new_remote_file():
     nf = FlyteFile.new_remote_file(name="foo.txt")
     assert isinstance(nf, FlyteFile)

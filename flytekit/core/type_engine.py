@@ -10,6 +10,7 @@ import inspect
 import json
 import mimetypes
 import os
+import re
 import sys
 import textwrap
 import threading
@@ -129,6 +130,11 @@ class FileDownloadConfig:
     def __init__(self, file_extension: str = "", enable_legacy_filename: bool = False):
         self._file_extension = file_extension
         self._enable_legacy_filename = enable_legacy_filename
+
+        if self._file_extension is not "":
+            pattern = r"^[a-zA-Z0-9]+(\.[a-zA-Z0-9]+)*$"
+            if not re.match(pattern, self._file_extension):
+                raise ValueError(f"Invalid file extension: {self._file_extension}")
     
     @property
     def file_extension(self) -> str:
