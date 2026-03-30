@@ -635,6 +635,7 @@ def get_serializable_array_node(
         is_original_sub_node_interface=array_node.is_original_sub_node_interface,
         data_mode=array_node.data_mode,
         bound_inputs=array_node.bound_inputs,
+        run_all_sub_nodes=array_node.run_all_sub_nodes,
     )
 
 
@@ -671,6 +672,7 @@ def get_serializable_array_node_map_task(
         execution_mode=entity.execution_mode,
         is_original_sub_node_interface=entity.is_original_sub_node_interface,
         bound_inputs=entity.bound_inputs,
+        run_all_sub_nodes=entity.run_all_sub_nodes,
     )
 
 

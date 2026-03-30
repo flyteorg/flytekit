@@ -396,6 +396,7 @@ class ArrayNode(_common.FlyteIdlEntity):
         is_original_sub_node_interface=False,
         data_mode=None,
         bound_inputs=None,
+        run_all_sub_nodes: bool = False,
     ) -> None:
         """
         TODO: docstring
@@ -409,6 +410,7 @@ class ArrayNode(_common.FlyteIdlEntity):
         self._is_original_sub_node_interface = is_original_sub_node_interface
         self._data_mode = data_mode
         self._bound_inputs = bound_inputs
+        self._run_all_sub_nodes = run_all_sub_nodes
 
     @property
     def node(self) -> "Node":
@@ -424,6 +426,7 @@ class ArrayNode(_common.FlyteIdlEntity):
             is_original_sub_node_interface=BoolValue(value=self._is_original_sub_node_interface),
             data_mode=self._data_mode,
             bound_inputs=sorted(self._bound_inputs) if self._bound_inputs else None,
+            run_all_sub_nodes=self._run_all_sub_nodes,
         )
 
     @classmethod
@@ -433,6 +436,7 @@ class ArrayNode(_common.FlyteIdlEntity):
             pb2_object.parallelism,
             pb2_object.min_successes,
             pb2_object.min_success_ratio,
+            run_all_sub_nodes=pb2_object.run_all_sub_nodes,
         )
 
 
