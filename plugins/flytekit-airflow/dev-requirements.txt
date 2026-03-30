@@ -870,7 +870,7 @@ pydata-google-auth==1.8.2
     # via pandas-gbq
 pydot==1.4.2
     # via apache-beam
-pygments==2.18.0
+pygments==2.20.0
     # via
     #   apache-airflow
     #   rich
