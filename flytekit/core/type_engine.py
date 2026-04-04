@@ -566,16 +566,28 @@ class DataclassTransformer(TypeTransformer[object]):
                         expected_type = expected_fields_dict[k]
                         original_type = type(v)
                         is_optional = False
+
                         if UnionTransformer.is_optional_type(expected_type):
                             is_optional = True
                             expected_type = UnionTransformer.get_sub_type_in_optional(expected_type)
 
+                        is_generic = False if get_origin(expected_type) is None else True
+                            
                         if is_optional and original_type is type(None):
                             pass
                         elif UnionTransformer.is_union(expected_type) and UnionTransformer.in_union(
                             original_type, expected_type
                         ):
                             pass
+
+                        # if the type is a parametrized type (e.g. list[int]) compare properly
+                        elif is_generic:
+
+                            if get_origin(expected_type) != original_type:
+                                raise TypeTransformerFailedError(
+                                    f"Type of Val '{original_type}' is not an instance of {expected_type} "
+                                    f"(Full type {expected_type})"
+                                )
 
                         elif original_type != expected_type:
                             raise TypeTransformerFailedError(
