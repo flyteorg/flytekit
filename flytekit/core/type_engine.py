@@ -1864,7 +1864,15 @@ def display_pickle_warning(python_type: str):
 
 
 def _add_tag_to_type(x: LiteralType, tag: str) -> LiteralType:
-    x._structure = TypeStructure(tag=tag)
+
+    # if no structure already create and add one
+    if x._structure is None:
+        x._structure = TypeStructure(tag=tag)    
+    else:
+        # UGLY: Otherwise Use hidden attributes in order not to nuke
+        # structured dataclass type attributes
+        x._structure._tag = tag
+
     return x
 
 
