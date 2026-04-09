@@ -495,33 +495,35 @@ class DataclassTransformer(TypeTransformer[object]):
             (1) Convert MessagePack Bytes to a dataclass using mashumaro.
             (2) Handle dataclass attributes to ensure they are of the correct types.
 
-        For Json Schema, we use https://github.com/fuhrysteve/marshmallow-jsonschema library.
+        For JSON Schema, mashumaro is the primary generator. If it fails (e.g. for
+        DataClassJsonMixin classes), marshmallow-jsonschema is used as a fallback when
+        the ``marshmallow-jsonschema`` optional extra is installed.
 
         Example
 
         ```python
+        from dataclasses import dataclass
+        from mashumaro.jsonschema import build_json_schema
+
         @dataclass
-        class Test(DataClassJsonMixin):
+        class Test:
             a: int
             b: str
 
-        from marshmallow_jsonschema import JSONSchema
-        t = Test(a=10,b="e")
-        JSONSchema().dump(t.schema())
+        build_json_schema(Test).to_dict()
         ```
 
         Output will look like
 
         ```python
-        {'$schema': 'http://json-schema.org/draft-07/schema#',
-            'definitions': {'TestSchema': {'properties': {'a': {'title': 'a',
-                'type': 'number',
-                'format': 'integer'},
-            'b': {'title': 'b', 'type': 'string'}},
-            'type': 'object',
-            'additionalProperties': False}},
-            '$ref': '#/definitions/TestSchema'}
-    ```
+        {'type': 'object',
+            'title': 'Test',
+            'properties': {
+                'a': {'type': 'integer'},
+                'b': {'type': 'string'}},
+            'additionalProperties': False,
+            'required': ['a', 'b']}
+        ```
 
         > [!NOTE]
         > The schema support is experimental and is useful for auto-completing in the UI/CLI
