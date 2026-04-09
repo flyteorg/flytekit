@@ -1,4 +1,4 @@
--e file:.
+-e file:.[marshmallow-jsonschema]
 
 coverage[toml]
 hypothesis
