@@ -501,10 +501,12 @@ class FlyteFilePathTransformer(AsyncTypeTransformer[FlyteFile]):
         )
 
     def get_literal_type(self, t: typing.Union[typing.Type[FlyteFile], os.PathLike]) -> LiteralType:
-        return LiteralType(blob=self._blob_type(
-            format=FlyteFilePathTransformer.get_format(t),
-            file_extension=FlyteFilePathTransformer.get_file_extension(t),
-        ))
+        return LiteralType(
+            blob=self._blob_type(
+                format=FlyteFilePathTransformer.get_format(t),
+                file_extension=FlyteFilePathTransformer.get_file_extension(t),
+            )
+        )
 
     def get_mime_type_from_extension(self, extension: str) -> typing.Union[str, typing.Sequence[str]]:
         extension_to_mime_type = {
@@ -578,10 +580,12 @@ class FlyteFilePathTransformer(AsyncTypeTransformer[FlyteFile]):
             raise ValueError(f"Incorrect type {python_type}, must be either a FlyteFile or os.PathLike")
 
         # information used by all cases
-        meta = BlobMetadata(type=self._blob_type(
-            format=FlyteFilePathTransformer.get_format(python_type),
-            file_extension=FlyteFilePathTransformer.get_file_extension(python_type),
-        ))
+        meta = BlobMetadata(
+            type=self._blob_type(
+                format=FlyteFilePathTransformer.get_format(python_type),
+                file_extension=FlyteFilePathTransformer.get_file_extension(python_type),
+            )
+        )
 
         if isinstance(python_val, FlyteFile):
             # Cast the source path to str type to avoid error raised when the source path is used as the blob uri,

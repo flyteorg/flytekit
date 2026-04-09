@@ -114,9 +114,9 @@ class FileExtension:
     # ContainerTask
     def t1(file: Annotated[FlyteFile, FileExtension("csv")]):
         ... # copilot downloads the file to e.g. /inputs/file.csv
-    
+
     versus...
-    
+
     def t1(file: FlyteFile["csv"]):
         ... # copilot downloads the file to e.g. /inputs/file
     ```
@@ -134,7 +134,7 @@ class FileExtension:
     @property
     def val(self) -> str:
         return self._val
-    
+
 
 def get_file_extension(t: Type) -> Optional[str]:
     if is_annotated(t):
