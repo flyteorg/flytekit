@@ -338,6 +338,7 @@ def test_create_poetry_lock(tmp_path):
 
 
 def test_python_exec(tmp_path):
+    """python_exec uses venv to avoid PEP 668 (externally managed Python) errors on NVIDIA etc."""
     docker_context_path = tmp_path / "builder_root"
     docker_context_path.mkdir()
     base_image = "ghcr.io/flyteorg/flytekit:py3.11-1.14.4"
@@ -355,7 +356,11 @@ def test_python_exec(tmp_path):
     assert dockerfile_path.exists()
     dockerfile_content = dockerfile_path.read_text()
 
-    assert f"UV_PYTHON={python_exec}" in dockerfile_content
+    # Packages install into venv; runtime uses venv Python (fixes PEP 668 on NVIDIA etc.)
+    assert "uv venv --python /usr/local/bin/python --system-site-packages /root/.venv" in dockerfile_content
+    assert "uv pip install --python /root/.venv/bin/python" in dockerfile_content
+    assert "UV_PYTHON=/root/.venv/bin/python" in dockerfile_content
+    assert "/root/.venv/bin" in dockerfile_content
 
 
 @pytest.mark.parametrize("key, value", [("conda_packages", ["ruff"]), ("conda_channels", ["bioconda"])])
