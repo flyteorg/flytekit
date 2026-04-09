@@ -106,13 +106,13 @@ def get_batch_size(t: Type) -> Optional[int]:
     return None
 
 
-class FileDownloadConfig:
+class FileExtension:
     """
     This is used to annotate a FlyteFile when we want to download the file with a specific extension. For example,
 
     ```python
     # ContainerTask
-    def t1(file: Annotated[FlyteFile, FileDownloadConfig(file_extension="csv")]):
+    def t1(file: Annotated[FlyteFile, FileExtension("csv")]):
         ... # copilot downloads the file to e.g. /inputs/file.csv
     
     versus...
@@ -121,35 +121,26 @@ class FileDownloadConfig:
         ... # copilot downloads the file to e.g. /inputs/file
     ```
 
-    file_extension: (Default is "") The file extension (e.g. "csv", "parquet") to use during copilot download.
-    enable_legacy_filename: (Default is False) When true and file_extension is non-empty, the copilot download phase
-    writes the blob to both the full path (with extension) and the old path (without extension), preserving backward compatibility for
-    workflows with tasks that may read from both.
+    val: (Default is "") The file extension (e.g. "csv", "parquet") to use during copilot download.
     """
 
-    def __init__(self, file_extension: str = "", enable_legacy_filename: bool = False):
-        self._file_extension = file_extension
-        self._enable_legacy_filename = enable_legacy_filename
+    def __init__(self, val: str = ""):
+        self._val = val
 
-        if self._file_extension is not "":
-            pattern = r"^[a-zA-Z0-9]+(\.[a-zA-Z0-9]+)*$"
-            if not re.match(pattern, self._file_extension):
-                raise ValueError(f"Invalid file extension: {self._file_extension}")
-    
+        pattern = r"^[a-zA-Z0-9]+(\.[a-zA-Z0-9]+)*$"
+        if not re.match(pattern, self._val):
+            raise ValueError(f"Invalid file extension: {self._val}")
+
     @property
-    def file_extension(self) -> str:
-        return self._file_extension
+    def val(self) -> str:
+        return self._val
     
-    @property
-    def enable_legacy_filename(self) -> bool:
-        return self._enable_legacy_filename
 
-
-def get_file_download_config(t: Type) -> Optional[FileDownloadConfig]:
+def get_file_extension(t: Type) -> Optional[str]:
     if is_annotated(t):
-        for arg in get_args(t):
-            if isinstance(arg, FileDownloadConfig):
-                return arg
+        for annotation in get_args(t)[1:]:
+            if isinstance(annotation, FileExtension):
+                return annotation.val
     return None
 
 
