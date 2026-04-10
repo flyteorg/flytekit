@@ -932,33 +932,39 @@ def test_register_launch_plan_retranslates_fixed_inputs_with_remote_context(
     def wf_with_file(f: FlyteFile) -> str:
         return t_with_file(f=f)
 
-    with tempfile.NamedTemporaryFile() as tmp:
+    tmp = tempfile.NamedTemporaryFile(delete=False)
+    try:
         ff = FlyteFile(path=tmp.name)
         lp = LaunchPlan.get_or_create(
             workflow=wf_with_file,
             name="lp_with_flytefile_fixed",
             fixed_inputs={"f": ff},
         )
+    finally:
+        tmp.close()
 
-    assert lp.raw_fixed_inputs == {"f": ff}
+    try:
+        assert lp.raw_fixed_inputs == {"f": ff}
 
-    rr = FlyteRemote(
-        Config.for_sandbox(),
-        default_project="flytesnacks",
-        default_domain="development",
-    )
+        rr = FlyteRemote(
+            Config.for_sandbox(),
+            default_project="flytesnacks",
+            default_domain="development",
+        )
 
-    mock_translate.return_value = {"f": MagicMock()}
-    mock_get_serializable.return_value = MagicMock()
-    mock_flyte_remote_client.get_workflow.return_value = MagicMock()
-    mock_fetch_launch_plan.return_value = MagicMock()
+        mock_translate.return_value = {"f": MagicMock()}
+        mock_get_serializable.return_value = MagicMock()
+        mock_flyte_remote_client.get_workflow.return_value = MagicMock()
+        mock_fetch_launch_plan.return_value = MagicMock()
 
-    ss = SerializationSettings(image_config=ImageConfig.auto_default_image(), version="v1")
-    rr.register_launch_plan(lp, version="v1", serialization_settings=ss)
+        ss = SerializationSettings(image_config=ImageConfig.auto_default_image(), version="v1")
+        rr.register_launch_plan(lp, version="v1", serialization_settings=ss)
 
-    mock_translate.assert_called_once_with(
-        rr.context,
-        incoming_values={"f": ff},
-        flyte_interface_types=wf_with_file.interface.inputs,
-        native_types=wf_with_file.python_interface.inputs,
-    )
+        mock_translate.assert_called_once_with(
+            rr.context,
+            incoming_values={"f": ff},
+            flyte_interface_types=wf_with_file.interface.inputs,
+            native_types=wf_with_file.python_interface.inputs,
+        )
+    finally:
+        os.unlink(tmp.name)
