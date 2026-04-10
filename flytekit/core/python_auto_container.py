@@ -490,4 +490,6 @@ def get_registerable_container_image(img: Optional[Union[str, ImageSpec]], cfg: 
 # version will access the version part of the image (e.g. registry/imagename:version -> version)
 # With empty attribute, it'll access the full image path (e.g. registry/imagename:version -> registry/imagename:version)
 _IMAGE_TEMPLATE_SUBSTRING_REGEX = r"(?:\.([a-zA-Z0-9_-]+))"
-_IMAGE_REPLACE_REGEX = re.compile(f"({{{{\s*\.image[s]?{_IMAGE_TEMPLATE_SUBSTRING_REGEX}{_IMAGE_TEMPLATE_SUBSTRING_REGEX}?\s*}}}})", re.IGNORECASE)
+_IMAGE_REPLACE_REGEX = re.compile(
+    rf"({{{{\s*\.image[s]?{_IMAGE_TEMPLATE_SUBSTRING_REGEX}{_IMAGE_TEMPLATE_SUBSTRING_REGEX}?\s*}}}})", re.IGNORECASE
+)
