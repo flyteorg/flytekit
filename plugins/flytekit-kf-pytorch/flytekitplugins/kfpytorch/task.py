@@ -149,7 +149,7 @@ class Elastic(object):
             When using the default `torch.distributed.elastic.rendezvous.c10d_rendezvous_backend.C10dRendezvousBackend`, consider also increasing
             the TCPStore `read_timeout`, e.g., {"timeout": 900, "join_timeout": 900, "read_timeout": 900}, as its default value of 60 seconds
             might be too tight if the zero-worker starts slower than any other worker.
-            Increasing the default timeouts is mostly relevant in the absence of true gang-scheduling on the cluster, as provided by
+            Increasing the default timeouts is mostly relevant in the absence of true gang-scheduling on the cluster, as provided by e.g.
             coscheduling or volcano.
 
         increase_shared_mem (bool): [DEPRECATED] This argument is deprecated. Use `@task(shared_memory=...)` instead.
