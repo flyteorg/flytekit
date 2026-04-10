@@ -69,6 +69,36 @@ def test_image_name_interpolation(default_image_config):
     assert img == "flyte/test:d1"
 
 
+@pytest.mark.parametrize(
+    "image,expected_resolved_image",
+    [
+        (
+            Image(name="image_name", fqn="docker.io/xyz", tag="tag"),
+            "docker.io/xyz:tag--docker.io/xyz:tag",
+        ),
+        (
+            Image(name="image-name", fqn="docker.io/xyz", tag="tag"),
+            "docker.io/xyz:tag--docker.io/xyz:tag",
+        ),
+        (
+            Image(name="image-name", fqn="docker.io/xyz", digest="sha256:abc123"),
+            "docker.io/xyz:sha256:abc123--docker.io/xyz@sha256:abc123",
+        ),
+        (
+            Image(name="image-name", fqn="xyz", tag="tag"),
+            "xyz:tag--xyz:tag",
+        ),
+    ],
+)
+def test_image_interpolation_with_various_image_names(default_image_config, image, expected_resolved_image):
+    image_config = ImageConfig.create_from(
+        default_image=default_image_config.default_image,
+        other_images=[image],
+    )
+    # This isn't meant to be realistic, but it covers, fqnm version and full image interpolation.
+    templated_image = f"{{{{.image.{image.name}.fqn}}}}:{{{{.image.{image.name}.version}}}}--{{{{.image.{image.name}}}}}"
+    assert get_registerable_container_image(img=templated_image, cfg=image_config) == expected_resolved_image
+
 class DummyAutoContainerTask(PythonAutoContainerTask):
     def execute(self, **kwargs) -> Any:
         pass
