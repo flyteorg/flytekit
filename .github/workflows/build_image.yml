@@ -12,8 +12,14 @@ jobs:
       - name: Get version from branch/tag name
         id: version
         run: |
-          # Strip leading 'v' from branch/tag name (e.g. v1.16.17 -> 1.16.17)
-          VERSION="${GITHUB_REF_NAME#v}"
+          REF_NAME="${GITHUB_REF_NAME}"
+          # If ref starts with 'v' followed by a digit (e.g. v1.16.17), strip 'v' to get the PyPI version
+          if [[ "$REF_NAME" =~ ^v[0-9] ]]; then
+            VERSION="${REF_NAME#v}"
+          else
+            echo "::error::This workflow must be run from a version tag or branch (e.g. v1.16.17), got '$REF_NAME'"
+            exit 1
+          fi
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
         shell: bash
 
