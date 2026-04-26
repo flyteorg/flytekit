@@ -92,7 +92,18 @@ def hive_query():
 
 ## Worker image
 
-For Pythonic Spark tasks the worker image must contain `flytekit` and this plugin so the executor can rehydrate the task object on the EMR Serverless side. Build it from an EMR Serverless Spark base image and `pip install flytekitplugins-awsemrserverless`. Script Spark and Hive jobs do not require flytekit on the worker.
+For Pythonic Spark tasks the worker image must contain `flytekit` and this plugin so the executor can rehydrate the task object on the EMR Serverless side. Script Spark and Hive jobs do not require flytekit on the worker.
+
+A reference `Dockerfile` is shipped alongside this plugin; it builds on the public EMR Serverless Spark base image and installs the matching `flytekit` and `flytekitplugins-awsemrserverless` versions:
+
+```bash
+docker build \
+  --build-arg VERSION=<flytekit-version> \
+  -t <registry>/emr-serverless-flytekit:<tag> \
+  plugins/flytekit-aws-emr-serverless
+```
+
+Override the base with `--build-arg EMR_BASE_IMAGE=...` to track a different EMR release.
 
 ## IAM
 
