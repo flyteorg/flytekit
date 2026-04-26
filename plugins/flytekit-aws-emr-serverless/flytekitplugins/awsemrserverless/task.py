@@ -31,15 +31,13 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class EMRServerlessSparkJobDriver:
-    """
-    Spark job driver configuration for EMR Serverless.
+    """Spark job driver configuration for EMR Serverless.
 
-    Attributes:
-        entry_point: S3 path to the main application file
-            (e.g., ``s3://bucket/scripts/main.py``).
-        entry_point_arguments: Arguments to pass to the main application.
-        spark_submit_parameters: Spark submit parameters string
-            (e.g., ``--conf spark.executor.memory=4g``).
+    ``entry_point`` is the S3 path to the main application file (for example
+    ``s3://bucket/scripts/main.py``). ``entry_point_arguments`` is an optional
+    list of arguments forwarded to the application, and
+    ``spark_submit_parameters`` is the optional spark-submit parameter string
+    (for example ``--conf spark.executor.memory=4g``).
     """
 
     entry_point: str
@@ -58,13 +56,11 @@ class EMRServerlessSparkJobDriver:
 
 @dataclass
 class EMRServerlessHiveJobDriver:
-    """
-    Hive job driver configuration for EMR Serverless.
+    """Hive job driver configuration for EMR Serverless.
 
-    Attributes:
-        query: The Hive query to execute, or S3 path to a query file.
-        init_query_file: S3 path to an initialization query file.
-        parameters: Parameters string for the query.
+    ``query`` is the Hive query to execute, or an S3 path to a query file.
+    ``init_query_file`` is an optional S3 path to an initialization query
+    file, and ``parameters`` is an optional parameters string for the query.
     """
 
     query: str
@@ -126,63 +122,48 @@ class EMRServerless:
             spark = SparkSession.builder.getOrCreate()
             spark.range(100).write.parquet("s3://bucket/output")
 
-    Attributes:
-        execution_role_arn: IAM role ARN for job execution (required).
-        application_id: Existing EMR Serverless application ID.  If not
-            provided and ``application_name`` is set, the connector will
-            attempt to create a new application (subject to the
-            connector-level ``FLYTE_EMR_ALLOW_CREATE_APPLICATION`` policy).
-        release_label: EMR release label (default: ``emr-7.0.0``).
-        application_type: ``"SPARK"`` or ``"HIVE"`` (default: ``"SPARK"``).
-        application_name: Name for a new application.  When
-            ``application_id`` is not set and ``application_name`` is
-            provided, the connector will create a new application with
-            this name (prefixed by the connector's
-            ``FLYTE_EMR_APPLICATION_NAME_PREFIX`` if configured).
-        sync_image: When ``True`` (the default), the connector will update
-            the application's image if the task's ``container_image`` or
-            ``image_configuration`` differs from what the app currently has.
-        spark_job_driver: Spark job configuration.  When omitted for a SPARK
-            application, Pythonic mode is used.
-        hive_job_driver: Hive job configuration.
-        spark_submit_parameters: Extra ``--conf`` flags to pass to
-            ``sparkSubmitParameters`` for *both* script and Pythonic modes.
-            In Pythonic mode these are merged with the connector defaults.
-        application_configuration: ``applicationConfiguration`` list for
-            ``configurationOverrides``.  Merged with any entries already
-            in ``configuration_overrides``.
-        runtime_configuration: ``runtimeConfiguration`` passed to
-            ``CreateApplication`` or ``UpdateApplication``.
-        scheduler_configuration: ``SchedulerConfiguration`` for job
-            concurrency and queuing (e.g.
-            ``{"maxConcurrentRuns": 5, "queueTimeoutMinutes": 30}``).
-        auto_stop_config: ``AutoStopConfiguration`` for the application
-            (e.g. ``{"enabled": True, "idleTimeoutMinutes": 30}``).
-        architecture: Processor architecture for the application.
-            ``"X86_64"`` (default) or ``"ARM64"`` (Graviton).
-        retry_policy: Job-level retry policy for resiliency (e.g.
-            ``{"maxAttempts": 3}``).  Requires EMR 7.1+.
-        configuration_overrides: Application and monitoring configuration.
-        tags: Resource tags.
-        execution_timeout_minutes: Maximum job execution time (default: 60).
-        initial_capacity: Pre-initialized worker capacity.
-        maximum_capacity: Auto-scaling limits.
-        network_configuration: VPC, subnet, and security group settings.
-        image_configuration: Custom container image settings.
-        region: AWS region (uses boto3 default if not specified).
-        inject_flyte_env: When ``True`` (default), the connector appends
-            ``--conf spark.emr-serverless.driverEnv.*`` and
-            ``--conf spark.executorEnv.*`` entries to ``sparkSubmitParameters``
-            so the Spark driver and executors see Flyte runtime context as
-            environment variables: ``FLYTE_INTERNAL_EXECUTION_ID``,
-            ``FLYTE_INTERNAL_EXECUTION_PROJECT``,
-            ``FLYTE_INTERNAL_EXECUTION_DOMAIN``,
-            ``FLYTE_INTERNAL_TASK_{PROJECT,DOMAIN,NAME,VERSION}``,
-            ``FLYTE_INTERNAL_NODE_ID``, and
-            ``FLYTE_INTERNAL_TASK_RETRY_ATTEMPT``.  Any
-            ``environment_variables`` set on ``task_execution_metadata``
-            (via Flyte ``Environment`` policies) are also forwarded.  Only
-            applies to Spark jobs.
+    Field summary:
+
+    * ``execution_role_arn`` (required): IAM role ARN used to run the job.
+    * ``application_id``: existing EMR Serverless application ID. When unset
+      and ``application_name`` is provided, the connector will attempt to
+      create a new application (subject to the connector-level
+      ``FLYTE_EMR_ALLOW_CREATE_APPLICATION`` policy).
+    * ``release_label``: EMR release label, default ``emr-7.0.0``.
+    * ``application_type``: ``"SPARK"`` or ``"HIVE"`` (default ``"SPARK"``).
+    * ``application_name``: name for a new application; when set without
+      ``application_id`` the connector creates one (prefixed by
+      ``FLYTE_EMR_APPLICATION_NAME_PREFIX`` if configured).
+    * ``sync_image`` (default ``True``): the connector will update the
+      application image if the task's ``container_image`` or
+      ``image_configuration`` differs from what the app currently has.
+    * ``spark_job_driver`` / ``hive_job_driver``: explicit job driver for
+      script mode; omit ``spark_job_driver`` to use Pythonic Spark mode.
+    * ``spark_submit_parameters``: extra ``--conf`` flags applied in both
+      script and Pythonic modes (merged with the connector defaults in
+      Pythonic mode).
+    * ``application_configuration`` / ``runtime_configuration`` /
+      ``scheduler_configuration`` / ``auto_stop_config``: forwarded to
+      ``CreateApplication`` / ``UpdateApplication``.
+    * ``architecture``: ``"X86_64"`` (default) or ``"ARM64"`` (Graviton).
+    * ``retry_policy``: job-level retry policy (requires EMR 7.1+).
+    * ``configuration_overrides``: application and monitoring overrides.
+    * ``tags``: resource tags applied to the application/jobs.
+    * ``execution_timeout_minutes``: max job execution time, default 60.
+    * ``initial_capacity`` / ``maximum_capacity`` / ``network_configuration``
+      / ``image_configuration``: forwarded to the application.
+    * ``region``: AWS region (uses the boto3 default if not specified).
+    * ``inject_flyte_env`` (default ``True``): when set, the connector
+      appends ``spark.emr-serverless.driverEnv.*`` and ``spark.executorEnv.*``
+      entries to ``sparkSubmitParameters`` so the Spark driver and executors
+      see Flyte runtime context as environment variables
+      (``FLYTE_INTERNAL_EXECUTION_ID``, ``FLYTE_INTERNAL_EXECUTION_PROJECT``,
+      ``FLYTE_INTERNAL_EXECUTION_DOMAIN``,
+      ``FLYTE_INTERNAL_TASK_{PROJECT,DOMAIN,NAME,VERSION}``,
+      ``FLYTE_INTERNAL_NODE_ID``, ``FLYTE_INTERNAL_TASK_RETRY_ATTEMPT``).
+      Any ``environment_variables`` set on ``task_execution_metadata`` (via
+      Flyte ``Environment`` policies) are also forwarded. Only applies to
+      Spark jobs.
     """
 
     execution_role_arn: str

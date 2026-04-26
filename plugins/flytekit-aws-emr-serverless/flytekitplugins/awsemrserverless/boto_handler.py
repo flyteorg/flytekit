@@ -66,16 +66,11 @@ class EMRServerlessHandler:
     async def _call(self, method: str, **params: Any) -> Dict[str, Any]:
         """Invoke a boto3 EMR Serverless client method in the thread-pool executor.
 
-        This is the single chokepoint for all non-paginated boto3 API calls.
-        Tests can mock the entire handler surface by patching just this method.
-
-        Args:
-            method: The boto3 client method name (e.g. ``"get_application"``).
-            **params: Keyword arguments forwarded to the boto3 call in the
-                camelCase form the AWS SDK expects.
-
-        Returns:
-            The raw response dict from the boto3 call.
+        This is the single chokepoint for all non-paginated boto3 API calls
+        (``method`` is the boto3 client method name and ``params`` are keyword
+        arguments forwarded to the call in the camelCase form the AWS SDK
+        expects). Tests can mock the entire handler surface by patching just
+        this method. Returns the raw response dict from the boto3 call.
         """
         func = getattr(self.client, method)
         loop = asyncio.get_event_loop()
@@ -85,16 +80,12 @@ class EMRServerlessHandler:
         """Exhaust a boto3 paginator and return the concatenated items.
 
         Used for list operations (e.g. ``list_applications``) that may span
-        multiple pages.  Tests can mock this independently from ``_call``.
-
-        Args:
-            method: The boto3 client method to paginate (e.g. ``"list_applications"``).
-            result_key: The key under which each page stores items
-                (e.g. ``"applications"`` for ``list_applications``).
-            **params: Keyword arguments forwarded to ``paginator.paginate()``.
-
-        Returns:
-            A flat list of items across all pages.
+        multiple pages. ``method`` is the boto3 client method to paginate,
+        ``result_key`` is the key under which each page stores items
+        (e.g. ``"applications"`` for ``list_applications``), and ``params``
+        are keyword arguments forwarded to ``paginator.paginate()``. Tests
+        can mock this independently from ``_call``. Returns a flat list of
+        items across all pages.
         """
 
         def _collect() -> List[Dict[str, Any]]:

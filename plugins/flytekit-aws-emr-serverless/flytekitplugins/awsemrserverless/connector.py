@@ -34,13 +34,13 @@ except ModuleNotFoundError:
         ResourceMeta,
     )
 
+from flytekitplugins.awsemrserverless.boto_handler import EMRServerlessHandler
+from flytekitplugins.awsemrserverless.task import EMR_SERVERLESS_BASE_IMAGE, EMRServerless
+
 from flytekit.extend.backend.utils import convert_to_flyte_phase
 from flytekit.models.core.execution import TaskLog
 from flytekit.models.literals import LiteralMap
 from flytekit.models.task import TaskTemplate
-
-from flytekitplugins.awsemrserverless.boto_handler import EMRServerlessHandler
-from flytekitplugins.awsemrserverless.task import EMR_SERVERLESS_BASE_IMAGE, EMRServerless
 
 logger = logging.getLogger(__name__)
 
