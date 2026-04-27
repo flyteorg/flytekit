@@ -648,12 +648,35 @@ def get_serializable_array_node_map_task(
     # TODO Add support for other flyte entities
     entity = node.flyte_entity
     task_spec = get_serializable(entity_mapping, settings, entity, options)
+
+    override_pod_spec = {}
+    if node._pod_template is not None:
+        # get_container (not _get_container) goes through prepare_target() so the
+        # container args carry the map-task command rather than pyflyte-execute.
+        container = entity.get_container(settings)
+        if settings.should_fast_serialize() and container is not None:
+            # Mirror get_serializable_task: prefix args post-build rather than
+            # swapping command_fn, since _fast_serialize_command_fn would wrap
+            # the inherited pyflyte-execute default (wrong for map_task).
+            container._args = prefix_with_fast_execute(settings, container.args)
+        override_pod_spec = _serialize_pod_spec(node._pod_template, container, settings)
+
     task_node = workflow_model.TaskNode(
         reference_id=task_spec.template.id,
         overrides=TaskNodeOverrides(
             resources=node._resources,
             extended_resources=node._extended_resources,
             container_image=node._container_image,
+            pod_template=PodTemplate(
+                pod_spec=override_pod_spec,
+                labels=node._pod_template.labels if node._pod_template.labels else None,
+                annotations=node._pod_template.annotations if node._pod_template.annotations else None,
+                primary_container_name=node._pod_template.primary_container_name
+                if node._pod_template.primary_container_name
+                else None,
+            )
+            if node._pod_template
+            else None,
         ),
     )
     node = workflow_model.Node(
