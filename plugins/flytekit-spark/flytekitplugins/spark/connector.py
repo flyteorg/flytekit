@@ -29,9 +29,25 @@ DEFAULT_DATABRICKS_SERVICE_CREDENTIAL_PROVIDER_ENV_KEY = "FLYTE_DATABRICKS_SERVI
 
 @dataclass
 class DatabricksJobMetadata(ResourceMeta):
+    """Metadata persisted for a Databricks run.
+
+    ``auth_token`` preserves backward compatibility with jobs created by older
+    connector versions that only knew about PAT auth. The ``auth_type`` and
+    companion fields let ``get``/``delete`` rebuild a :class:`DatabricksAuth`
+    and refresh short-lived OAuth tokens for long-running jobs.
+    """
+
     databricks_instance: str
     run_id: str
-    auth_token: Optional[str] = None  # Store auth token for get/delete operations
+    auth_token: Optional[str] = None
+    auth_type: Optional[str] = None
+    client_id: Optional[str] = None
+    oauth_secret_name: Optional[str] = None
+    token_secret_name: Optional[str] = None
+    oidc_token_file: Optional[str] = None
+    oidc_service_account: Optional[str] = None
+    oidc_audience: Optional[str] = None
+    namespace: Optional[str] = None
 
 
 def _configure_serverless(databricks_job: dict, envs: dict) -> str:
@@ -254,6 +270,14 @@ class DatabricksConnector(AsyncConnectorBase):
 
     def __init__(self):
         super().__init__(task_type_name="spark", metadata_type=DatabricksJobMetadata)
+        # Lazy import to avoid a top-level cycle with databricks_auth -> connector.
+        from .databricks_auth import validate_connector_config
+
+        try:
+            validate_connector_config()
+        except Exception as e:  # pragma: no cover - validation re-raises cleanly
+            logger.error("Databricks connector startup validation failed: %s", e)
+            raise
 
     async def create(
         self,
@@ -262,6 +286,8 @@ class DatabricksConnector(AsyncConnectorBase):
         task_execution_metadata: Optional[TaskExecutionMetadata] = None,
         **kwargs,
     ) -> DatabricksJobMetadata:
+        from .databricks_auth import select_auth
+
         data = json.dumps(_get_databricks_job_spec(task_template))
         databricks_instance = task_template.custom.get(
             "databricksInstance", os.getenv(DEFAULT_DATABRICKS_INSTANCE_ENV_KEY)
@@ -272,30 +298,49 @@ class DatabricksConnector(AsyncConnectorBase):
                 f"Missing databricks instance. Please set the value through the task config or set the {DEFAULT_DATABRICKS_INSTANCE_ENV_KEY} environment variable in the connector."
             )
 
-        # Get workflow-specific token or fall back to default
         namespace = task_execution_metadata.namespace if task_execution_metadata else None
 
-        # Extract custom secret name from task template (if provided)
-        custom_secret_name = task_template.custom.get("databricksTokenSecret")
+        auth = await select_auth(task_template=task_template, workspace_url=databricks_instance, namespace=namespace)
+        logger.info("Databricks auth resolved: %s", auth.describe())
 
-        logger.info(f"Creating Databricks job for namespace: {namespace or 'unknown'}")
-        if custom_secret_name:
-            logger.info(f"Using custom secret name: {custom_secret_name}")
-
-        auth_token = get_databricks_token(
-            namespace=namespace, task_template=task_template, secret_name=custom_secret_name
-        )
         databricks_url = f"https://{databricks_instance}{DATABRICKS_API_ENDPOINT}/runs/submit"
 
         async with aiohttp.ClientSession() as session:
+            auth_token = await auth.get_bearer_token(session)
             async with session.post(databricks_url, headers=get_header(auth_token=auth_token), data=data) as resp:
                 response = await resp.json()
                 if resp.status != http.HTTPStatus.OK:
                     raise RuntimeError(f"Failed to create databricks job with error: {response}")
 
         logger.info(f"Successfully created Databricks job with run_id: {response['run_id']}")
+        # Stash enough context on the metadata to rebuild auth during get/delete.
+        # For PAT we also keep the resolved token as a fast-path and as a safety net for
+        # old connectors that might still be polling jobs created by a newer one.
+        stored_token: Optional[str] = auth_token if auth.auth_type == "pat" else None
+
+        # OIDC Model 2 captures the discovered SA + per-namespace client_id; other
+        # strategies persist whatever was on settings.
+        client_id_to_persist = auth.settings.client_id
+        oidc_audience_to_persist = auth.settings.oidc_audience
+        oidc_sa_to_persist: Optional[str] = None
+        discovered = getattr(auth, "discovered", None)
+        if discovered is not None:
+            client_id_to_persist = discovered.client_id
+            oidc_audience_to_persist = discovered.audience
+            oidc_sa_to_persist = discovered.service_account
+
         return DatabricksJobMetadata(
-            databricks_instance=databricks_instance, run_id=str(response["run_id"]), auth_token=auth_token
+            databricks_instance=databricks_instance,
+            run_id=str(response["run_id"]),
+            auth_token=stored_token,
+            auth_type=auth.auth_type,
+            client_id=client_id_to_persist,
+            oauth_secret_name=auth.settings.oauth_secret_name,
+            token_secret_name=auth.settings.token_secret_name,
+            oidc_token_file=auth.settings.oidc_token_file,
+            oidc_service_account=oidc_sa_to_persist,
+            oidc_audience=oidc_audience_to_persist,
+            namespace=namespace,
         )
 
     async def get(self, resource_meta: DatabricksJobMetadata, **kwargs) -> Resource:
@@ -304,14 +349,14 @@ class DatabricksConnector(AsyncConnectorBase):
             f"https://{databricks_instance}{DATABRICKS_API_ENDPOINT}/runs/get?run_id={resource_meta.run_id}"
         )
 
-        # Use the stored auth token if available, otherwise fall back to default
-        headers = get_header(auth_token=resource_meta.auth_token)
-
         async with aiohttp.ClientSession() as session:
-            async with session.get(databricks_url, headers=headers) as resp:
-                if resp.status != http.HTTPStatus.OK:
-                    raise RuntimeError(f"Failed to get databricks job {resource_meta.run_id} with error: {resp.reason}")
-                response = await resp.json()
+            response = await self._request_with_auth(
+                session=session,
+                method="GET",
+                url=databricks_url,
+                resource_meta=resource_meta,
+                action_label=f"get databricks job {resource_meta.run_id}",
+            )
 
         cur_phase = TaskExecution.UNDEFINED
         message = ""
@@ -339,16 +384,86 @@ class DatabricksConnector(AsyncConnectorBase):
         databricks_url = f"https://{resource_meta.databricks_instance}{DATABRICKS_API_ENDPOINT}/runs/cancel"
         data = json.dumps({"run_id": resource_meta.run_id})
 
-        # Use the stored auth token if available, otherwise fall back to default
-        headers = get_header(auth_token=resource_meta.auth_token)
-
         async with aiohttp.ClientSession() as session:
-            async with session.post(databricks_url, headers=headers, data=data) as resp:
-                if resp.status != http.HTTPStatus.OK:
-                    raise RuntimeError(
-                        f"Failed to cancel databricks job {resource_meta.run_id} with error: {resp.reason}"
-                    )
-                await resp.json()
+            await self._request_with_auth(
+                session=session,
+                method="POST",
+                url=databricks_url,
+                resource_meta=resource_meta,
+                data=data,
+                action_label=f"cancel databricks job {resource_meta.run_id}",
+            )
+
+    async def _request_with_auth(
+        self,
+        session: "aiohttp.ClientSession",  # type: ignore[name-defined]
+        method: str,
+        url: str,
+        resource_meta: DatabricksJobMetadata,
+        action_label: str,
+        data: Optional[str] = None,
+    ) -> dict:
+        """Issue a single Databricks Jobs API call, refreshing auth on 401 when possible.
+
+        Jobs created by an older connector will have ``auth_type=None`` in their metadata;
+        in that case we fall back to the stored ``auth_token`` with no refresh attempt.
+        For OAuth/OIDC-backed jobs we rebuild the :class:`DatabricksAuth` strategy from the
+        metadata, invalidate the cached token on 401, and retry exactly once.
+        """
+        from .databricks_auth import DatabricksAuthError, build_auth
+
+        auth = None
+        if resource_meta.auth_type is not None:
+            try:
+                auth = build_auth(
+                    workspace_url=resource_meta.databricks_instance,
+                    auth_type=resource_meta.auth_type,
+                    namespace=resource_meta.namespace,
+                    client_id=resource_meta.client_id,
+                    oauth_secret_name=resource_meta.oauth_secret_name,
+                    token_secret_name=resource_meta.token_secret_name,
+                    oidc_token_file=resource_meta.oidc_token_file,
+                    oidc_service_account=resource_meta.oidc_service_account,
+                    oidc_audience=resource_meta.oidc_audience,
+                )
+            except DatabricksAuthError as e:
+                logger.warning("Failed to rebuild auth from metadata (%s); falling back to stored token", e)
+
+        token: Optional[str] = None
+        if auth is not None:
+            try:
+                token = await auth.get_bearer_token(session)
+            except DatabricksAuthError as e:
+                if resource_meta.auth_token is None:
+                    raise RuntimeError(f"Failed to {action_label}: could not refresh Databricks auth: {e}")
+                logger.warning("Token refresh failed (%s); falling back to stored auth_token", e)
+        if token is None:
+            token = resource_meta.auth_token
+
+        def _request(bearer: Optional[str]):
+            headers = get_header(auth_token=bearer)
+            if method.upper() == "GET":
+                return session.get(url, headers=headers)
+            return session.post(url, headers=headers, data=data)
+
+        async with _request(token) as resp:
+            if resp.status == http.HTTPStatus.UNAUTHORIZED and auth is not None:
+                logger.info(
+                    "Databricks API returned 401 for %s; invalidating token cache and retrying once",
+                    action_label,
+                )
+                await auth.invalidate_cache()
+                try:
+                    token = await auth.get_bearer_token(session)
+                except DatabricksAuthError as e:
+                    raise RuntimeError(f"Failed to {action_label}: auth refresh failed after 401: {e}")
+                async with _request(token) as resp2:
+                    if resp2.status != http.HTTPStatus.OK:
+                        raise RuntimeError(f"Failed to {action_label} with error: {resp2.reason}")
+                    return await resp2.json()
+            if resp.status != http.HTTPStatus.OK:
+                raise RuntimeError(f"Failed to {action_label} with error: {resp.reason}")
+            return await resp.json()
 
 
 class DatabricksConnectorV2(DatabricksConnector):
@@ -362,6 +477,73 @@ class DatabricksConnectorV2(DatabricksConnector):
 
     def __init__(self):
         super(DatabricksConnector, self).__init__(task_type_name="databricks", metadata_type=DatabricksJobMetadata)
+
+
+def list_serviceaccounts_in_k8s(namespace: str, label_selector: Optional[str] = None) -> list:
+    """List ServiceAccounts in a Kubernetes namespace, optionally filtered by label.
+
+    Used by the OIDC federation auto-discovery path to find a workflow-namespace SA
+    that's annotated as the Databricks federation identity.
+
+    The connector's ServiceAccount needs ``list`` and ``get`` on ``serviceaccounts``
+    cluster-wide (or scoped per-namespace via RoleBindings) for this to succeed. RBAC
+    is documented in the plugin README's "Authentication" section.
+
+    Args:
+        namespace (str): The workflow's Kubernetes namespace.
+        label_selector (Optional[str]): Optional label selector, e.g.
+            ``"flyte.org/databricks-enabled=true"``.
+
+    Returns:
+        list: List of ``V1ServiceAccount`` objects (each carries ``.metadata.name`` and
+        ``.metadata.annotations``). Empty list if none match or the K8s API is
+        unreachable / forbidden (call sites treat that as "not discovered" and fall
+        back to OIDC Model 1).
+    """
+    try:
+        from kubernetes import client, config
+
+        try:
+            config.load_incluster_config()
+        except config.ConfigException:
+            try:
+                config.load_kube_config()
+            except Exception as e:
+                logger.warning(f"Failed to load Kubernetes config: {e}")
+                return []
+
+        v1 = client.CoreV1Api()
+        try:
+            kwargs = {"namespace": namespace}
+            if label_selector:
+                kwargs["label_selector"] = label_selector
+            resp = v1.list_namespaced_service_account(**kwargs)
+            return list(resp.items or [])
+        except client.exceptions.ApiException as e:
+            if e.status == 403:
+                logger.warning(
+                    "Forbidden listing ServiceAccounts in namespace '%s' (label_selector=%r). "
+                    "The connector's ServiceAccount needs 'list' on 'serviceaccounts' for OIDC "
+                    "federation auto-discovery. See the plugin README's Authentication section.",
+                    namespace,
+                    label_selector,
+                )
+            elif e.status == 404:
+                logger.debug("Namespace '%s' not found while listing ServiceAccounts", namespace)
+            else:
+                logger.warning(
+                    "Error listing ServiceAccounts in namespace '%s' (label_selector=%r): %s",
+                    namespace,
+                    label_selector,
+                    e,
+                )
+            return []
+    except ImportError:
+        logger.warning("kubernetes Python package not installed - cannot list ServiceAccounts")
+        return []
+    except Exception as e:
+        logger.warning(f"Unexpected error listing ServiceAccounts: {e}")
+        return []
 
 
 def get_secret_from_k8s(secret_name: str, secret_key: str, namespace: str) -> Optional[str]:

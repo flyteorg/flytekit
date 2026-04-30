@@ -92,6 +92,22 @@ class DatabricksV2(Spark):
         notebook_path (Optional[str]): Path to Databricks notebook
             (e.g., "/Users/user@example.com/notebook").
         notebook_base_parameters (Optional[Dict[str, str]]): Parameters to pass to the notebook.
+        databricks_auth_type (Optional[str]): Per-task override for the authentication mode.
+            One of ``"pat"``, ``"oauth_m2m"``, ``"oidc_federation"``. When unset the
+            connector-level ``FLYTE_DATABRICKS_AUTH_TYPE`` env var is used; when that is
+            also unset the connector auto-detects based on available credentials.
+        databricks_client_id (Optional[str]): Client ID of the Databricks Service Principal
+            to use for OAuth M2M and OIDC federation. Falls back to the ``DATABRICKS_CLIENT_ID``
+            env var on the connector.
+        databricks_oauth_secret (Optional[str]): K8s secret name that holds ``client_id`` /
+            ``client_secret`` keys for OAuth M2M. Defaults to ``databricks-oauth``.
+        databricks_oidc_token_file (Optional[str]): File path to a subject JWT for OIDC
+            federation (Model 1). Falls back to ``AWS_WEB_IDENTITY_TOKEN_FILE`` (IRSA) and
+            ``/var/run/secrets/databricks/token``.
+        databricks_oidc_audience (Optional[str]): Audience for the OIDC subject token.
+            Defaults to ``"databricks"``. For Model 2, the per-namespace
+            ``flyte.org/databricks-audience`` annotation on the discovered ServiceAccount
+            takes precedence over this value.
 
     Compute Modes:
         The connector auto-detects the compute mode based on the databricks_conf contents:
@@ -193,6 +209,62 @@ class DatabricksV2(Spark):
                 notebook_path="/Users/user@example.com/my-notebook",
                 notebook_base_parameters={"param1": "value1"},
             )
+
+    Authentication:
+        Three auth types are supported. In most deployments you should **not** have to
+        change anything in the workflow itself: operators set the defaults at the
+        connector level (env vars + K8s resources) and the same workflow code works
+        across auth modes. Override fields on this class are only needed when a single
+        workflow wants to diverge from the connector defaults.
+
+        Order of resolution for each field: task config -> connector env var -> default.
+
+        Example - Default path (connector is configured for OIDC; workflow is unchanged)::
+
+            # Operator configures the connector deployment with:
+            #   FLYTE_DATABRICKS_AUTH_TYPE=oidc_federation
+            #   DATABRICKS_CLIENT_ID=<sp-client-id>
+            # plus IRSA on the connector pod's ServiceAccount.
+            #
+            # Workflow code stays exactly as it was under PAT - no changes required.
+            DatabricksV2(
+                databricks_conf={"run_name": "my-job", "new_cluster": {...}},
+                databricks_instance="my-workspace.cloud.databricks.com",
+            )
+
+        Example - Per-task OAuth M2M override::
+
+            DatabricksV2(
+                databricks_conf={...},
+                databricks_instance="my-workspace.cloud.databricks.com",
+                databricks_auth_type="oauth_m2m",
+                databricks_client_id="00000000-0000-0000-0000-000000000000",
+                # client_secret is read from a 'databricks-oauth' k8s secret in the
+                # workflow namespace, or from the DATABRICKS_CLIENT_SECRET env var
+                # on the connector.
+            )
+
+        Example - OIDC federation with a workflow-namespace ServiceAccount (Model 2)::
+
+            # No workflow code change needed. Operator sets:
+            #   FLYTE_DATABRICKS_AUTH_TYPE=oidc_federation
+            # Then in the workflow namespace:
+            #   apiVersion: v1
+            #   kind: ServiceAccount
+            #   metadata:
+            #     name: <any-name>
+            #     labels: { flyte.org/databricks-enabled: "true" }
+            #     annotations:
+            #       flyte.org/databricks-client-id: "<sp-uuid>"
+            #
+            # The connector auto-discovers the SA at submit time and federates as it.
+            DatabricksV2(
+                databricks_conf={...},
+                databricks_instance="my-workspace.cloud.databricks.com",
+            )
+
+        See the plugin README's "Authentication" section for the full setup guide,
+        including RBAC for Model 2 and a migration guide from PAT to M2M/OIDC.
     """
 
     databricks_conf: Optional[Dict[str, Union[str, dict]]] = None
@@ -201,6 +273,15 @@ class DatabricksV2(Spark):
     databricks_token_secret: Optional[str] = None
     notebook_path: Optional[str] = None
     notebook_base_parameters: Optional[Dict[str, str]] = None
+    # --- Authentication overrides -------------------------------------------------
+    # All optional. Each falls back to a connector-level env var (see README) and
+    # ultimately to an auto-detected default so existing workflows keep working
+    # with zero code change.
+    databricks_auth_type: Optional[str] = None
+    databricks_client_id: Optional[str] = None
+    databricks_oauth_secret: Optional[str] = None
+    databricks_oidc_token_file: Optional[str] = None
+    databricks_oidc_audience: Optional[str] = None
 
 
 # This method does not reset the SparkSession since it's a bit hard to handle multiple
@@ -318,6 +399,18 @@ class PysparkFunctionTask(AsyncConnectorExecutorMixin, PythonFunctionTask[Spark]
                 custom_dict["notebookPath"] = cfg.notebook_path
             if cfg.notebook_base_parameters:
                 custom_dict["notebookBaseParameters"] = cfg.notebook_base_parameters
+            # Authentication overrides (only serialise the ones explicitly set so that
+            # old connectors reading this custom dict see no unknown keys).
+            if cfg.databricks_auth_type:
+                custom_dict["databricksAuthType"] = cfg.databricks_auth_type
+            if cfg.databricks_client_id:
+                custom_dict["databricksClientId"] = cfg.databricks_client_id
+            if cfg.databricks_oauth_secret:
+                custom_dict["databricksOauthSecret"] = cfg.databricks_oauth_secret
+            if cfg.databricks_oidc_token_file:
+                custom_dict["databricksOidcTokenFile"] = cfg.databricks_oidc_token_file
+            if cfg.databricks_oidc_audience:
+                custom_dict["databricksOidcAudience"] = cfg.databricks_oidc_audience
 
         return custom_dict
 

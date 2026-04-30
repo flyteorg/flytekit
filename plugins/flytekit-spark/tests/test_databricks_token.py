@@ -35,6 +35,21 @@ from flytekit.models.task import Container, Resources, TaskExecutionMetadata, Ta
 # ---------------------------------------------------------------------------
 
 
+@pytest.fixture(autouse=True)
+def _clear_databricks_auth_env(monkeypatch):
+    """Ensure PAT auto-detection is reached regardless of the dev machine's env."""
+    for var in (
+        "FLYTE_DATABRICKS_AUTH_TYPE",
+        "FLYTE_DATABRICKS_OAUTH_SECRET_NAME",
+        "FLYTE_DATABRICKS_OIDC_TOKEN_FILE",
+        "FLYTE_DATABRICKS_OIDC_AUDIENCE",
+        "DATABRICKS_CLIENT_ID",
+        "DATABRICKS_CLIENT_SECRET",
+        "AWS_WEB_IDENTITY_TOKEN_FILE",
+    ):
+        monkeypatch.delenv(var, raising=False)
+
+
 @pytest.fixture(scope="function")
 def task_template() -> TaskTemplate:
     """Standard Databricks task template for testing."""
@@ -405,10 +420,11 @@ class TestDatabricksConnectorWithToken:
 
             mock_token.assert_called_once_with(
                 namespace="project-alpha",
-                task_template=task_template,
-                secret_name=None,
+                secret_name="databricks-token",
             )
             assert result.auth_token == "dapi_project_alpha_token"
+            assert result.auth_type == "pat"
+            assert result.namespace == "project-alpha"
             assert result.run_id == "999"
 
     @pytest.mark.asyncio
@@ -429,10 +445,10 @@ class TestDatabricksConnectorWithToken:
 
             mock_token.assert_called_once_with(
                 namespace="team-x",
-                task_template=tt,
                 secret_name="my-team-databricks-token",
             )
             assert result.auth_token == "dapi_team_x_token"
+            assert result.token_secret_name == "my-team-databricks-token"
 
     @pytest.mark.asyncio
     async def test_create_without_metadata_uses_no_namespace(self, task_template):
@@ -450,8 +466,7 @@ class TestDatabricksConnectorWithToken:
 
             mock_token.assert_called_once_with(
                 namespace=None,
-                task_template=task_template,
-                secret_name=None,
+                secret_name="databricks-token",
             )
 
     @pytest.mark.asyncio
