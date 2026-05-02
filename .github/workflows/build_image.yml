@@ -4,8 +4,28 @@ on:
   workflow_dispatch:
 
 jobs:
+  get-version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - name: Get version from branch/tag name
+        id: version
+        run: |
+          REF_NAME="${GITHUB_REF_NAME}"
+          # If ref starts with 'v' followed by a digit (e.g. v1.16.17), strip 'v' to get the PyPI version
+          if [[ "$REF_NAME" =~ ^v[0-9] ]]; then
+            VERSION="${REF_NAME#v}"
+          else
+            echo "::error::This workflow must be run from a version tag or branch (e.g. v1.16.17), got '$REF_NAME'"
+            exit 1
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+        shell: bash
+
   build-and-push-docker-images-manual:
     runs-on: ubuntu-latest
+    needs: get-version
     strategy:
       matrix:
         python-version: ["3.10", "3.11", "3.12"]
@@ -32,6 +52,7 @@ jobs:
             ghcr.io/${{ github.repository_owner }}/flytekit
           tags: |
             py${{ matrix.python-version }}-${{ github.sha }}
+            py${{ matrix.python-version }}-${{ needs.get-version.outputs.version }}
       - name: Build & Push Flytekit Python${{ matrix.python-version }} Docker Image to Github Registry
         uses: docker/build-push-action@v2
         with:
@@ -40,8 +61,8 @@ jobs:
           push: true
           tags: ${{ steps.flytekit-names.outputs.tags }}
           build-args: |
-            VERSION=${{ github.sha }}
-            DOCKER_IMAGE=ghcr.io/${{ github.repository_owner }}/flytekit:py${{ matrix.python-version }}-${{ github.sha }}
+            VERSION=${{ needs.get-version.outputs.version }}
+            DOCKER_IMAGE=ghcr.io/${{ github.repository_owner }}/flytekit:py${{ matrix.python-version }}-${{ needs.get-version.outputs.version }}
             PYTHON_VERSION=${{ matrix.python-version }}
           file: Dockerfile
           cache-from: type=gha
@@ -49,6 +70,7 @@ jobs:
 
   build-and-push-flyteagent-images-manual:
     runs-on: ubuntu-latest
+    needs: get-version
     steps:
       - uses: actions/checkout@v4
         with:
@@ -72,6 +94,7 @@ jobs:
             ghcr.io/${{ github.repository_owner }}/flyteagent
           tags: |
             ${{ github.sha }}
+            ${{ needs.get-version.outputs.version }}
       - name: Push External Plugin Service Image to GitHub Registry
         uses: docker/build-push-action@v2
         with:
@@ -80,13 +103,14 @@ jobs:
           push: true
           tags: ${{ steps.flyteagent-names.outputs.tags }}
           build-args: |
-            VERSION=${{ github.sha }}
+            VERSION=${{ needs.get-version.outputs.version }}
           file: ./Dockerfile.connector
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
   build-and-push-flyteconnector-images-manual:
     runs-on: ubuntu-latest
+    needs: get-version
     steps:
       - uses: actions/checkout@v4
         with:
@@ -110,6 +134,7 @@ jobs:
             ghcr.io/${{ github.repository_owner }}/flyteconnector
           tags: |
             ${{ github.sha }}
+            ${{ needs.get-version.outputs.version }}
       - name: Push External Plugin Service Image to GitHub Registry
         uses: docker/build-push-action@v2
         with:
@@ -118,7 +143,7 @@ jobs:
           push: true
           tags: ${{ steps.flyteconnector-names.outputs.tags }}
           build-args: |
-            VERSION=${{ github.sha }}
+            VERSION=${{ needs.get-version.outputs.version }}
           file: ./Dockerfile.connector
           cache-from: type=gha
           cache-to: type=gha,mode=max

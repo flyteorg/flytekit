@@ -75,6 +75,23 @@ RUN --mount=type=cache,sharing=locked,mode=0777,target=/root/.cache/uv,id=uv \
 """
 )
 
+# When python_exec points to system Python (e.g. on NVIDIA base images), PEP 668 prevents
+# installing packages directly. We create a venv using the base Python and install into it.
+# --system-site-packages lets the venv see base image packages (e.g. NVIDIA TensorRT).
+UV_PYTHON_VENV_INSTALL_COMMAND_TEMPLATE = Template(
+    """\
+WORKDIR /root
+RUN --mount=type=cache,sharing=locked,mode=0777,target=/root/.cache/uv,id=uv \
+    --mount=from=uv,source=/uv,target=/usr/bin/uv \
+    --mount=type=bind,target=requirements_uv.txt,src=requirements_uv.txt \
+    $PIP_SECRET_MOUNT \
+    uv venv --python $BASE_PYTHON_EXEC --system-site-packages /root/.venv && \
+    uv pip install --python /root/.venv/bin/python $PIP_INSTALL_ARGS && \
+    chown -R flytekit /root/.venv
+WORKDIR /
+"""
+)
+
 
 APT_INSTALL_COMMAND_TEMPLATE = Template("""\
 RUN --mount=type=cache,sharing=locked,mode=0777,target=/var/cache/apt,id=apt \
@@ -262,7 +279,14 @@ def prepare_python_install(image_spec: ImageSpec, tmp_dir: Path) -> str:
                 requirements.extend([line.strip() for line in f.readlines()])
 
     if template is None:
-        template = UV_PYTHON_INSTALL_COMMAND_TEMPLATE
+        if image_spec.python_exec:
+            # Use venv when python_exec is set: base images with PEP 668 (externally managed
+            # Python) like NVIDIA TensorRT prevent direct system installs. Creating a venv
+            # preserves base image packages while allowing flytekit deps to be installed.
+            template = UV_PYTHON_VENV_INSTALL_COMMAND_TEMPLATE
+        else:
+            template = UV_PYTHON_INSTALL_COMMAND_TEMPLATE
+
         if image_spec.packages:
             requirements.extend(image_spec.packages)
 
@@ -276,10 +300,14 @@ def prepare_python_install(image_spec: ImageSpec, tmp_dir: Path) -> str:
 
     pip_install_args = " ".join(pip_install_args)
 
-    return template.substitute(
+    substitute_kwargs = dict(
         PIP_INSTALL_ARGS=pip_install_args,
         PIP_SECRET_MOUNT=pip_secret_mount,
     )
+    if image_spec.python_exec and template == UV_PYTHON_VENV_INSTALL_COMMAND_TEMPLATE:
+        substitute_kwargs["BASE_PYTHON_EXEC"] = image_spec.python_exec
+
+    return template.substitute(**substitute_kwargs)
 
 
 class _PythonInstallTemplate(NamedTuple):
@@ -294,7 +322,13 @@ def prepare_python_executable(image_spec: ImageSpec) -> _PythonInstallTemplate:
             raise ValueError("conda_channels is not supported with python_exec")
         if image_spec.conda_packages:
             raise ValueError("conda_packages is not supported with python_exec")
-        return _PythonInstallTemplate(python_exec=image_spec.python_exec, template="", extra_path="")
+        # Packages are installed into /root/.venv (see UV_PYTHON_VENV_INSTALL_COMMAND_TEMPLATE)
+        # so runtime must use the venv interpreter
+        return _PythonInstallTemplate(
+            python_exec="/root/.venv/bin/python",
+            template="",
+            extra_path="/root/.venv/bin",
+        )
 
     conda_packages = image_spec.conda_packages or []
     conda_channels = image_spec.conda_channels or []
@@ -478,6 +512,7 @@ class DefaultImageBuilder(ImageSpecBuilder):
         # "registry_config",
         "commands",
         "copy",
+        "python_exec",
         "builder_config",
     }
 

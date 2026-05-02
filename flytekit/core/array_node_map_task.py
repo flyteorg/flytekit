@@ -42,6 +42,7 @@ class ArrayNodeMapTask(PythonTask):
         min_success_ratio: Optional[float] = None,
         bound_inputs: Optional[Set[str]] = None,
         bound_inputs_values: Optional[Dict[str, Any]] = None,
+        run_all_sub_nodes: bool = False,
         **kwargs,
     ):
         """
@@ -51,6 +52,7 @@ class ArrayNodeMapTask(PythonTask):
         :param min_success_ratio: The minimum ratio of successful executions
         :param bound_inputs: The set of inputs that should be bound to the map task
         :param bound_inputs_values: Inputs that are bound to the array node and will not be mapped over
+        :param run_all_sub_nodes: If True, all sub-nodes will run to completion even after the failure threshold is met
         :param kwargs: Additional keyword arguments to pass to the base class
         """
         self._partial = None
@@ -113,6 +115,7 @@ class ArrayNodeMapTask(PythonTask):
         self._concurrency: Optional[int] = concurrency
         self._min_successes: Optional[int] = min_successes
         self._min_success_ratio: Optional[float] = min_success_ratio
+        self._run_all_sub_nodes: bool = run_all_sub_nodes
         self._collection_interface = collection_interface
 
         self._execution_mode: _core_workflow.ArrayNode.ExecutionMode = _core_workflow.ArrayNode.FULL_STATE
@@ -167,6 +170,10 @@ class ArrayNodeMapTask(PythonTask):
     @property
     def concurrency(self) -> Optional[int]:
         return self._concurrency
+
+    @property
+    def run_all_sub_nodes(self) -> bool:
+        return self._run_all_sub_nodes
 
     @property
     def python_function_task(self) -> Union[PythonFunctionTask, PythonInstanceTask]:
@@ -385,6 +392,7 @@ def map_task(
     concurrency: Optional[int] = None,
     min_successes: Optional[int] = None,
     min_success_ratio: float = 1.0,
+    run_all_sub_nodes: bool = False,
     **kwargs,
 ):
     """
@@ -398,6 +406,7 @@ def map_task(
         array node will inherit parallelism from the workflow
     :param min_successes: The minimum number of successful executions
     :param min_success_ratio: The minimum ratio of successful executions
+    :param run_all_sub_nodes: If True, all sub-nodes will run to completion even after the failure threshold is met
     """
     from flytekit.remote import FlyteLaunchPlan
 
@@ -407,12 +416,14 @@ def map_task(
             concurrency=concurrency,
             min_successes=min_successes,
             min_success_ratio=min_success_ratio,
+            run_all_sub_nodes=run_all_sub_nodes,
         )
     return array_node_map_task(
         task_function=target,
         concurrency=concurrency,
         min_successes=min_successes,
         min_success_ratio=min_success_ratio,
+        run_all_sub_nodes=run_all_sub_nodes,
         **kwargs,
     )
 
@@ -422,6 +433,7 @@ def array_node_map_task(
     concurrency: Optional[int] = None,
     # TODO why no min_successes?
     min_success_ratio: float = 1.0,
+    run_all_sub_nodes: bool = False,
     **kwargs,
 ):
     """Map task that uses the ``ArrayNode`` construct..
@@ -437,8 +449,15 @@ def array_node_map_task(
         array node will inherit parallelism from the workflow
     :param min_success_ratio: If specified, this determines the minimum fraction of total jobs which can complete
         successfully before terminating this task and marking it successful.
+    :param run_all_sub_nodes: If True, all sub-nodes will run to completion even after the failure threshold is met.
     """
-    return ArrayNodeMapTask(task_function, concurrency=concurrency, min_success_ratio=min_success_ratio, **kwargs)
+    return ArrayNodeMapTask(
+        task_function,
+        concurrency=concurrency,
+        min_success_ratio=min_success_ratio,
+        run_all_sub_nodes=run_all_sub_nodes,
+        **kwargs,
+    )
 
 
 class ArrayNodeMapTaskResolver(tracker.TrackedInstance, TaskResolverMixin):

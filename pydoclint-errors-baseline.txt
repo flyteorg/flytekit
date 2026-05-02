@@ -578,10 +578,6 @@ plugins/flytekit-snowflake/flytekitplugins/snowflake/task.py
 plugins/flytekit-spark/flytekitplugins/spark/models.py
     DOC301: Class `SparkJob`: __init__() should not have a docstring; please combine it with the docstring of the class
 --------------------
-plugins/flytekit-spark/flytekitplugins/spark/task.py
-    DOC601: Class `DatabricksV2`: Class docstring contains fewer class attributes than actual class attributes.  (Please read https://jsh9.github.io/pydoclint/checking_class_attributes.html on how to correctly document class attributes.)
-    DOC603: Class `DatabricksV2`: Class docstring attributes are different from actual class attributes. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Attributes in the class definition but not in the docstring: [databricks_conf: Optional[Dict[str, Union[str, dict]]], databricks_instance: Optional[str]]. (Please read https://jsh9.github.io/pydoclint/checking_class_attributes.html on how to correctly document class attributes.)
---------------------
 plugins/flytekit-sqlalchemy/flytekitplugins/sqlalchemy/task.py
     DOC601: Class `SQLAlchemyConfig`: Class docstring contains fewer class attributes than actual class attributes.  (Please read https://jsh9.github.io/pydoclint/checking_class_attributes.html on how to correctly document class attributes.)
     DOC603: Class `SQLAlchemyConfig`: Class docstring attributes are different from actual class attributes. (Or could be other formatting issues: https://jsh9.github.io/pydoclint/violation_codes.html#notes-on-doc103 ). Attributes in the class definition but not in the docstring: [connect_args: typing.Optional[typing.Dict[str, typing.Any]], secret_connect_args: typing.Optional[typing.Dict[str, Secret]], uri: str]. (Please read https://jsh9.github.io/pydoclint/checking_class_attributes.html on how to correctly document class attributes.)

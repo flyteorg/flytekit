@@ -8,10 +8,10 @@ build_all_plugins:
 
 .PHONY: publish_all_plugins
 publish_all_plugins:
-	twine upload */dist/*
+	twine upload --verbose --skip-existing */dist/*
 	# We upload community plugins from a separate sub-directory called `community`.
 	# Check https://github.com/flyteorg/flyte/pull/5610 for more details about.
-	twine upload community/*/dist/*
+	twine upload --verbose --skip-existing community/*/dist/*
 
 .PHONY: all_requirements
 all_requirements:

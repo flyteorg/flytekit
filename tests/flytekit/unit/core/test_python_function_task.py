@@ -48,7 +48,17 @@ def test_container_image_conversion(mock_image_spec_builder):
         name="other3",
         fqn="xyz.com/other3",
     )
-    cfg = ImageConfig(default_image=default_img, images=[default_img, other_img, other_img2, other_img3])
+    other_img4 = Image(
+        name="other-4",
+        fqn="other4",
+        tag="tag4"
+    )
+    other_img5 = Image(
+        name="other_5",
+        fqn="xyz.com/other5",
+        tag="tag5"
+    )
+    cfg = ImageConfig(default_image=default_img, images=[default_img, other_img, other_img2, other_img3, other_img4, other_img5])
     assert get_registerable_container_image(None, cfg) == "xyz.com/abc:tag1"
     assert get_registerable_container_image("", cfg) == "xyz.com/abc:tag1"
     assert get_registerable_container_image("abc", cfg) == "abc"
@@ -72,6 +82,15 @@ def test_container_image_conversion(mock_image_spec_builder):
         get_registerable_container_image("{{.image.other3.fqn}}:{{.image.other3.version}}", cfg)
         == "xyz.com/other3:tag1"
     )
+    assert (
+        get_registerable_container_image("{{.image.other-4.fqn}}:{{.image.other-4.version}}", cfg)
+        == "other4:tag4"
+    )
+    assert (
+        get_registerable_container_image("{{.image.other_5.fqn}}:{{.image.other_5.version}}", cfg)
+        == "xyz.com/other5:tag5"
+    )
+
     assert get_registerable_container_image("{{.image.other.fqn}}", cfg) == "xyz.com/other"
     # Works with images instead of just image
     assert get_registerable_container_image("{{.images.other.fqn}}", cfg) == "xyz.com/other"
