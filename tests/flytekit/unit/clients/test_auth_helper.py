@@ -23,6 +23,7 @@ from flytekit.clients.auth_helper import (
     wrap_exceptions_channel,
 )
 from flytekit.clients.grpc_utils.auth_interceptor import AuthUnaryInterceptor
+from flytekit.clients.grpc_utils.deadline_interceptor import ScopedGrpcDeadlineInterceptor
 from flytekit.clients.grpc_utils.wrap_exception_interceptor import RetryExceptionWrapperInterceptor
 from flytekit.configuration import AuthType, PlatformConfig
 
@@ -154,6 +155,7 @@ def test_wrap_exceptions_channel():
     ch = MagicMock()
     out_ch = wrap_exceptions_channel(PlatformConfig(), ch)
     assert isinstance(out_ch._interceptor, RetryExceptionWrapperInterceptor)  # noqa
+    assert isinstance(out_ch._channel._interceptor, ScopedGrpcDeadlineInterceptor)  # noqa
 
 
 def test_upgrade_channel_to_auth():
