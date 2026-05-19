@@ -15,13 +15,104 @@ from flytekit.models.types import OutputReference as _OutputReference
 from flytekit.models.types import SchemaType as _SchemaType
 
 
+class ExponentialBackoff(_common.FlyteIdlEntity):
+    def __init__(self, exponent: int, max: Optional[_timedelta]):
+        self._exponent = exponent
+        self._max = max
+
+    @property
+    def exponent(self):
+        """
+        :rtype: int
+        """
+        return self._exponent
+
+    @property
+    def max(self):
+        """
+        :rtype: datetime.timedelta
+        """
+        return self._max
+
+    def to_flyte_idl(self):
+        """
+        :rtype: flyteidl.core.literals_pb2.ExponentialBackoff
+        """
+        backoff = _literals_pb2.ExponentialBackoff(max_exponent=self.exponent)
+        if self.max is not None:
+            backoff.max.FromTimedelta(self.max)
+        return backoff
+
+    @classmethod
+    def from_flyte_idl(cls, pb2_object):
+        """
+        :param flyteidl.core.literals_pb2.ExponentialBackoff pb2_object:
+        :rtype: ExponentialBackoff
+        """
+        return cls(
+            exponent=pb2_object.max_exponent,
+            max=pb2_object.max.ToTimedelta() if pb2_object.HasField("max") else None,
+        )
+
+
+class RetryOnOOM(_common.FlyteIdlEntity):
+    def __init__(self, factor: float, limit: str, backoff: Optional[ExponentialBackoff] = None):
+        self._factor = factor
+        self._limit = limit
+        self._backoff = backoff
+
+    @property
+    def factor(self):
+        """
+        :rtype: float
+        """
+        return self._factor
+
+    @property
+    def limit(self):
+        """
+        :rtype: Text
+        """
+        return self._limit
+
+    @property
+    def backoff(self):
+        """
+        :rtype: ExponentialBackoff
+        """
+        return self._backoff
+
+    def to_flyte_idl(self):
+        """
+        :rtype: flyteidl.core.literals_pb2.RetryOnOOM
+        """
+        return _literals_pb2.RetryOnOOM(
+            factor=self.factor,
+            limit=self.limit,
+            backoff=self.backoff.to_flyte_idl() if self.backoff is not None else None,
+        )
+
+    @classmethod
+    def from_flyte_idl(cls, pb2_object):
+        """
+        :param flyteidl.core.literals_pb2.RetryOnOOM pb2_object:
+        :rtype: RetryOnOOM
+        """
+        return cls(
+            factor=pb2_object.factor,
+            limit=pb2_object.limit,
+            backoff=ExponentialBackoff.from_flyte_idl(pb2_object.backoff) if pb2_object.HasField("backoff") else None,
+        )
+
+
 class RetryStrategy(_common.FlyteIdlEntity):
-    def __init__(self, retries: int):
+    def __init__(self, retries: int, on_oom: Optional[RetryOnOOM] = None):
         """
         :param int retries: Number of retries to attempt on recoverable failures.  If retries is 0, then
             only one attempt will be made.
         """
         self._retries = retries
+        self._on_oom = on_oom
 
     @property
     def retries(self):
@@ -31,11 +122,21 @@ class RetryStrategy(_common.FlyteIdlEntity):
         """
         return self._retries
 
+    @property
+    def on_oom(self):
+        """
+        :rtype: RetryOnOOM
+        """
+        return self._on_oom
+
     def to_flyte_idl(self):
         """
         :rtype: flyteidl.core.literals_pb2.RetryStrategy
         """
-        return _literals_pb2.RetryStrategy(retries=self.retries)
+        return _literals_pb2.RetryStrategy(
+            retries=self.retries,
+            on_oom=self.on_oom.to_flyte_idl() if self.on_oom is not None else None,
+        )
 
     @classmethod
     def from_flyte_idl(cls, pb2_object):
@@ -43,7 +144,10 @@ class RetryStrategy(_common.FlyteIdlEntity):
         :param flyteidl.core.literals_pb2.RetryStrategy pb2_object:
         :rtype: RetryStrategy
         """
-        return cls(retries=pb2_object.retries)
+        return cls(
+            retries=pb2_object.retries,
+            on_oom=RetryOnOOM.from_flyte_idl(pb2_object.on_oom) if pb2_object.HasField("on_oom") else None,
+        )
 
 
 class Primitive(_common.FlyteIdlEntity):
