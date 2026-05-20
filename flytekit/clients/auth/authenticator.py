@@ -183,10 +183,18 @@ class CommandAuthenticator(Authenticator):
         logging.debug("Starting external process to generate id token. Command `{}`".format(" ".join(cmd_joined)))
         try:
             output = subprocess.run(self._cmd, capture_output=True, text=True, check=True)
-        except subprocess.CalledProcessError:
-            logging.error("Failed to generate token from command `{}`".format(cmd_joined))
+        except subprocess.CalledProcessError as e:
+            logging.error(
+                "Failed to generate token from command `%s`. stdout: %s | stderr: %s",
+                cmd_joined,
+                e.stdout,
+                e.stderr,
+            )
             raise AuthenticationError(
-                f"Failed to refresh token with command `{cmd_joined}`. Please execute this command in your terminal to debug."
+                f"Failed to refresh token with command `{cmd_joined}`.\n"
+                f"stdout: {e.stdout}\n"
+                f"stderr: {e.stderr}\n"
+                f"Please execute this command in your terminal to debug."
             )
         self._creds = Credentials(output.stdout.strip())
 
