@@ -10,12 +10,13 @@ from flytekit.exceptions.user import (
     FlyteEntityAlreadyExistsException,
     FlyteEntityNotExistException,
     FlyteInvalidInputException,
+    FlyteTimeout,
 )
 
 
 class RetryExceptionWrapperInterceptor(grpc.UnaryUnaryClientInterceptor, grpc.UnaryStreamClientInterceptor):
     def __init__(self, max_retries: int = 3):
-        self._max_retries = 3
+        self._max_retries = max_retries
 
     @staticmethod
     def _raise_if_exc(request: typing.Any, e: Union[grpc.Call, grpc.Future]):
@@ -30,6 +31,8 @@ class RetryExceptionWrapperInterceptor(grpc.UnaryUnaryClientInterceptor, grpc.Un
                 raise FlyteInvalidInputException(request) from e
             elif e.code() == grpc.StatusCode.UNAVAILABLE:
                 raise FlyteSystemUnavailableException() from e
+            elif e.code() == grpc.StatusCode.DEADLINE_EXCEEDED:
+                raise FlyteTimeout(f"gRPC request deadline exceeded: {e.details()}") from e
         raise FlyteSystemException() from e
 
     def intercept_unary_unary(self, continuation, client_call_details, request):
@@ -41,6 +44,8 @@ class RetryExceptionWrapperInterceptor(grpc.UnaryUnaryClientInterceptor, grpc.Un
                 if e:
                     self._raise_if_exc(request, e)
                 return fut
+            except FlyteTimeout as e:
+                raise e
             except FlyteException as e:
                 if retries == self._max_retries:
                     raise e

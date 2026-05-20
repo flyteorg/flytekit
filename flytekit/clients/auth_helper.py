@@ -17,6 +17,7 @@ from flytekit.clients.auth.authenticator import (
     PKCEAuthenticator,
 )
 from flytekit.clients.grpc_utils.auth_interceptor import AuthUnaryInterceptor
+from flytekit.clients.grpc_utils.deadline_interceptor import ScopedGrpcDeadlineInterceptor
 from flytekit.clients.grpc_utils.default_metadata_interceptor import DefaultMetadataInterceptor
 from flytekit.clients.grpc_utils.wrap_exception_interceptor import RetryExceptionWrapperInterceptor
 from flytekit.configuration import AuthType, PlatformConfig
@@ -246,7 +247,8 @@ def wrap_exceptions_channel(cfg: PlatformConfig, in_channel: grpc.Channel) -> gr
     :param in_channel: grpc.Channel
     :return: grpc.Channel
     """
-    return grpc.intercept_channel(in_channel, RetryExceptionWrapperInterceptor(max_retries=cfg.rpc_retries))
+    deadline_channel = grpc.intercept_channel(in_channel, ScopedGrpcDeadlineInterceptor())
+    return grpc.intercept_channel(deadline_channel, RetryExceptionWrapperInterceptor(max_retries=cfg.rpc_retries))
 
 
 class AuthenticationHTTPAdapter(requests.adapters.HTTPAdapter):
