@@ -653,7 +653,16 @@ def get_serializable_array_node_map_task(
     if node._pod_template is not None:
         # get_container (not _get_container) goes through prepare_target() so the
         # container args carry the map-task command rather than pyflyte-execute.
+        # When the underlying task has its own pod_template, get_container returns
+        # None; fall back to the inner python_function_task._get_container under
+        # prepare_target() so we still have an image/command to merge into the
+        # override pod spec.
         container = entity.get_container(settings)
+        if container is None and isinstance(entity, (MapPythonTask, ArrayNodeMapTask)):
+            inner = getattr(entity, "python_function_task", None) or getattr(entity, "_run_task", None)
+            if inner is not None and hasattr(inner, "_get_container"):
+                with entity.prepare_target():
+                    container = inner._get_container(settings)
         if settings.should_fast_serialize() and container is not None:
             # Mirror get_serializable_task: prefix args post-build rather than
             # swapping command_fn, since _fast_serialize_command_fn would wrap
