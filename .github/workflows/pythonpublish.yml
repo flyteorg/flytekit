@@ -12,9 +12,9 @@ jobs:
         with:
           fetch-depth: "0"
       - name: Set up Python
-        uses: actions/setup-python@v1
+        uses: actions/setup-python@v5
         with:
-          python-version: "3.x"
+          python-version: "3.12"
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
@@ -23,8 +23,8 @@ jobs:
         id: bump
         run: |
           # from 'refs/tags/v1.2.3' get 1.2.3
-          VERSION=$(echo $GITHUB_REF | sed 's|refs/tags/v||')
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          VERSION="${GITHUB_REF#refs/tags/v}"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
         shell: bash
       - name: Build and publish
         env:
@@ -32,11 +32,11 @@ jobs:
           TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
         run: |
           python -m build
-          twine upload dist/*
+          twine upload --verbose --skip-existing dist/*
       - name: Autobump plugin version
+        env:
+          VERSION: ${{ steps.bump.outputs.version }}
         run: |
-          # from 'refs/tags/v1.2.3' get 1.2.3
-          VERSION=$(echo $GITHUB_REF | sed 's|refs/tags/v||')
           VERSION=$VERSION make -C plugins update_all_versions
         shell: bash
       - name: Build all Plugins and publish

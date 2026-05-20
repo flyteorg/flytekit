@@ -49,9 +49,16 @@ class RawSynchronousFlyteClient(object):
         # StreamRemoved exception.
         # https://github.com/flyteorg/flyte/blob/e8588f3a04995a420559327e78c3f95fbf64dc01/flyteadmin/pkg/common/constants.go#L14
         # 32KB for error messages, 20MB for actual messages.
+        # Keepalive options let gRPC detect dead connections (idle TCP drops by
+        # load balancers / NAT) and reconnect transparently, instead of leaving
+        # subsequent RPCs blocked indefinitely on a black-hole socket.
         options = [
             ("grpc.max_metadata_size", 32 * 1024),
             ("grpc.max_receive_message_length", 20 * 1024 * 1024),
+            ("grpc.keepalive_time_ms", 30000),
+            ("grpc.keepalive_timeout_ms", 10000),
+            ("grpc.keepalive_permit_without_calls", 1),
+            ("grpc.http2.max_pings_without_data", 0),
         ] + kwargs.pop("options", [])
         self._cfg = cfg
         self._channel = wrap_exceptions_channel(
