@@ -9,7 +9,8 @@ This package contains things that are useful when extending Flytekit.
 
    HeadNodeConfig
    RayJobConfig
+   ResourcesConfig
    WorkerNodeConfig
 """
 
-from .task import HeadNodeConfig, RayJobConfig, WorkerNodeConfig
+from .task import AutoscalerOptionsConfig, HeadNodeConfig, RayJobConfig, WorkerNodeConfig
