@@ -9,6 +9,7 @@ from __future__ import annotations
 import asyncio
 import base64
 import configparser
+import contextlib
 import functools
 import gzip
 import hashlib
@@ -35,6 +36,7 @@ from rich.progress import Progress, TextColumn, TimeElapsedColumn
 
 from flytekit import ImageSpec, PodTemplate
 from flytekit.clients.friendly import SynchronousFlyteClient
+from flytekit.clients.grpc_utils.deadline_interceptor import get_scoped_grpc_deadline, scoped_grpc_deadline
 from flytekit.clients.helpers import iterate_node_executions, iterate_task_executions
 from flytekit.configuration import Config, DataConfig, FastSerializationSettings, ImageConfig, SerializationSettings
 from flytekit.configuration.file import ConfigFile
@@ -48,6 +50,7 @@ from flytekit.core.context_manager import FlyteContext, FlyteContextManager
 from flytekit.core.data_persistence import FileAccessProvider
 from flytekit.core.launch_plan import LaunchPlan, ReferenceLaunchPlan
 from flytekit.core.node import Node as CoreNode
+from flytekit.core.promise import translate_inputs_to_literals
 from flytekit.core.python_auto_container import (
     PICKLE_FILE_PATH,
     PickledEntity,
@@ -136,6 +139,16 @@ ExecutionDataResponse = typing.Union[WorkflowExecutionGetDataResponse, NodeExecu
 MOST_RECENT_FIRST = admin_common_models.Sort("created_at", admin_common_models.Sort.Direction.DESCENDING)
 
 LATEST_VERSION_STR = "latest"
+
+DEFAULT_SYNC_EXECUTION_RPC_TIMEOUT = timedelta(seconds=60)
+
+
+def _get_rpc_timeout_seconds(rpc_timeout: typing.Optional[typing.Union[timedelta, int]]) -> typing.Optional[float]:
+    if rpc_timeout is None:
+        return None
+    if isinstance(rpc_timeout, timedelta):
+        return rpc_timeout.total_seconds()
+    return float(rpc_timeout)
 
 
 class RegistrationSkipped(Exception):
@@ -1537,6 +1550,15 @@ class FlyteRemote(object):
                 entity.workflow, serialization_settings, version, default_launch_plan=False, options=options
             )
 
+        if entity.raw_fixed_inputs:
+            fixed_literals = translate_inputs_to_literals(
+                self.context,
+                incoming_values=entity.raw_fixed_inputs,
+                flyte_interface_types=entity.workflow.interface.inputs,
+                native_types=entity.workflow.python_interface.inputs,
+            )
+            entity._fixed_inputs = literal_models.LiteralMap(literals=fixed_literals)
+
         # Underlying workflow, exists, only register the launch plan itself
         launch_plan_model = get_serializable(
             OrderedDict(), settings=serialization_settings, entity=entity, options=options
@@ -2545,6 +2567,7 @@ class FlyteRemote(object):
         execution: FlyteWorkflowExecution,
         entity_definition: typing.Union[FlyteWorkflow, FlyteTask] = None,
         sync_nodes: bool = False,
+        rpc_timeout: typing.Optional[typing.Union[timedelta, int]] = DEFAULT_SYNC_EXECUTION_RPC_TIMEOUT,
     ) -> FlyteWorkflowExecution:
         """
         Sync a FlyteWorkflowExecution object with its corresponding remote state.
@@ -2552,6 +2575,22 @@ class FlyteRemote(object):
         if entity_definition is not None:
             raise ValueError("Entity definition arguments aren't supported when syncing workflow executions")
 
+        rpc_timeout_seconds = _get_rpc_timeout_seconds(rpc_timeout)
+        deadline_context = contextlib.nullcontext()
+        if rpc_timeout_seconds is not None and get_scoped_grpc_deadline() is None:
+            deadline_context = scoped_grpc_deadline(rpc_timeout_seconds)
+
+        with deadline_context:
+            return self._sync_execution(execution, sync_nodes=sync_nodes)
+
+    def _sync_execution(
+        self,
+        execution: FlyteWorkflowExecution,
+        sync_nodes: bool = False,
+    ) -> FlyteWorkflowExecution:
+        """
+        Sync a FlyteWorkflowExecution object with its corresponding remote state.
+        """
         # Update closure, and then data, because we don't want the execution to finish between when we get the data,
         # and then for the closure to have is_done to be true.
         execution._closure = self.client.get_execution(execution.id).closure

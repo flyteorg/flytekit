@@ -18,6 +18,7 @@ from mock import ANY, MagicMock, patch
 
 import flytekit.configuration
 from flytekit import CronSchedule, ImageSpec, LaunchPlan, WorkflowFailurePolicy, task, workflow, reference_task, map_task, dynamic, eager
+from flytekit.clients.grpc_utils.deadline_interceptor import scoped_grpc_deadline
 from flytekit.configuration import Config, DefaultImages, Image, ImageConfig, SerializationSettings
 from flytekit.core.base_task import PythonTask
 from flytekit.core.context_manager import FlyteContextManager
@@ -124,6 +125,35 @@ def test_remote_fetch_execution(remote):
     remote._client = mock_client
     flyte_workflow_execution = remote.fetch_execution(name="n1")
     assert flyte_workflow_execution.id == admin_workflow_execution.id
+
+
+def test_sync_execution_sets_default_rpc_deadline(remote):
+    execution = MagicMock()
+    with patch.object(remote, "_sync_execution", return_value=execution) as mock_sync:
+        with patch("flytekit.remote.remote.scoped_grpc_deadline") as mock_deadline:
+            assert remote.sync_execution(execution) is execution
+
+    mock_deadline.assert_called_once_with(60.0)
+    mock_sync.assert_called_once_with(execution, sync_nodes=False)
+
+
+def test_sync_execution_accepts_rpc_deadline_override(remote):
+    execution = MagicMock()
+    with patch.object(remote, "_sync_execution", return_value=execution):
+        with patch("flytekit.remote.remote.scoped_grpc_deadline") as mock_deadline:
+            assert remote.sync_execution(execution, rpc_timeout=5) is execution
+
+    mock_deadline.assert_called_once_with(5.0)
+
+
+def test_sync_execution_does_not_override_active_rpc_deadline(remote):
+    execution = MagicMock()
+    with patch.object(remote, "_sync_execution", return_value=execution):
+        with patch("flytekit.remote.remote.scoped_grpc_deadline") as mock_deadline:
+            with scoped_grpc_deadline(5):
+                assert remote.sync_execution(execution, rpc_timeout=30) is execution
+
+    mock_deadline.assert_not_called()
 
 
 @pytest.fixture
@@ -911,3 +941,60 @@ def test_register_launch_plan(mock_serialize_and_register, mock_raw_register,moc
     assert remote_lp is mock_remote_lp
     assert not mock_serialize_and_register.called
     assert mock_raw_register.called
+
+
+@mock.patch("flytekit.remote.remote.translate_inputs_to_literals")
+@mock.patch("flytekit.remote.remote.get_serializable")
+@mock.patch("flytekit.remote.remote.FlyteRemote.fetch_launch_plan")
+@mock.patch("flytekit.remote.remote.FlyteRemote.raw_register")
+@mock.patch("flytekit.remote.remote.FlyteRemote._serialize_and_register")
+def test_register_launch_plan_retranslates_fixed_inputs_with_remote_context(
+    mock_serialize_and_register, mock_raw_register, mock_fetch_launch_plan,
+    mock_get_serializable, mock_translate, mock_flyte_remote_client
+):
+    from flytekit.types.file import FlyteFile
+
+    @task
+    def t_with_file(f: FlyteFile) -> str:
+        return str(f)
+
+    @workflow
+    def wf_with_file(f: FlyteFile) -> str:
+        return t_with_file(f=f)
+
+    tmp = tempfile.NamedTemporaryFile(delete=False)
+    try:
+        ff = FlyteFile(path=tmp.name)
+        lp = LaunchPlan.get_or_create(
+            workflow=wf_with_file,
+            name="lp_with_flytefile_fixed",
+            fixed_inputs={"f": ff},
+        )
+    finally:
+        tmp.close()
+
+    try:
+        assert lp.raw_fixed_inputs == {"f": ff}
+
+        rr = FlyteRemote(
+            Config.for_sandbox(),
+            default_project="flytesnacks",
+            default_domain="development",
+        )
+
+        mock_translate.return_value = {"f": MagicMock()}
+        mock_get_serializable.return_value = MagicMock()
+        mock_flyte_remote_client.get_workflow.return_value = MagicMock()
+        mock_fetch_launch_plan.return_value = MagicMock()
+
+        ss = SerializationSettings(image_config=ImageConfig.auto_default_image(), version="v1")
+        rr.register_launch_plan(lp, version="v1", serialization_settings=ss)
+
+        mock_translate.assert_called_once_with(
+            rr.context,
+            incoming_values={"f": ff},
+            flyte_interface_types=wf_with_file.interface.inputs,
+            native_types=wf_with_file.python_interface.inputs,
+        )
+    finally:
+        os.unlink(tmp.name)
