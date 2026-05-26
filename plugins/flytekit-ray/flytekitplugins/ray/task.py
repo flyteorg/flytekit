@@ -7,6 +7,7 @@ from typing import Any, Callable, Dict, Optional
 
 import yaml
 from flytekitplugins.ray.models import (
+    AutoscalerOptions,
     HeadGroupSpec,
     RayCluster,
     RayJob,
@@ -18,7 +19,7 @@ from flytekit import PodTemplate, Resources, lazy_module
 from flytekit.configuration import SerializationSettings
 from flytekit.core.context_manager import ExecutionParameters, FlyteContextManager
 from flytekit.core.python_function_task import PythonFunctionTask
-from flytekit.core.resources import pod_spec_from_resources
+from flytekit.core.resources import convert_resources_to_resource_model, pod_spec_from_resources
 from flytekit.extend import TaskPlugins
 from flytekit.models.task import K8sPod
 
@@ -58,10 +59,22 @@ class WorkerNodeConfig:
 
 
 @dataclass
+class AutoscalerOptionsConfig:
+    UpscalingMode = AutoscalerOptions.UpscalingMode
+    upscaling_mode: Optional["AutoscalerOptions.UpscalingMode"] = None
+    idle_timeout_seconds: Optional[int] = None
+    env: Optional[Dict[str, str]] = None
+    image: Optional[str] = None
+    requests: Optional[Resources] = None
+    limits: Optional[Resources] = None
+
+
+@dataclass
 class RayJobConfig:
     worker_node_config: typing.List[WorkerNodeConfig]
     head_node_config: typing.Optional[HeadNodeConfig] = None
     enable_autoscaling: bool = False
+    autoscaler_options: Optional[AutoscalerOptionsConfig] = None
     runtime_env: typing.Optional[dict] = None
     address: typing.Optional[str] = None
     shutdown_after_job_finishes: bool = False
@@ -141,11 +154,25 @@ class RayFunctionTask(PythonFunctionTask):
                 WorkerGroupSpec(c.group_name, c.replicas, c.min_replicas, c.max_replicas, c.ray_start_params, k8s_pod)
             )
 
+        autoscalerOptions = None
+        if cfg.autoscaler_options is not None:
+            autoscalerOptions = AutoscalerOptions(
+                upscaling_mode=cfg.autoscaler_options.upscaling_mode,
+                idle_timeout_seconds=cfg.autoscaler_options.idle_timeout_seconds,
+                image=cfg.autoscaler_options.image,
+                env=cfg.autoscaler_options.env,
+                resources=convert_resources_to_resource_model(
+                    requests=cfg.autoscaler_options.requests,
+                    limits=cfg.autoscaler_options.limits,
+                ),
+            )
+
         ray_job = RayJob(
             ray_cluster=RayCluster(
                 head_group_spec=head_group_spec,
                 worker_group_spec=worker_group_spec,
                 enable_autoscaling=(cfg.enable_autoscaling if cfg.enable_autoscaling else False),
+                autoscaler_options=autoscalerOptions,
             ),
             runtime_env=runtime_env,
             runtime_env_yaml=runtime_env_yaml,
