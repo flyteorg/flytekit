@@ -17,7 +17,7 @@ from flytekit.core.dynamic_workflow_task import dynamic
 from flytekit.core.hash import HashMethod
 from flytekit.core.launch_plan import LaunchPlan
 from flytekit.core.task import task
-from flytekit.core.type_engine import TypeEngine
+from flytekit.core.type_engine import FileExtension, TypeEngine
 from flytekit.core.workflow import workflow
 from flytekit.models.core.types import BlobType
 from flytekit.models.literals import LiteralMap, Blob, BlobMetadata
@@ -762,6 +762,32 @@ def test_join():
 def test_headers():
     assert FlyteFilePathTransformer.get_additional_headers("xyz") == {}
     assert len(FlyteFilePathTransformer.get_additional_headers(".gz")) == 1
+
+
+def test_transform_flytefile_with_file_extension():
+    csv_file_no_file_extension = FlyteFile["csv"]
+    lt = FlyteFilePathTransformer().get_literal_type(csv_file_no_file_extension)
+    assert lt.blob.file_extension == ""
+
+    csv_file_with_file_extension = Annotated[FlyteFile["csv"], FileExtension("csv")]
+    lt = FlyteFilePathTransformer().get_literal_type(csv_file_with_file_extension)
+    assert lt.blob.file_extension == "csv"
+
+
+def test_file_extension_valid_compound_extension():
+    extension = FileExtension("tar.gz")
+    assert extension.val == "tar.gz"
+
+
+@pytest.mark.parametrize("bad_ext", [
+    ".csv",
+    "my file",
+    "../../escape",
+    "csv!",
+])
+def test_file_extension_rejects_invalid_extensions(bad_ext):
+    with pytest.raises(ValueError, match="Invalid file extension"):
+        FileExtension(bad_ext)
 
 
 def test_new_remote_file():

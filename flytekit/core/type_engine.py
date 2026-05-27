@@ -10,6 +10,7 @@ import inspect
 import json
 import mimetypes
 import os
+import re
 import sys
 import textwrap
 import threading
@@ -101,6 +102,44 @@ def get_batch_size(t: Type) -> Optional[int]:
     if is_annotated(t):
         for annotation in get_args(t)[1:]:
             if isinstance(annotation, BatchSize):
+                return annotation.val
+    return None
+
+
+class FileExtension:
+    """
+    This is used to annotate a FlyteFile when we want to download the file with a specific extension. For example,
+
+    ```python
+    # ContainerTask
+    def t1(file: Annotated[FlyteFile, FileExtension("csv")]):
+        ... # copilot downloads the file to e.g. /inputs/file.csv
+
+    versus...
+
+    def t1(file: FlyteFile["csv"]):
+        ... # copilot downloads the file to e.g. /inputs/file
+    ```
+
+    val: (Default is "") The file extension (e.g. "csv", "parquet") to use during copilot download.
+    """
+
+    def __init__(self, val: str = ""):
+        self._val = val
+
+        pattern = r"^[a-zA-Z0-9]+(\.[a-zA-Z0-9]+)*$"
+        if not re.match(pattern, self._val):
+            raise ValueError(f"Invalid file extension: {self._val}")
+
+    @property
+    def val(self) -> str:
+        return self._val
+
+
+def get_file_extension(t: Type) -> Optional[str]:
+    if is_annotated(t):
+        for annotation in get_args(t)[1:]:
+            if isinstance(annotation, FileExtension):
                 return annotation.val
     return None
 

@@ -38,13 +38,16 @@ class BlobType(_common.FlyteIdlEntity):
         SINGLE = _types_pb2.BlobType.SINGLE
         MULTIPART = _types_pb2.BlobType.MULTIPART
 
-    def __init__(self, format, dimensionality):
+    def __init__(self, format, dimensionality, file_extension=""):
         """
         :param Text format: A string describing the format of the underlying blob data.
         :param int dimensionality: An integer from BlobType.BlobDimensionality enum
+        :param Text file_extension: The file extension (e.g. "csv", "parquet") to use
+            during copilot download, e.g. "csv", "parquet". Empty by default.
         """
         self._format = format
         self._dimensionality = dimensionality
+        self._file_extension = file_extension
 
     @property
     def format(self):
@@ -62,11 +65,24 @@ class BlobType(_common.FlyteIdlEntity):
         """
         return self._dimensionality
 
+    @property
+    def file_extension(self):
+        """
+        The file extension (e.g. "csv", "parquet") to use during copilot download.
+        Default is "", which means no extension is appended.
+        :rtype: Text
+        """
+        return self._file_extension
+
     def to_flyte_idl(self):
         """
         :rtype: flyteidl.core.types_pb2.BlobType
         """
-        return _types_pb2.BlobType(format=self.format, dimensionality=self.dimensionality)
+        return _types_pb2.BlobType(
+            format=self.format,
+            dimensionality=self.dimensionality,
+            file_extension=self._file_extension,
+        )
 
     @classmethod
     def from_flyte_idl(cls, proto):
@@ -74,4 +90,8 @@ class BlobType(_common.FlyteIdlEntity):
         :param flyteidl.core.types_pb2.BlobType proto:
         :rtype: BlobType
         """
-        return cls(format=proto.format, dimensionality=proto.dimensionality)
+        return cls(
+            format=proto.format,
+            dimensionality=proto.dimensionality,
+            file_extension=proto.file_extension,
+        )
