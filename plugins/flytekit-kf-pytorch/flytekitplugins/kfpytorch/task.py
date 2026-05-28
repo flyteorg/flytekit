@@ -142,15 +142,20 @@ class Elastic(object):
         start_method (str): Multiprocessing start method to use when creating workers.
         monitor_interval (int): Interval, in seconds, to monitor the state of workers.
         max_restarts (int): Maximum number of worker group restarts before failing.
-        rdzv_configs (Dict[str, Any]): Additional rendezvous configs to pass to torch elastic, e.g. `{"timeout": 1200, "join_timeout": 900}`.
+        rdzv_configs (Dict[str, Any]): Additional rendezvous configs to pass to torch elastic, e.g., `{"timeout": 1200, "join_timeout": 900}`.
             See `torch.distributed.launcher.api.LaunchConfig` and `torch.distributed.elastic.rendezvous.dynamic_rendezvous.create_handler`.
             Default timeouts are set to 15 minutes to account for the fact that some workers might start faster than others: Some pods might
             be assigned to a running node which might have the image in its cache while other workers might require a node scale up and image pull.
+            When using the default `torch.distributed.elastic.rendezvous.c10d_rendezvous_backend.C10dRendezvousBackend`, consider also increasing
+            the TCPStore `read_timeout`, e.g., {"timeout": 900, "join_timeout": 900, "read_timeout": 900}, as its default value of 60 seconds
+            might be too tight if the zero-worker starts slower than any other worker.
+            Increasing the default timeouts is mostly relevant in the absence of true gang-scheduling on the cluster, as provided by e.g.
+            coscheduling or volcano.
 
         increase_shared_mem (bool): [DEPRECATED] This argument is deprecated. Use `@task(shared_memory=...)` instead.
             PyTorch uses shared memory to share data between processes. If torch multiprocessing is used
             (e.g. for multi-processed data loaders) the default shared memory segment size that the container runs with might not be enough
-            and and one might have to increase the shared memory size. This option configures the task's pod template to mount
+            and one might have to increase the shared memory size. This option configures the task's pod template to mount
             an `emptyDir` volume with medium `Memory` to to `/dev/shm`.
             The shared memory size upper limit is the sum of the memory limits of the containers in the pod.
         run_policy: Configuration for the run policy.
