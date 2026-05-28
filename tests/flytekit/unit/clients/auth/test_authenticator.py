@@ -62,10 +62,14 @@ def test_command_authenticator(mock_subprocess: MagicMock):
     assert authn._creds
     mock_subprocess.assert_called()
 
-    mock_subprocess.side_effect = subprocess.CalledProcessError(-1, ["x"])
+    mock_subprocess.side_effect = subprocess.CalledProcessError(
+        returncode=-1, cmd=["x"], output="some stdout output", stderr="Please run 'az login' to setup account"
+    )
 
-    with pytest.raises(AuthenticationError):
+    with pytest.raises(AuthenticationError, match="Please run 'az login'") as excinfo:
         authn.refresh_credentials()
+    assert "some stdout output" in str(excinfo.value)
+    assert "Please run 'az login' to setup account" in str(excinfo.value)
 
 
 @patch("flytekit.clients.auth.token_client.requests.Session")
