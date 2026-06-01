@@ -139,13 +139,13 @@ filelock==3.20.3
     #   virtualenv
 flatbuffers==25.12.19
     # via tensorflow
-flyteidl==1.16.3
+flyteidl==1.16.7
     # via flytekit
 frozenlist==1.4.1
     # via
     #   aiohttp
     #   aiosignal
-fsspec==2024.5.0
+fsspec==2025.3.2
     # via
     #   adlfs
     #   flytekit
@@ -153,7 +153,7 @@ fsspec==2024.5.0
     #   s3fs
 gast==0.7.0
     # via tensorflow
-gcsfs==2024.5.0
+gcsfs==2025.3.2
     # via flytekit
 google-api-core[grpc]==2.19.0
     # via
@@ -541,7 +541,7 @@ rich-click==1.8.2
     # via flytekit
 rsa==4.9
     # via google-auth
-s3fs==2024.5.0
+s3fs==2025.3.2
     # via flytekit
 scikit-learn==1.5.0
     # via -r dev-requirements.in
