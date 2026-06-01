@@ -57,10 +57,11 @@ class IteratorTransformer(TypeTransformer[typing.Iterator]):
         return Literal(collection=LiteralCollection(literals=lit_list))
 
     def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: typing.Type[T]) -> FlyteIterator:
-        try:
-            lits = lv.collection.literals
-        except AttributeError:
-            raise TypeTransformerFailedError()
+        if lv.collection is None:
+            raise TypeTransformerFailedError(
+                f"Expected a collection literal for {expected_python_type}, but got a non-collection value."
+            )
+        lits = lv.collection.literals
         return FlyteIterator(ctx, lv, expected_python_type, len(lits))
 
 
