@@ -22,11 +22,12 @@ dependencies = [
     "docker>=4.0.0",
     "docstring-parser>=0.9.0",
     "flyteidl>=1.16.7,<2.0.0a0",
-    # 2024.9.0 floor: aiohttp/gcsfs Python 3.12 shutdown-race fixes (_runner aclose loop safety)
-    "fsspec>=2024.9.0",
-    # 2024.9.0 floor: shutdown-race fixes (supersedes the 2024.2.0 bug, https://github.com/fsspec/gcsfs/pull/643)
-    # Bug in 2025.5.0, 2025.5.0post1 https://github.com/fsspec/gcsfs/issues/687
-    "gcsfs>=2024.9.0,!=2025.5.0,!=2025.5.0post1",
+    # 2026.3.0 floor: keeps the fsspec family aligned with the gcsfs pin below
+    "fsspec>=2026.3.0",
+    # 2026.3.0 floor: gcsfs teardown-exception fix that stops aiohttp connector-close log spam
+    # at process exit https://github.com/fsspec/gcsfs/pull/763 (supersedes the earlier
+    # _runner shutdown-race fixes and the 2025.5.0 bug https://github.com/fsspec/gcsfs/issues/687)
+    "gcsfs>=2026.3.0",
     "googleapis-common-protos>=1.57",
     "grpcio",
     "grpcio-status",
@@ -50,7 +51,7 @@ dependencies = [
     "requests>=2.18.4",
     "rich",
     "rich_click",
-    "s3fs>=2024.9.0",
+    "s3fs>=2026.3.0",
     "statsd>=3.0.0",
     "typing_extensions",
     "urllib3>=1.22",
