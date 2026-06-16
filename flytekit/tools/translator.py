@@ -30,6 +30,7 @@ from flytekit.core.workflow import ReferenceWorkflow, WorkflowBase
 from flytekit.models import common as _common_models
 from flytekit.models import interface as interface_models
 from flytekit.models import launch_plan as _launch_plan_models
+from flytekit.models import security as _security_models
 from flytekit.models.admin import workflow as admin_workflow_models
 from flytekit.models.admin.workflow import WorkflowSpec
 from flytekit.models.concurrency import ConcurrencyPolicy
@@ -317,6 +318,26 @@ def get_serializable_workflow(
     )
 
 
+def _merge_security_context(
+    entity_sc: Optional[_security_models.SecurityContext],
+    options_sc: Optional[_security_models.SecurityContext],
+) -> Optional[_security_models.SecurityContext]:
+    """Merge the launch plan's authored security context with the one supplied via registration options.
+
+    Registration options override the authored launch plan per field (not wholesale), so e.g. registering with
+    only a service account does not drop secrets/tokens that were authored on the launch plan.
+    """
+    if options_sc is None:
+        return entity_sc
+    if entity_sc is None:
+        return options_sc
+    return _security_models.SecurityContext(
+        run_as=options_sc.run_as or entity_sc.run_as,
+        secrets=options_sc.secrets or entity_sc.secrets,
+        tokens=options_sc.tokens or entity_sc.tokens,
+    )
+
+
 def get_serializable_launch_plan(
     entity_mapping: OrderedDict,
     settings: SerializationSettings,
@@ -379,7 +400,7 @@ def get_serializable_launch_plan(
         auth_role=None,
         raw_output_data_config=raw_prefix_config,
         max_parallelism=options.max_parallelism or entity.max_parallelism,
-        security_context=options.security_context or entity.security_context,
+        security_context=_merge_security_context(entity.security_context, options.security_context),
         overwrite_cache=options.overwrite_cache or entity.overwrite_cache,
         concurrency_policy=concurrency_policy,
     )
