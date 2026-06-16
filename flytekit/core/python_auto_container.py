@@ -467,10 +467,16 @@ def get_registerable_container_image(img: Optional[Union[str, ImageSpec]], cfg: 
             if img_cfg is None:
                 raise AssertionError(f"Image Config with name {name} not found in the configuration")
             if attr == "version":
-                if img_cfg.version is not None:
-                    img = img.replace(replace_group, img_cfg.version)
+                version = img_cfg.version if img_cfg.version is not None else cfg.default_image.version
+                if ":" in version:
+                    # version is a digest (e.g. sha256:...) — needs @ separator, not :
+                    colon_prefixed = f":{replace_group}"
+                    if colon_prefixed in img:
+                        img = img.replace(colon_prefixed, f"@{version}")
+                    else:
+                        img = img.replace(replace_group, version)
                 else:
-                    img = img.replace(replace_group, cfg.default_image.version)
+                    img = img.replace(replace_group, version)
             elif attr == "fqn":
                 img = img.replace(replace_group, img_cfg.fqn)
             elif attr == "":

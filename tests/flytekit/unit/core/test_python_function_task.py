@@ -58,7 +58,13 @@ def test_container_image_conversion(mock_image_spec_builder):
         fqn="xyz.com/other5",
         tag="tag5"
     )
-    cfg = ImageConfig(default_image=default_img, images=[default_img, other_img, other_img2, other_img3, other_img4, other_img5])
+    # Simulates _parse_image_identifier("xyz.com/other6:tag6@sha256:...") where the tag is baked into fqn
+    other_img6 = Image(
+        name="other6",
+        fqn="xyz.com/other6:tag6",
+        digest="sha256:26c68657ccce2cb0a31b330cb0be2b5e108d467f641c62e13ab40cbec258c68d",
+    )
+    cfg = ImageConfig(default_image=default_img, images=[default_img, other_img, other_img2, other_img3, other_img4, other_img5, other_img6])
     assert get_registerable_container_image(None, cfg) == "xyz.com/abc:tag1"
     assert get_registerable_container_image("", cfg) == "xyz.com/abc:tag1"
     assert get_registerable_container_image("abc", cfg) == "abc"
@@ -77,6 +83,16 @@ def test_container_image_conversion(mock_image_spec_builder):
     assert (
         get_registerable_container_image("{{.image.other2.fqn}}@{{.image.other2.version}}", cfg)
         == "xyz.com/other2@sha256:26c68657ccce2cb0a31b330cb0be2b5e108d467f641c62e13ab40cbec258c68d"
+    )
+    # Digest image with : separator in template should be fixed to @
+    assert (
+        get_registerable_container_image("{{.image.other2.fqn}}:{{.image.other2.version}}", cfg)
+        == "xyz.com/other2@sha256:26c68657ccce2cb0a31b330cb0be2b5e108d467f641c62e13ab40cbec258c68d"
+    )
+    # repo:tag@sha256:digest — fqn already contains the tag, digest needs @ separator
+    assert (
+        get_registerable_container_image("{{.image.other6.fqn}}:{{.image.other6.version}}", cfg)
+        == "xyz.com/other6:tag6@sha256:26c68657ccce2cb0a31b330cb0be2b5e108d467f641c62e13ab40cbec258c68d"
     )
     assert (
         get_registerable_container_image("{{.image.other3.fqn}}:{{.image.other3.version}}", cfg)
