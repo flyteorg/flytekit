@@ -1081,6 +1081,14 @@ class EnumTransformer(TypeTransformer[enum.Enum]):
     def to_literal(
         self, ctx: FlyteContext, python_val: enum.Enum, python_type: Type[T], expected: LiteralType
     ) -> Literal:
+        # Accept a raw string that matches one of the enum's values. assert_type already
+        # allows this (e.g. an enum default supplied as a string), so to_literal must too,
+        # otherwise such a value passes type-checking but fails serialization.
+        if isinstance(python_val, str):
+            enum_type = cast(Type[enum.Enum], python_type)
+            if python_val not in [item.value for item in enum_type]:
+                raise TypeTransformerFailedError(f"Value {python_val} is not in Enum {python_type}")
+            return Literal(scalar=Scalar(primitive=Primitive(string_value=python_val)))
         if type(python_val).__class__ != enum.EnumMeta:
             raise TypeTransformerFailedError("Expected an enum")
         if type(python_val.value) != str:
@@ -2079,6 +2087,8 @@ class UnionTransformer(AsyncTypeTransformer[T]):
         is_ambiguous = False
         res = None
         res_type = None
+        # Result of the ``str`` variant, if it matched, used to disambiguate a bare-string value.
+        str_match: typing.Optional[typing.Tuple[Literal, LiteralType]] = None
         t = None
         for i in range(len(get_args(python_type))):
             try:
@@ -2095,6 +2105,8 @@ class UnionTransformer(AsyncTypeTransformer[T]):
                 res_type = _add_tag_to_type(trans.get_literal_type(t), trans.name)
                 found_res = True
                 potential_types.append(t)
+                if t is str:
+                    str_match = (res, res_type)
             except Exception as e:
                 logger.debug(
                     f"UnionTransformer failed attempt to convert from {python_val} to {t} error: {e}",
@@ -2102,11 +2114,18 @@ class UnionTransformer(AsyncTypeTransformer[T]):
                 continue
 
         if is_ambiguous:
-            raise TypeError(
-                f"Ambiguous choice of variant for union type.\n"
-                f"Potential types: {potential_types}\n"
-                "These types are structurally the same, because it's attributes have the same names and associated types."
-            )
+            # A bare ``str`` is most specifically a ``str``: when the value is exactly a string
+            # and ``str`` is one of the variants, prefer it over variants that merely accept the
+            # string (e.g. an enum whose values include it). This narrowly disambiguates the
+            # ``str`` vs enum-by-string overlap without affecting other structurally-equal variants.
+            if type(python_val) is str and str_match is not None:
+                res, res_type = str_match
+            else:
+                raise TypeError(
+                    f"Ambiguous choice of variant for union type.\n"
+                    f"Potential types: {potential_types}\n"
+                    "These types are structurally the same, because it's attributes have the same names and associated types."
+                )
 
         if found_res:
             return Literal(scalar=Scalar(union=Union(value=res, stored_type=res_type)))

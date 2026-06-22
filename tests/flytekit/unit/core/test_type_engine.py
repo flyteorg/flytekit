@@ -6,27 +6,26 @@ import re
 import sys
 import tempfile
 import typing
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import asdict, dataclass, field
 from datetime import timedelta
 from enum import Enum, auto
-from typing import List, Optional, Type, Dict
+from typing import Dict, List, Optional, Type
 
 import mock
 import msgpack
 import pytest
 import typing_extensions
-from concurrent.futures import ThreadPoolExecutor
 from dataclasses_json import DataClassJsonMixin, dataclass_json
 from flyteidl.core import errors_pb2
 from google.protobuf import json_format as _json_format
 from google.protobuf import struct_pb2 as _struct
-from marshmallow_enum import LoadDumpOptions
 from marshmallow_jsonschema import JSONSchema
 from mashumaro.config import BaseConfig
 from mashumaro.mixins.json import DataClassJSONMixin
 from mashumaro.mixins.orjson import DataClassORJSONMixin
 from mashumaro.types import Discriminator
-from typing_extensions import Annotated, get_args, get_origin
+from typing_extensions import Annotated, get_args
 
 from flytekit import dynamic, kwtypes, task, workflow
 from flytekit.core.annotation import FlyteAnnotation
@@ -34,16 +33,16 @@ from flytekit.core.context_manager import FlyteContext, FlyteContextManager
 from flytekit.core.data_persistence import flyte_tmp_dir
 from flytekit.core.hash import HashMethod
 from flytekit.core.type_engine import (
-    IntTransformer,
-    FloatTransformer,
     BoolTransformer,
-    StrTransformer,
     DataclassTransformer,
     DictTransformer,
     EnumTransformer,
+    FloatTransformer,
+    IntTransformer,
     ListTransformer,
     LiteralsResolver,
     SimpleTransformer,
+    StrTransformer,
     TypeEngine,
     TypeTransformer,
     TypeTransformerFailedError,
@@ -68,7 +67,7 @@ from flytekit.models.literals import (
     LiteralOffloadedMetadata,
     Primitive,
     Scalar,
-    Void, Binary,
+    Void,
 )
 from flytekit.models.types import LiteralType, SimpleType, TypeStructure, UnionType
 from flytekit.types.directory import TensorboardLogs
@@ -79,11 +78,11 @@ from flytekit.types.directory.types import (
 from flytekit.types.file import FileExt, JPEGImageFile
 from flytekit.types.file.file import FlyteFile, FlyteFilePathTransformer, noop
 from flytekit.types.iterator.iterator import IteratorTransformer
-from flytekit.types.iterator.json_iterator import JSONIterator, JSONIteratorTransformer, JSON
+from flytekit.types.iterator.json_iterator import JSON, JSONIterator, JSONIteratorTransformer
 from flytekit.types.pickle import FlytePickle
 from flytekit.types.pickle.pickle import FlytePickleTransformer
 from flytekit.types.schema import FlyteSchema
-from flytekit.types.structured.structured_dataset import StructuredDataset, StructuredDatasetTransformerEngine, PARQUET
+from flytekit.types.structured.structured_dataset import StructuredDataset, StructuredDatasetTransformerEngine
 
 T = typing.TypeVar("T")
 
@@ -1530,6 +1529,39 @@ def test_enum_type():
 
     with pytest.raises(AssertionError):
         TypeEngine.to_literal_type(UnsupportedEnumValues)
+
+
+@pytest.mark.parametrize("python_val", ["red", "green", "blue"])
+def test_enum_to_literal_accepts_matching_string(python_val):
+    # A string matching an enum value is accepted by assert_type, so to_literal must
+    # accept it too (e.g. an enum default supplied as a string).
+    ctx = FlyteContextManager.current_context()
+    lt = TypeEngine.to_literal_type(Color)
+
+    lv = TypeEngine.to_literal(ctx, python_val, Color, lt)
+    assert lv.scalar.primitive.string_value == python_val
+
+
+@pytest.mark.parametrize("python_val", ["purple", "Red", ""])
+def test_enum_to_literal_rejects_non_matching_string(python_val):
+    ctx = FlyteContextManager.current_context()
+    lt = TypeEngine.to_literal_type(Color)
+
+    with pytest.raises(TypeTransformerFailedError):
+        TypeEngine.to_literal(ctx, python_val, Color, lt)
+
+
+def test_enum_string_in_union_prefers_str():
+    # A bare string matching an enum value would otherwise match both the ``str`` and enum
+    # variants of a union. The string is most specifically a ``str``, so the ``str`` variant
+    # is chosen instead of raising an ambiguity error.
+    ctx = FlyteContextManager.current_context()
+    pt = typing.Union[Color, str]
+    lt = TypeEngine.to_literal_type(pt)
+
+    lv = TypeEngine.to_literal(ctx, "red", pt, lt)
+    assert lv.scalar.union.value.scalar.primitive.string_value == "red"
+    assert lv.scalar.union.stored_type.structure.tag == "str"
 
 
 def test_multi_inheritance_enum_type():
@@ -4112,8 +4144,9 @@ def test_asyncio_wait_empty_kwargs_regression():
     "Set of Tasks/Futures is empty" ValueError.
     """
     import asyncio
-    from flytekit.models import literals as _literal_models
+
     from flytekit.core.type_engine import TypeEngine
+    from flytekit.models import literals as _literal_models
 
     async def simulate_original_bug():
         """
@@ -4153,8 +4186,8 @@ def test_error_message_improvements_literal_map_to_kwargs():
     Test that error messages in literal_map_to_kwargs use proper repr formatting
     for better debugging experience.
     """
-    from flytekit.models import literals as _literal_models
     from flytekit.core.type_engine import TypeTransformerFailedError
+    from flytekit.models import literals as _literal_models
 
     ctx = FlyteContextManager.current_context()
 
@@ -4192,6 +4225,7 @@ def test_error_message_improvements_union_transformer():
     for better debugging when conversion fails.
     """
     from typing import Union
+
     from flytekit.models import literals as _literal_models
 
     ctx = FlyteContextManager.current_context()
@@ -4229,6 +4263,7 @@ def test_debug_logging_union_transformer(caplog):
     """
     import logging
     from typing import Union
+
     from flytekit.models import literals as _literal_models
 
     # Set logging level to capture debug messages
