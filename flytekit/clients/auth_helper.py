@@ -1,6 +1,8 @@
 import logging
 import ssl
+import typing
 from http import HTTPStatus
+from importlib.metadata import entry_points
 
 import grpc
 import requests
@@ -21,6 +23,28 @@ from flytekit.clients.grpc_utils.deadline_interceptor import ScopedGrpcDeadlineI
 from flytekit.clients.grpc_utils.default_metadata_interceptor import DefaultMetadataInterceptor
 from flytekit.clients.grpc_utils.wrap_exception_interceptor import RetryExceptionWrapperInterceptor
 from flytekit.configuration import AuthType, PlatformConfig
+
+AUTH_ENTRY_POINT_GROUP = "flytekit.auth"
+
+_authenticator_registry: dict[str, typing.Callable[["PlatformConfig", ClientConfigStore], Authenticator]] = {}
+
+
+def register_authenticator_plugin(
+    name: str,
+    factory: typing.Callable[["PlatformConfig", ClientConfigStore], Authenticator],
+) -> None:
+    """Register an authenticator factory by name.
+
+    This is the primary registration mechanism and works in every environment
+    (pip, Bazel, mono-repo vendoring, etc.).  Entry-point discovery is attempted
+    as a fallback when no explicit registration exists.
+
+    Example::
+
+        from flytekit.clients.auth_helper import register_authenticator_plugin
+        register_authenticator_plugin("gcp_id_token", GcpIdTokenAuthenticator)
+    """
+    _authenticator_registry[name.lower()] = factory
 
 
 class RemoteClientConfigStore(ClientConfigStore):
@@ -50,17 +74,62 @@ class RemoteClientConfigStore(ClientConfigStore):
         )
 
 
+def _load_authenticator_plugin(
+    auth_type_name: str, cfg: "PlatformConfig", cfg_store: ClientConfigStore
+) -> typing.Optional[Authenticator]:
+    """Load an authenticator by name (case-insensitive).
+
+    Resolution order:
+
+    1. Explicit registry (populated via :func:`register_authenticator_plugin`).
+    2. ``importlib.metadata`` entry-point group ``flytekit.auth``.
+
+    Names are compared in lowercase so that ``GCP_ID_TOKEN``,
+    ``gcp_id_token``, and ``Gcp_Id_Token`` all resolve to the same plugin.
+
+    The loaded object must be a callable (class or factory function) with the
+    signature ``(PlatformConfig, ClientConfigStore) -> Authenticator``.
+    """
+    name_lower = auth_type_name.lower()
+
+    factory = _authenticator_registry.get(name_lower)
+    if factory is not None:
+        logging.info(f"Using registered auth plugin '{name_lower}'")
+        return factory(cfg, cfg_store)
+
+    eps = entry_points(group=AUTH_ENTRY_POINT_GROUP)
+    matching = [ep for ep in eps if ep.name.lower() == name_lower]
+    if not matching:
+        return None
+    factory = matching[0].load()
+    logging.info(f"Loaded auth plugin '{name_lower}' from entry point {matching[0]}")
+    return factory(cfg, cfg_store)
+
+
 def get_authenticator(cfg: PlatformConfig, cfg_store: ClientConfigStore) -> Authenticator:
     """
     Returns a new authenticator based on the platform config.
+
+    Built-in auth types (PKCE, ClientSecret, ExternalCommand, DeviceFlow) are
+    tried first.  If ``auth_mode`` is a string that does not match any built-in
+    type, the function falls back to entry-point discovery: any installed
+    package can register an authenticator factory under the
+    ``flytekit.auth`` entry point group and it will be loaded automatically.
     """
     cfg_auth = cfg.auth_mode
     if type(cfg_auth) is str:
         try:
             cfg_auth = AuthType[cfg_auth.upper()]
         except KeyError:
-            logging.warning(f"Authentication type {cfg_auth} does not exist, defaulting to standard")
-            cfg_auth = AuthType.STANDARD
+            authenticator = _load_authenticator_plugin(cfg_auth, cfg, cfg_store)
+            if authenticator is not None:
+                return authenticator
+            raise ValueError(
+                f"Unknown authentication type '{cfg_auth}'. "
+                f"Install a flytekit auth plugin that registers under the "
+                f"'{AUTH_ENTRY_POINT_GROUP}' entry point group with name '{cfg_auth}', "
+                f"or use a built-in type: {', '.join(t.value for t in AuthType)}"
+            )
 
     verify = None
     if cfg.insecure_skip_verify:
