@@ -1,7 +1,6 @@
-import re
+import dataclasses
 import os
 import typing
-import dataclasses
 from collections import OrderedDict
 
 import mock
@@ -10,17 +9,17 @@ import pytest
 import flytekit.configuration
 from flytekit import ContainerTask, ImageSpec, kwtypes
 from flytekit.configuration import Image, ImageConfig, SerializationSettings
+from flytekit.core.array_node_map_task import map_task
 from flytekit.core.condition import conditional
+from flytekit.core.dynamic_workflow_task import dynamic
 from flytekit.core.python_auto_container import get_registerable_container_image
 from flytekit.core.resources import Resources, ResourceSpec
-from flytekit.core.dynamic_workflow_task import dynamic
-from flytekit.core.array_node_map_task import map_task
 from flytekit.core.task import eager, task
 from flytekit.core.workflow import workflow
 from flytekit.exceptions.user import FlyteAssertion, FlyteMissingTypeException
 from flytekit.image_spec.image_spec import ImageBuildEngine
+from flytekit.models import task as task_models
 from flytekit.models.admin.workflow import WorkflowSpec
-from flytekit.models.annotation import TypeAnnotation
 from flytekit.models.literals import (
     BindingData,
     BindingDataCollection,
@@ -32,7 +31,6 @@ from flytekit.models.literals import (
     Void,
 )
 from flytekit.models.types import LiteralType, SimpleType, TypeStructure, UnionType
-from flytekit.models import task as task_models
 from flytekit.tools.translator import get_serializable
 from flytekit.types.error.error import FlyteError
 
@@ -1272,3 +1270,31 @@ def test_default_resources_do_not_overriden_tasks_with_explicit_resources():
         ],
         limits=[]
     )
+
+
+def test_launch_plan_security_context_merge():
+    # Registration options override the authored launch plan per field; registering with only a
+    # service account must not drop secrets/tokens that were authored on the launch plan.
+    from flytekit import LaunchPlan
+    from flytekit.core.options import Options
+    from flytekit.models.security import Identity, Secret, SecurityContext
+
+    @task
+    def t_sc() -> int:
+        return 1
+
+    @workflow
+    def wf_sc() -> int:
+        return t_sc()
+
+    lp = LaunchPlan.get_or_create(
+        workflow=wf_sc,
+        name="lp_sc_merge",
+        security_context=SecurityContext(secrets=[Secret(group="g", key="k")]),
+    )
+    opts = Options(security_context=SecurityContext(run_as=Identity(k8s_service_account="my-sa")))
+
+    serialized = get_serializable(OrderedDict(), serialization_settings, lp, options=opts)
+    sc = serialized.spec.security_context
+    assert sc.run_as.k8s_service_account == "my-sa"
+    assert [(s.group, s.key) for s in sc.secrets] == [("g", "k")]
