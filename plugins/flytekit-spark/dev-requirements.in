@@ -1,2 +1,6 @@
 aioresponses
+# aioresponses (0.7.8) builds a mocked ClientResponse without the `stream_writer`
+# argument that aiohttp 3.14 made required, so the connector tests can't construct
+# responses. Cap aiohttp until aioresponses supports 3.14.
+aiohttp<3.14
 pytest-asyncio
