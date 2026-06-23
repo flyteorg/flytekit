@@ -10,11 +10,9 @@ from dataclasses import dataclass, field, is_dataclass
 from typing import Dict, Generator, Generic, List, Optional, Type, Union
 
 import msgpack
-from dataclasses_json import config
 from fsspec.utils import get_protocol
 from google.protobuf import json_format as _json_format
 from google.protobuf.struct_pb2 import Struct
-from marshmallow import fields
 from mashumaro.mixins.json import DataClassJSONMixin
 from mashumaro.types import SerializableType
 from typing_extensions import Annotated, TypeAlias, get_args, get_origin
@@ -59,8 +57,8 @@ class StructuredDataset(SerializableType, DataClassJSONMixin):
     class (that is just a model, a Python class representation of the protobuf).
     """
 
-    uri: typing.Optional[str] = field(default=None, metadata=config(mm_field=fields.String()))
-    file_format: typing.Optional[str] = field(default=GENERIC_FORMAT, metadata=config(mm_field=fields.String()))
+    uri: typing.Optional[str] = field(default=None)
+    file_format: typing.Optional[str] = field(default=GENERIC_FORMAT)
 
     def _serialize(self) -> Dict[str, Optional[str]]:
         # dataclass case

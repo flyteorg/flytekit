@@ -422,7 +422,9 @@ def test_dataclass_with_flyte_type_exception():
     t = JsonParamType(Datum)
     value = { "x": parquet_file, "y": DIR_NAME, "z": os.path.join(DIR_NAME, "testdata")}
 
-    with pytest.raises(AttributeError):
+    from mashumaro.exceptions import InvalidFieldValue
+    with pytest.raises((AttributeError, InvalidFieldValue)):
+        # mashumaro raises InvalidFieldValue for invalid field values
         t.convert(value=value, param=None, ctx=None)
 
 def test_dataclass_with_optional_fields():
