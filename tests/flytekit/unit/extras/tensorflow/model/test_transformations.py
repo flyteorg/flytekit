@@ -1,7 +1,12 @@
+import sys
 from collections import OrderedDict
 
 import numpy as np
 import pytest
+
+pytest.importorskip("tensorflow", reason="tensorflow is not available for Python 3.12+")
+pytestmark = pytest.mark.skipif(sys.version_info >= (3, 12), reason="tensorflow is not available for Python 3.12+")
+
 import tensorflow as tf
 
 import flytekit

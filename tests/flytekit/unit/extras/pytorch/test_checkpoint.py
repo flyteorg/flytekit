@@ -1,7 +1,12 @@
+import sys
 from dataclasses import asdict, dataclass
 from typing import NamedTuple
 
 import pytest
+
+pytest.importorskip("torch", reason="torch is not available for Python 3.12+")
+pytestmark = pytest.mark.skipif(sys.version_info >= (3, 12), reason="torch is not available for Python 3.12+")
+
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
