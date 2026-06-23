@@ -11,23 +11,36 @@ Usage (remote):
 
 import os
 from datetime import timedelta
+from typing import List
 
+import flytekit as fl
 from flytekitplugins.sleep import Sleep
 
-from flytekit import task, workflow
+from flytekit import map_task, task, workflow
 
-N_CHILDREN = 20
+sleep_image = fl.ImageSpec(
+    registry="ghcr.io/machichima",
+    name="sleep-fanout",
+    apt_packages=["git"],
+    packages=["git+https://github.com/machichima/flytekit.git@add-sleep-plugin#subdirectory=plugins/flytekit-sleep"],
+    env={"REBUILD": "1"},
+)
 
 
-@task(task_config=Sleep())
+@task(container_image=sleep_image)
+def make_durations(duration: timedelta, n: int) -> List[timedelta]:
+    return [duration] * n
+
+
+@task(task_config=Sleep(), container_image=sleep_image)
 def sleep_leaf(duration: timedelta) -> None:
     pass
 
 
 @workflow
-def wf(sleep_duration: timedelta = timedelta(seconds=10)) -> None:
-    for _ in range(N_CHILDREN):
-        sleep_leaf(duration=sleep_duration)
+def wf(sleep_duration: timedelta = timedelta(seconds=10), n_children: int = 400) -> None:
+    durations = make_durations(duration=sleep_duration, n=n_children)
+    map_task(sleep_leaf)(duration=durations)
 
 
 if __name__ == "__main__":
@@ -43,6 +56,7 @@ if __name__ == "__main__":
         "run", "--remote",
         path, "wf",
         "--sleep_duration", "10s",
+        "--n_children", "400",
     ])
     print(result.output)
     if result.exception:
