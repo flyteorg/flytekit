@@ -20,6 +20,7 @@ from click import __version__ as click_version
 from dataclasses_json import DataClassJsonMixin, dataclass_json
 from packaging.version import Version
 from pytimeparse import parse
+from typing_inspect import is_optional_type
 
 from flytekit import BlobType, FlyteContext, Literal, LiteralType, StructuredDataset
 from flytekit.core.artifact import ArtifactQuery
@@ -580,6 +581,8 @@ class FlyteLiteralConverter(object):
             if not self._is_remote:
                 return value
 
+            if is_optional_type(self._python_type) and isinstance(value, str) and value.lower() == "none":
+                value = None
             lit = TypeEngine.to_literal(self._flyte_ctx, value, self._python_type, self._literal_type)
             return lit
         except click.BadParameter:
@@ -589,3 +592,10 @@ class FlyteLiteralConverter(object):
                 f"Failed to convert param: {param if param else 'NA'}, value: {value} to type: {self._python_type}."
                 f" Reason {e}"
             ) from e
+
+
+def is_optional(_type):
+    """
+    Checks if the given type is Optional Type
+    """
+    return typing.get_origin(_type) is typing.Union and type(None) in typing.get_args(_type)
