@@ -125,6 +125,10 @@ async def test_databricks_agent(task_template: TaskTemplate):
         databricks_instance="test-account.cloud.databricks.com",
         run_id="123",
         auth_token=mocked_token,
+        auth_type="pat",
+        oauth_secret_name="databricks-oauth",
+        token_secret_name="databricks-token",
+        oidc_audience="databricks",
     )
 
     mock_create_response = {"run_id": "123"}
@@ -187,6 +191,10 @@ async def test_agent_create_with_default_instance(task_template: TaskTemplate):
         databricks_instance="test-account.cloud.databricks.com",
         run_id="123",
         auth_token=mocked_token,
+        auth_type="pat",
+        oauth_secret_name="databricks-oauth",
+        token_secret_name="databricks-token",
+        oidc_audience="databricks",
     )
 
     mock_create_response = {"run_id": "123"}
@@ -609,6 +617,10 @@ async def test_databricks_agent_serverless(serverless_task_template_with_env_key
         databricks_instance="test-account.cloud.databricks.com",
         run_id="456",
         auth_token=mocked_token,
+        auth_type="pat",
+        oauth_secret_name="databricks-oauth",
+        token_secret_name="databricks-token",
+        oidc_audience="databricks",
     )
 
     mock_create_response = {"run_id": "456"}
