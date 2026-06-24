@@ -545,16 +545,16 @@ wheels = [
 
 [[package]]
 name = "flyteidl"
-version = "1.16.4"
+version = "1.16.7"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "googleapis-common-protos" },
     { name = "protobuf" },
     { name = "protoc-gen-openapiv2" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/b1/b0/5ffd5521c6fb19e1f85ec92122668b6111502b766de402f0ddf177c7a5fe/flyteidl-1.16.4.tar.gz", hash = "sha256:5d2193a414fbf7cd5e27d486ff52c4b3c38e4d0479298fe82838d97c5d9c09fe", size = 130538, upload-time = "2026-02-11T21:12:43.744Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/c5/1a/56b7f6aa0a9694b2853a0dbee9d51e2c63915dd722053840aa99059963bf/flyteidl-1.16.7.tar.gz", hash = "sha256:fd77b66a0c911086887d21fe4d2f157ccb65fdad057a63b82cf666006e6344be", size = 131156, upload-time = "2026-05-28T17:37:09.034Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/90/8b/2168a62542ca49ae83c9cc3c83b212d741645cdc063cd43f541eb2ce114b/flyteidl-1.16.4-py3-none-any.whl", hash = "sha256:95028df0265552f2e23ba5b771e889fe34581ba8f93bf01e4657d156daa132e3", size = 221745, upload-time = "2026-02-11T21:12:42.129Z" },
+    { url = "https://files.pythonhosted.org/packages/1f/9a/488653e77b19ef505cdaa1ffb7d7600e84dbb89134067c59c3fc93c30818/flyteidl-1.16.7-py3-none-any.whl", hash = "sha256:821818f7ffc73f2931178b4dffc443eb2138475ac6e9535127f8ed46a4ef8222", size = 222439, upload-time = "2026-05-28T17:37:07.342Z" },
 ]
 
 [[package]]
@@ -625,9 +625,9 @@ requires-dist = [
     { name = "diskcache", specifier = ">=5.2.1" },
     { name = "docker", specifier = ">=4.0.0" },
     { name = "docstring-parser", specifier = ">=0.9.0" },
-    { name = "flyteidl", specifier = ">=1.16.1,<2.0.0a0" },
-    { name = "fsspec", specifier = ">=2023.3.0" },
-    { name = "gcsfs", specifier = ">=2023.3.0,!=2024.2.0,!=2025.5.0,!=2025.5.0.post1" },
+    { name = "flyteidl", specifier = ">=1.16.7,<2.0.0a0" },
+    { name = "fsspec", specifier = ">=2024.9.0" },
+    { name = "gcsfs", specifier = ">=2024.9.0,!=2025.5.0,!=2025.5.0.post1" },
     { name = "googleapis-common-protos", specifier = ">=1.57" },
     { name = "grpcio" },
     { name = "grpcio-health-checking", marker = "extra == 'agent'", specifier = "<=1.68.0" },
@@ -656,7 +656,7 @@ requires-dist = [
     { name = "requests", specifier = ">=2.18.4" },
     { name = "rich" },
     { name = "rich-click" },
-    { name = "s3fs", specifier = ">=2023.3.0,!=2024.3.1" },
+    { name = "s3fs", specifier = ">=2024.9.0" },
     { name = "setuptools", specifier = "<82" },
     { name = "statsd", specifier = ">=3.0.0" },
     { name = "typing-extensions" },
