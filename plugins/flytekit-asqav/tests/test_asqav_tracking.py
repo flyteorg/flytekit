@@ -18,7 +18,6 @@ secret = Secret(key="asqav-api-key", group="asqav")
 
 
 def _make_signature_response(signature_id: str, **overrides) -> Mock:
-    """Create a mock SignatureResponse with the expected attributes."""
     defaults = {
         "signature_id": signature_id,
         "verification_url": f"https://asqav.com/verify/{signature_id}",
@@ -66,17 +65,16 @@ def test_get_extra_config_defaults():
     assert ASQAV_RISK_CLASS_KEY not in config
 
 
-@task
-@asqav_audit(agent_name="model-trainer", secret=secret)
-def train_model() -> str:
-    return "done"
-
-
 @patch("flytekitplugins.asqav.tracking.asqav")
 @patch("flytekitplugins.asqav.tracking.Deck")
 def test_local_execution(deck_mock, asqav_mock, monkeypatch):
-    """Verify the decorator signs started + finished receipts on success."""
     monkeypatch.setenv("ASQAV_API_KEY", "local-test-key")
+
+    @task
+    @asqav_audit(agent_name="model-trainer", secret=secret)
+    def train_model() -> str:
+        return "done"
+
     agent_mock = MagicMock()
     agent_mock.sign.return_value = _make_signature_response("receipt-started")
     asqav_mock.Agent.create.return_value = agent_mock
@@ -86,14 +84,13 @@ def test_local_execution(deck_mock, asqav_mock, monkeypatch):
     assert result == "done"
     asqav_mock.init.assert_called_once()
     asqav_mock.Agent.create.assert_called_once_with(name="model-trainer")
-    assert agent_mock.sign.call_count == 2  # started + finished
+    assert agent_mock.sign.call_count == 2
     deck_mock.assert_called_once()
 
 
 @patch("flytekitplugins.asqav.tracking.asqav")
 @patch("flytekitplugins.asqav.tracking.Deck")
 def test_failure_signs_failed_receipt(deck_mock, asqav_mock, monkeypatch):
-    """Verify the decorator signs a failed receipt when the task raises."""
     monkeypatch.setenv("ASQAV_API_KEY", "local-test-key")
 
     @task
@@ -108,7 +105,7 @@ def test_failure_signs_failed_receipt(deck_mock, asqav_mock, monkeypatch):
     with pytest.raises(RuntimeError, match="model training failed"):
         failing_task()
 
-    assert agent_mock.sign.call_count == 2  # started + failed
+    assert agent_mock.sign.call_count == 2
     deck_mock.assert_called_once()
 
 
@@ -116,12 +113,16 @@ def test_failure_signs_failed_receipt(deck_mock, asqav_mock, monkeypatch):
 @patch("flytekitplugins.asqav.tracking.FlyteContextManager")
 @patch("flytekitplugins.asqav.tracking.Deck")
 def test_remote_execution_secret_resolution(deck_mock, manager_mock, asqav_mock):
-    """Verify secrets are resolved in remote execution."""
     ctx_mock = Mock()
     ctx_mock.execution_state.is_local_execution.return_value = False
     ctx_mock.user_space_params.secrets.get.return_value = "asqav-key-123"
     ctx_mock.user_space_params.execution_id = "exec-001"
     manager_mock.current_context.return_value = ctx_mock
+
+    @task
+    @asqav_audit(agent_name="model-trainer", secret=secret)
+    def train_model() -> str:
+        return "done"
 
     agent_mock = MagicMock()
     agent_mock.sign.return_value = _make_signature_response("receipt-remote")
@@ -139,21 +140,19 @@ def get_my_key():
     return "callable-key-456"
 
 
-@task
-@asqav_audit(agent_name="callable-agent", secret=get_my_key)
-def callable_secret_task() -> int:
-    return 42
-
-
 @patch("flytekitplugins.asqav.tracking.asqav")
 @patch("flytekitplugins.asqav.tracking.FlyteContextManager")
 @patch("flytekitplugins.asqav.tracking.Deck")
 def test_callable_secret(deck_mock, manager_mock, asqav_mock):
-    """Verify a callable secret is called to get the API key."""
     ctx_mock = Mock()
     ctx_mock.execution_state.is_local_execution.return_value = False
     ctx_mock.user_space_params.execution_id = "exec-002"
     manager_mock.current_context.return_value = ctx_mock
+
+    @task
+    @asqav_audit(agent_name="callable-agent", secret=get_my_key)
+    def callable_secret_task() -> int:
+        return 42
 
     agent_mock = MagicMock()
     agent_mock.sign.return_value = _make_signature_response("receipt-callable")
@@ -165,23 +164,21 @@ def test_callable_secret(deck_mock, manager_mock, asqav_mock):
     asqav_mock.init.assert_called_with(api_key="callable-key-456")
 
 
-@task
-@asqav_audit(agent_name="env-agent")
-def env_var_task() -> str:
-    return "from-env"
-
-
 @patch("flytekitplugins.asqav.tracking.asqav")
 @patch("flytekitplugins.asqav.tracking.FlyteContextManager")
 @patch("flytekitplugins.asqav.tracking.Deck")
 def test_env_var_fallback(deck_mock, manager_mock, asqav_mock, monkeypatch):
-    """Verify the ASQAV_API_KEY env var is used when no Secret or callable is provided."""
     monkeypatch.setenv("ASQAV_API_KEY", "env-key-789")
 
     ctx_mock = Mock()
     ctx_mock.execution_state.is_local_execution.return_value = False
     ctx_mock.user_space_params.execution_id = "exec-003"
     manager_mock.current_context.return_value = ctx_mock
+
+    @task
+    @asqav_audit(agent_name="env-agent")
+    def env_var_task() -> str:
+        return "from-env"
 
     agent_mock = MagicMock()
     agent_mock.sign.return_value = _make_signature_response("receipt-env")
@@ -194,8 +191,65 @@ def test_env_var_fallback(deck_mock, manager_mock, asqav_mock, monkeypatch):
 
 
 def test_no_api_key_error():
-    """Verify a clear error is raised when no API key source is available."""
     decorator = asqav_audit(agent_name="no-key-agent")
 
     with pytest.raises(ValueError, match="No Asqav API key found"):
         decorator.execute()
+
+
+@patch("flytekitplugins.asqav.tracking.asqav")
+@patch("flytekitplugins.asqav.tracking.FlyteContextManager")
+@patch("flytekitplugins.asqav.tracking.Deck")
+def test_secret_beats_env_var(deck_mock, manager_mock, asqav_mock, monkeypatch):
+    monkeypatch.setenv("ASQAV_API_KEY", "env-key-should-not-be-used")
+
+    ctx_mock = Mock()
+    ctx_mock.execution_state.is_local_execution.return_value = False
+    ctx_mock.user_space_params.secrets.get.return_value = "secret-key-789"
+    ctx_mock.user_space_params.execution_id = "exec-secret-beats-env"
+    manager_mock.current_context.return_value = ctx_mock
+
+    @task
+    @asqav_audit(agent_name="model-trainer", secret=secret)
+    def train_model() -> str:
+        return "done"
+
+    agent_mock = MagicMock()
+    agent_mock.sign.return_value = _make_signature_response("receipt-secret")
+    asqav_mock.Agent.create.return_value = agent_mock
+
+    result = train_model()
+
+    assert result == "done"
+    ctx_mock.user_space_params.secrets.get.assert_called_with(key="asqav-api-key", group="asqav")
+    asqav_mock.init.assert_called_with(api_key="secret-key-789")
+
+
+@patch("flytekitplugins.asqav.tracking.asqav")
+@patch("flytekitplugins.asqav.tracking.Deck")
+def test_fail_closed_propagates_init_failure(deck_mock, asqav_mock, monkeypatch):
+    monkeypatch.setenv("ASQAV_API_KEY", "test-key")
+    asqav_mock.init.side_effect = ConnectionError("Asqav unreachable")
+
+    @task
+    @asqav_audit(agent_name="fail-closed-agent", fail_closed=True)
+    def my_task():
+        return 1
+
+    with pytest.raises(ConnectionError, match="Asqav unreachable"):
+        my_task()
+
+
+@patch("flytekitplugins.asqav.tracking.asqav")
+@patch("flytekitplugins.asqav.tracking.Deck")
+def test_fail_open_continues_on_init_failure(deck_mock, asqav_mock, monkeypatch):
+    monkeypatch.setenv("ASQAV_API_KEY", "test-key")
+    asqav_mock.init.side_effect = ConnectionError("Asqav unreachable")
+
+    @task
+    @asqav_audit(agent_name="fail-open-agent")
+    def my_task() -> int:
+        return 42
+
+    result = my_task()
+    assert result == 42

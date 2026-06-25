@@ -78,6 +78,7 @@ class asqav_audit(ClassDecorator):
         receipt_type: str = ASQAV_DEFAULT_RECEIPT_TYPE,
         risk_class: Optional[str] = None,
         compliance_mode: bool = True,
+        fail_closed: bool = False,
         **init_kwargs,
     ):
         if not agent_name:
@@ -89,6 +90,7 @@ class asqav_audit(ClassDecorator):
             receipt_type=receipt_type,
             risk_class=risk_class,
             compliance_mode=compliance_mode,
+            fail_closed=fail_closed,
             **init_kwargs,
         )
         self.agent_name = agent_name
@@ -96,20 +98,25 @@ class asqav_audit(ClassDecorator):
         self.receipt_type = receipt_type
         self.risk_class = risk_class
         self.compliance_mode = compliance_mode
+        self.fail_closed = fail_closed
+        self._agent = None
 
     def _resolve_api_key(self) -> str:
-        """Resolve the Asqav API key from the most specific source available."""
-        # 1. Callable — highest priority for programmatic injection
+        """Resolve the Asqav API key from the most controlled source available."""
+        # 1. Flyte Secret — highest priority for remote deployment
+        if isinstance(self.secret, Secret):
+            ctx = FlyteContextManager.current_context()
+            try:
+                return ctx.user_space_params.secrets.get(key=self.secret.key, group=self.secret.group)
+            except ValueError:
+                pass  # Secret not available in this context (e.g. local execution), fall through
+        # 2. Callable — for programmatic injection
         if callable(self.secret):
             return self.secret()
-        # 2. Environment variable — convenient for local development
+        # 3. Environment variable — fallback for local development
         api_key = os.environ.get(ASQAV_ENV_API_KEY)
         if api_key:
             return api_key
-        # 3. Flyte Secret — for remote execution with secret_requests
-        if isinstance(self.secret, Secret):
-            ctx = FlyteContextManager.current_context()
-            return ctx.user_space_params.secrets.get(key=self.secret.key, group=self.secret.group)
         raise ValueError(
             f"No Asqav API key found. Provide a `Secret` or callable to "
             f"`asqav_audit(secret=...)`, or set the {ASQAV_ENV_API_KEY} env var."
@@ -134,29 +141,36 @@ class asqav_audit(ClassDecorator):
 
         api_key = self._resolve_api_key()
 
-        # Initialise the Asqav SDK and create an agent
-        asqav.init(api_key=api_key)
-        agent = asqav.Agent.create(name=self.agent_name)
-
         receipts = []
         start_time = datetime.datetime.utcnow()
 
-        # --- started receipt ---
-        started_context = {
-            "event_type": "flyte.task.started",
-            "execution_id": execution_id,
-            "agent_name": self.agent_name,
-            "timestamp": datetime.datetime.utcnow().isoformat() + "Z",
-        }
-        started_resp = agent.sign(
-            action_type="flyte.task.started",
-            context=started_context,
-            compliance_mode=self.compliance_mode,
-            receipt_type=self.receipt_type,
-            risk_class=self.risk_class,
-        )
-        receipts.append(("started", started_resp))
-        logger.info(f"Signed asqav started receipt: {started_resp.signature_id}")
+        # --- init Asqav agent (cached per process) and sign started receipt ---
+        agent = None
+        try:
+            if self._agent is None:
+                asqav.init(api_key=api_key)
+                self._agent = asqav.Agent.create(name=self.agent_name)
+            agent = self._agent
+
+            started_context = {
+                "event_type": "flyte.task.started",
+                "execution_id": execution_id,
+                "agent_name": self.agent_name,
+                "timestamp": datetime.datetime.utcnow().isoformat() + "Z",
+            }
+            started_resp = agent.sign(
+                action_type="flyte.task.started",
+                context=started_context,
+                compliance_mode=self.compliance_mode,
+                receipt_type=self.receipt_type,
+                risk_class=self.risk_class,
+            )
+            receipts.append(("started", started_resp))
+            logger.info(f"Signed asqav started receipt: {started_resp.signature_id}")
+        except Exception as e:
+            if self.fail_closed:
+                raise
+            logger.error(f"Asqav audit trail init/started receipt failed: {e}")
 
         # --- task execution ---
         output = None
@@ -167,51 +181,56 @@ class asqav_audit(ClassDecorator):
             exception = e
             raise
         finally:
-            elapsed = (datetime.datetime.utcnow() - start_time).total_seconds()
+            if agent is not None:
+                elapsed = (datetime.datetime.utcnow() - start_time).total_seconds()
 
-            if exception is not None:
-                error_info = f"{type(exception).__name__}: {exception}"
-                failed_context = {
-                    "event_type": "flyte.task.failed",
-                    "execution_id": execution_id,
-                    "agent_name": self.agent_name,
-                    "duration_seconds": round(elapsed, 3),
-                    "error": error_info,
-                    "timestamp": datetime.datetime.utcnow().isoformat() + "Z",
-                }
-                try:
-                    failed_resp = agent.sign(
-                        action_type="flyte.task.failed",
-                        context=failed_context,
-                        compliance_mode=self.compliance_mode,
-                        receipt_type=self.receipt_type,
-                        risk_class=self.risk_class,
-                    )
-                    receipts.append(("failed", failed_resp))
-                    logger.info(f"Signed asqav failed receipt: {failed_resp.signature_id}")
-                except Exception as sign_err:
-                    logger.error(f"Failed to sign asqav receipt for error: {sign_err}")
-            else:
-                finished_context = {
-                    "event_type": "flyte.task.finished",
-                    "execution_id": execution_id,
-                    "agent_name": self.agent_name,
-                    "duration_seconds": round(elapsed, 3),
-                    "output_type": type(output).__name__ if output is not None else "None",
-                    "timestamp": datetime.datetime.utcnow().isoformat() + "Z",
-                }
-                try:
-                    finished_resp = agent.sign(
-                        action_type="flyte.task.finished",
-                        context=finished_context,
-                        compliance_mode=self.compliance_mode,
-                        receipt_type=self.receipt_type,
-                        risk_class=self.risk_class,
-                    )
-                    receipts.append(("finished", finished_resp))
-                    logger.info(f"Signed asqav finished receipt: {finished_resp.signature_id}")
-                except Exception as sign_err:
-                    logger.error(f"Failed to sign asqav receipt for success: {sign_err}")
+                if exception is not None:
+                    error_info = f"{type(exception).__name__}: {exception}"
+                    failed_context = {
+                        "event_type": "flyte.task.failed",
+                        "execution_id": execution_id,
+                        "agent_name": self.agent_name,
+                        "duration_seconds": round(elapsed, 3),
+                        "error": error_info,
+                        "timestamp": datetime.datetime.utcnow().isoformat() + "Z",
+                    }
+                    try:
+                        failed_resp = agent.sign(
+                            action_type="flyte.task.failed",
+                            context=failed_context,
+                            compliance_mode=self.compliance_mode,
+                            receipt_type=self.receipt_type,
+                            risk_class=self.risk_class,
+                        )
+                        receipts.append(("failed", failed_resp))
+                        logger.info(f"Signed asqav failed receipt: {failed_resp.signature_id}")
+                    except Exception as sign_err:
+                        if self.fail_closed:
+                            raise
+                        logger.error(f"Failed to sign asqav receipt for error: {sign_err}")
+                else:
+                    finished_context = {
+                        "event_type": "flyte.task.finished",
+                        "execution_id": execution_id,
+                        "agent_name": self.agent_name,
+                        "duration_seconds": round(elapsed, 3),
+                        "output_type": type(output).__name__ if output is not None else "None",
+                        "timestamp": datetime.datetime.utcnow().isoformat() + "Z",
+                    }
+                    try:
+                        finished_resp = agent.sign(
+                            action_type="flyte.task.finished",
+                            context=finished_context,
+                            compliance_mode=self.compliance_mode,
+                            receipt_type=self.receipt_type,
+                            risk_class=self.risk_class,
+                        )
+                        receipts.append(("finished", finished_resp))
+                        logger.info(f"Signed asqav finished receipt: {finished_resp.signature_id}")
+                    except Exception as sign_err:
+                        if self.fail_closed:
+                            raise
+                        logger.error(f"Failed to sign asqav receipt for success: {sign_err}")
 
             # Render Flyte Deck with all receipts
             if receipts:

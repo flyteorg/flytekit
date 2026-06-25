@@ -44,6 +44,7 @@ def main() -> float:
 | `receipt_type` | `str` | ❌ | `protectmcp:lifecycle` | Asqav receipt type |
 | `risk_class` | `str` | ❌ | `None` | Risk classification (`low`, `medium`, `high`, `unknown`) |
 | `compliance_mode` | `bool` | ❌ | `True` | Generate IETF-compliant compliance receipts |
+| `fail_closed` | `bool` | ❌ | `False` | If `True`, Asqav errors propagate (fail-closed); if `False`, errors are logged and the task continues (fail-open) |
 
 ### Secret Resolution (priority order)
 
