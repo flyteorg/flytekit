@@ -443,7 +443,10 @@ class vscode(ClassDecorator):
         child_process = multiprocessing.Process(
             target=execute_command,
             kwargs={
-                "cmd": f"code-server --bind-addr 0.0.0.0:{self.port} --idle-timeout-seconds {code_server_idle_timeout_seconds} --disable-workspace-trust --auth none {task_function_source_dir}"
+                "cmd": f"code-server --bind-addr 0.0.0.0:{self.port} --idle-timeout-seconds {code_server_idle_timeout_seconds} --disable-workspace-trust --auth none {task_function_source_dir}",
+                # code-server also reads the PORT env var when resolving its bind address. Explicitly pin it to
+                # self.port so an inherited PORT (e.g. injected by Kubernetes) can't override --bind-addr.
+                "env": {"PORT": str(self.port)},
             },
         )
         child_process.start()
