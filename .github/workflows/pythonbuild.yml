@@ -242,12 +242,7 @@ jobs:
           make setup-global-uv
           uv pip freeze
       - name: Install FlyteCTL
-        # unionai-oss/flytectl-setup-action resolves "latest" from the first page of flyteorg/flyte releases, which is
-        # now all Flyte 2.0 (v2.0.x) tags with no flytectl/ release on page 1, so it crashes on `reading 'assets'`.
-        # Install the last flytectl release directly instead.
-        run: |
-          curl -sL "https://github.com/flyteorg/flyte/releases/download/flytectl/v0.9.8/flytectl_Linux_x86_64.tar.gz" | sudo tar -xz -C /usr/local/bin flytectl
-          flytectl version
+        uses: unionai-oss/flytectl-setup-action@v0.0.4
       - name: Setup Flyte Sandbox
         run: |
           flytectl demo start --disable-agent
