@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools<70", "setuptools_scm"]
+requires = ["setuptools<82", "setuptools_scm"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -21,11 +21,12 @@ dependencies = [
     "diskcache>=5.2.1",
     "docker>=4.0.0",
     "docstring-parser>=0.9.0",
-    "flyteidl>=1.16.1,<2.0.0a0",
-    "fsspec>=2023.3.0",
+    "flyteidl>=1.16.7,<2.0.0a0",
+    # 2024.9.0 floor: aiohttp/gcsfs Python 3.12 shutdown-race fixes (_runner aclose loop safety)
+    "fsspec>=2024.9.0",
+    # 2024.9.0 floor: shutdown-race fixes (supersedes the 2024.2.0 bug, https://github.com/fsspec/gcsfs/pull/643)
     # Bug in 2025.5.0, 2025.5.0post1 https://github.com/fsspec/gcsfs/issues/687
-    # Bug in 2024.2.0 https://github.com/fsspec/gcsfs/pull/643
-    "gcsfs>=2023.3.0,!=2024.2.0,!=2025.5.0,!=2025.5.0post1",
+    "gcsfs>=2024.9.0,!=2025.5.0,!=2025.5.0post1",
     "googleapis-common-protos>=1.57",
     "grpcio",
     "grpcio-status",
@@ -38,7 +39,7 @@ dependencies = [
     "marshmallow>=3,<4",
     "marshmallow-enum",
     "marshmallow-jsonschema>=0.12.0",
-    "setuptools<70",
+    "setuptools<82",
     "mashumaro>=3.15",
     "msgpack>=1.1.0",
     "protobuf!=4.25.0",
@@ -49,7 +50,7 @@ dependencies = [
     "requests>=2.18.4",
     "rich",
     "rich_click",
-    "s3fs>=2023.3.0,!=2024.3.1",
+    "s3fs>=2024.9.0",
     "statsd>=3.0.0",
     "typing_extensions",
     "urllib3>=1.22",

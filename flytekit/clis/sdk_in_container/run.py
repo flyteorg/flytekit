@@ -866,7 +866,7 @@ class DynamicEntityLaunchCommand(click.RichCommand):
         for name, var in inputs.items():
             if fixed and name in fixed:
                 continue
-            required = True
+            required = not is_optional(native_inputs[name])
             default_val = None
             if defaults and name in defaults:
                 if not defaults[name].required:

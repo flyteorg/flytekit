@@ -1,3 +1,5 @@
+import pytest
+
 from flytekit.exceptions import base, user
 
 
@@ -116,3 +118,36 @@ def test_flyte_validation_error():
         assert isinstance(e, AssertionError)
         assert type(e).error_code == "USER:ValidationError"
         assert isinstance(e, user.FlyteUserException)
+
+
+@pytest.mark.parametrize(
+    "error_code_value, expected",
+    [
+        ("CUSTOM:Error", "CUSTOM:Error"),  # string passthrough
+        (422, "422"),                       # integer converted to string
+        (None, "USER:RuntimeError"),        # None falls back to default
+    ],
+)
+def test_flyte_user_runtime_exception_error_code_always_str(error_code_value, expected):
+    """Non-string error_code on a user exception must not reach protobuf as a non-string.
+
+    Previously, a non-string error_code caused TypeError inside
+    ContainerError.to_flyte_idl(), hiding the original exception in the UI.
+    Integers are now coerced to str; None falls back to the default code.
+    """
+    class UserException(Exception):
+        error_code = error_code_value
+
+    exc = user.FlyteUserRuntimeException(UserException("boom"))
+    assert exc.error_code == expected
+    assert isinstance(exc.error_code, str)
+
+
+def test_flyte_user_runtime_exception_error_code_unsupported_type_raises():
+    """An error_code that is neither str nor int should raise FlyteException."""
+    class UserException(Exception):
+        error_code = [1, 2, 3]  # unsupported type
+
+    exc = user.FlyteUserRuntimeException(UserException("boom"))
+    with pytest.raises(base.FlyteException, match="error_code must be a str or int"):
+        _ = exc.error_code

@@ -1,1 +1,5 @@
 onnxruntime
+# scikit-learn (via skl2onnx) pulls scipy, whose 1.18 line requires numpy>=2 and uses
+# np.long. CI forces numpy<2 for onnx, so cap scipy to its last numpy<2 line to avoid the
+# import-time crash that surfaces as "sklearn is not a package". See flyteorg/flyte#7604.
+scipy<1.18

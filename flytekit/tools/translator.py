@@ -30,6 +30,7 @@ from flytekit.core.workflow import ReferenceWorkflow, WorkflowBase
 from flytekit.models import common as _common_models
 from flytekit.models import interface as interface_models
 from flytekit.models import launch_plan as _launch_plan_models
+from flytekit.models import security as _security_models
 from flytekit.models.admin import workflow as admin_workflow_models
 from flytekit.models.admin.workflow import WorkflowSpec
 from flytekit.models.concurrency import ConcurrencyPolicy
@@ -317,6 +318,26 @@ def get_serializable_workflow(
     )
 
 
+def _merge_security_context(
+    entity_sc: Optional[_security_models.SecurityContext],
+    options_sc: Optional[_security_models.SecurityContext],
+) -> Optional[_security_models.SecurityContext]:
+    """Merge the launch plan's authored security context with the one supplied via registration options.
+
+    Registration options override the authored launch plan per field (not wholesale), so e.g. registering with
+    only a service account does not drop secrets/tokens that were authored on the launch plan.
+    """
+    if options_sc is None:
+        return entity_sc
+    if entity_sc is None:
+        return options_sc
+    return _security_models.SecurityContext(
+        run_as=options_sc.run_as or entity_sc.run_as,
+        secrets=options_sc.secrets or entity_sc.secrets,
+        tokens=options_sc.tokens or entity_sc.tokens,
+    )
+
+
 def get_serializable_launch_plan(
     entity_mapping: OrderedDict,
     settings: SerializationSettings,
@@ -379,7 +400,7 @@ def get_serializable_launch_plan(
         auth_role=None,
         raw_output_data_config=raw_prefix_config,
         max_parallelism=options.max_parallelism or entity.max_parallelism,
-        security_context=options.security_context or entity.security_context,
+        security_context=_merge_security_context(entity.security_context, options.security_context),
         overwrite_cache=options.overwrite_cache or entity.overwrite_cache,
         concurrency_policy=concurrency_policy,
     )
@@ -648,12 +669,44 @@ def get_serializable_array_node_map_task(
     # TODO Add support for other flyte entities
     entity = node.flyte_entity
     task_spec = get_serializable(entity_mapping, settings, entity, options)
+
+    override_pod_spec = {}
+    if node._pod_template is not None:
+        # get_container (not _get_container) goes through prepare_target() so the
+        # container args carry the map-task command rather than pyflyte-execute.
+        # When the underlying task has its own pod_template, get_container returns
+        # None; fall back to the inner python_function_task._get_container under
+        # prepare_target() so we still have an image/command to merge into the
+        # override pod spec.
+        container = entity.get_container(settings)
+        if container is None and isinstance(entity, (MapPythonTask, ArrayNodeMapTask)):
+            inner = getattr(entity, "python_function_task", None) or getattr(entity, "_run_task", None)
+            if inner is not None and hasattr(inner, "_get_container"):
+                with entity.prepare_target():
+                    container = inner._get_container(settings)
+        if settings.should_fast_serialize() and container is not None:
+            # Mirror get_serializable_task: prefix args post-build rather than
+            # swapping command_fn, since _fast_serialize_command_fn would wrap
+            # the inherited pyflyte-execute default (wrong for map_task).
+            container._args = prefix_with_fast_execute(settings, container.args)
+        override_pod_spec = _serialize_pod_spec(node._pod_template, container, settings)
+
     task_node = workflow_model.TaskNode(
         reference_id=task_spec.template.id,
         overrides=TaskNodeOverrides(
             resources=node._resources,
             extended_resources=node._extended_resources,
             container_image=node._container_image,
+            pod_template=PodTemplate(
+                pod_spec=override_pod_spec,
+                labels=node._pod_template.labels if node._pod_template.labels else None,
+                annotations=node._pod_template.annotations if node._pod_template.annotations else None,
+                primary_container_name=node._pod_template.primary_container_name
+                if node._pod_template.primary_container_name
+                else None,
+            )
+            if node._pod_template
+            else None,
         ),
     )
     node = workflow_model.Node(

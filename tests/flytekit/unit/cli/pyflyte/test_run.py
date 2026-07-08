@@ -26,7 +26,7 @@ from flytekit.image_spec.image_spec import (
 )
 from flytekit.interaction.click_types import DirParamType, FileParamType
 from flytekit.remote import FlyteRemote
-from typing import Iterator, List
+from typing import Iterator, List, Optional
 from flytekit.types.iterator import JSON
 from flytekit import workflow, LaunchPlan
 
@@ -1021,4 +1021,33 @@ def test_remote_workflow_with_version(mock_run_remote, mock_remote):
     assert len(call_args) == 4
     assert call_args[2] == "some_module.example_workflow"
     assert call_args[3] == "v1"
+    mock_run_remote.assert_called_once()
+
+
+@mock.patch("flytekit.configuration.plugin.FlyteRemote", spec=FlyteRemote)
+@mock.patch("flytekit.clis.sdk_in_container.run.run_remote")
+def test_remote_workflow_with_optional_arg(mock_run_remote, mock_remote):
+    @task()
+    def example_task(x: Optional[str]) -> str:
+        if x is None:
+            return ""
+        return f"{x}"
+
+    @workflow
+    def example_workflow(x: Optional[str]) -> str:
+        return example_task(x=x)
+
+    mock_remote_instance = mock.MagicMock()
+    mock_remote.return_value = mock_remote_instance
+    mock_remote_instance.fetch_workflow.return_value = example_workflow
+
+    runner = CliRunner()
+    result = runner.invoke(
+        pyflyte.main,
+        ["run", "remote-workflow", "some_module.example_workflow"],
+        catch_exceptions=False,
+    )
+
+    assert result.exit_code == 0
+    mock_remote_instance.fetch_workflow.assert_called_once()
     mock_run_remote.assert_called_once()

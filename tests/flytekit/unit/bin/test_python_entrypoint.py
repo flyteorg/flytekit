@@ -1044,3 +1044,50 @@ def test_dispatch_execute_custom_error_code_with_flyte_user_runtime_exception(mo
         mock_write_to_file.side_effect = verify_output
         _dispatch_execute(ctx, lambda: python_task, "inputs path", "outputs prefix")
         assert mock_write_to_file.call_count == 1
+
+
+@mock.patch("flytekit.core.utils.load_proto_from_file")
+@mock.patch("flytekit.core.data_persistence.FileAccessProvider.get_data")
+@mock.patch("flytekit.core.data_persistence.FileAccessProvider.put_data")
+@mock.patch("flytekit.core.utils.write_proto_to_file")
+def test_dispatch_execute_non_string_error_code_serializes_cleanly(mock_write_to_file, mock_upload_dir, mock_get_data, mock_load_proto):
+    """A user exception with a non-string error_code must not cause TypeError during proto serialization.
+
+    Previously, a non-string error_code (e.g. an integer HTTP status code) was passed
+    directly to protobuf's string `code` field, raising TypeError inside to_flyte_idl()
+    and hiding the original exception in the UI.
+    """
+    mock_get_data.return_value = True
+    mock_upload_dir.return_value = True
+
+    class DataFormatException(Exception):
+        error_code = 422  # integer, not a string
+
+    @task
+    def t1(a: int) -> str:
+        raise DataFormatException("Empty value for specimen_type")
+        return ""
+
+    ctx = context_manager.FlyteContext.current_context()
+    with context_manager.FlyteContextManager.with_context(
+        ctx.with_execution_state(
+            ctx.execution_state.with_params(mode=context_manager.ExecutionState.Mode.TASK_EXECUTION)
+        )
+    ) as ctx:
+        input_literal_map = TypeEngine.dict_to_literal_map(ctx, {"a": 5})
+        mock_load_proto.return_value = input_literal_map.to_flyte_idl()
+
+        files = OrderedDict()
+        mock_write_to_file.side_effect = get_output_collector(files)
+        system_entry_point(_dispatch_execute)(ctx, lambda: t1, "inputs path", "outputs prefix")
+        assert len(files) == 1
+
+        k = list(files.keys())[0]
+        assert "error.pb" in k
+
+        v = list(files.values())[0]
+        ed = error_models.ErrorDocument.from_flyte_idl(v)
+        assert ed.error.code == "422"
+        assert "DataFormatException" in ed.error.message
+        assert "Empty value for specimen_type" in ed.error.message
+        assert ed.error.origin == execution_models.ExecutionError.ErrorKind.USER

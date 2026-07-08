@@ -31,12 +31,19 @@ class FlyteUserRuntimeException(_FlyteException):
 
     @property
     def error_code(self):
+        code = None
         if hasattr(self.value, "error_code"):
-            return self.value.error_code
+            code = self.value.error_code
         elif hasattr(type(self.value), "error_code"):
-            return type(self.value).error_code
-        else:
+            code = type(self.value).error_code
+
+        if code is None:
             return self._ERROR_CODE
+        if isinstance(code, str):
+            return code
+        if isinstance(code, int):
+            return str(code)
+        raise _FlyteException(f"error_code must be a str or int, got {type(code).__name__}")
 
 
 class FlyteTypeException(FlyteUserException, TypeError):

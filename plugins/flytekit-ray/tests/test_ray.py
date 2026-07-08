@@ -4,15 +4,16 @@ import json
 import ray
 import yaml
 
-from flytekit.core.resources import pod_spec_from_resources
+from flytekit.core.resources import convert_resources_to_resource_model, pod_spec_from_resources
 from flytekitplugins.ray import HeadNodeConfig
 from flytekitplugins.ray.models import (
+    AutoscalerOptions,
     HeadGroupSpec,
     RayCluster,
     RayJob,
     WorkerGroupSpec,
 )
-from flytekitplugins.ray.task import RayJobConfig, WorkerNodeConfig
+from flytekitplugins.ray.task import AutoscalerOptionsConfig, RayJobConfig, WorkerNodeConfig
 from google.protobuf.json_format import MessageToDict
 
 from flytekit import PythonFunctionTask, task, PodTemplate, Resources
@@ -39,6 +40,14 @@ config = RayJobConfig(
     head_node_config=HeadNodeConfig(requests=Resources(cpu="1", mem="1Gi"), limits=Resources(cpu="2", mem="2Gi")),
     runtime_env={"pip": ["numpy"]},
     enable_autoscaling=True,
+    autoscaler_options=AutoscalerOptionsConfig(
+        upscaling_mode=AutoscalerOptionsConfig.UpscalingMode.CONSERVATIVE,
+        idle_timeout_seconds=120,
+        image="rayproject/ray:2.9.0",
+        env={"lKeyA": "lValA"},
+        requests=Resources(cpu="1", mem="1Gi"),
+        limits=Resources(cpu="2", mem="2Gi"),
+    ),
     shutdown_after_job_finishes=True,
     ttl_seconds_after_finished=20,
 )
@@ -86,6 +95,16 @@ def test_ray_task():
             ],
             head_group_spec=HeadGroupSpec(k8s_pod=K8sPod.from_pod_template(head_pod_template)),
             enable_autoscaling=True,
+            autoscaler_options=AutoscalerOptions(
+                upscaling_mode=AutoscalerOptions.UpscalingMode.CONSERVATIVE,
+                idle_timeout_seconds=120,
+                image="rayproject/ray:2.9.0",
+                env={"lKeyA": "lValA"},
+                resources=convert_resources_to_resource_model(
+                    requests=Resources(cpu="1", mem="1Gi"),
+                    limits=Resources(cpu="2", mem="2Gi"),
+                ),
+            ),
         ),
         runtime_env=base64.b64encode(json.dumps({"pip": ["numpy"]}).encode()).decode(),
         runtime_env_yaml=yaml.dump({"pip": ["numpy"]}),

@@ -18,6 +18,7 @@ from mock import ANY, MagicMock, patch
 
 import flytekit.configuration
 from flytekit import CronSchedule, ImageSpec, LaunchPlan, WorkflowFailurePolicy, task, workflow, reference_task, map_task, dynamic, eager
+from flytekit.clients.grpc_utils.deadline_interceptor import scoped_grpc_deadline
 from flytekit.configuration import Config, DefaultImages, Image, ImageConfig, SerializationSettings
 from flytekit.core.base_task import PythonTask
 from flytekit.core.context_manager import FlyteContextManager
@@ -124,6 +125,35 @@ def test_remote_fetch_execution(remote):
     remote._client = mock_client
     flyte_workflow_execution = remote.fetch_execution(name="n1")
     assert flyte_workflow_execution.id == admin_workflow_execution.id
+
+
+def test_sync_execution_sets_default_rpc_deadline(remote):
+    execution = MagicMock()
+    with patch.object(remote, "_sync_execution", return_value=execution) as mock_sync:
+        with patch("flytekit.remote.remote.scoped_grpc_deadline") as mock_deadline:
+            assert remote.sync_execution(execution) is execution
+
+    mock_deadline.assert_called_once_with(60.0)
+    mock_sync.assert_called_once_with(execution, sync_nodes=False)
+
+
+def test_sync_execution_accepts_rpc_deadline_override(remote):
+    execution = MagicMock()
+    with patch.object(remote, "_sync_execution", return_value=execution):
+        with patch("flytekit.remote.remote.scoped_grpc_deadline") as mock_deadline:
+            assert remote.sync_execution(execution, rpc_timeout=5) is execution
+
+    mock_deadline.assert_called_once_with(5.0)
+
+
+def test_sync_execution_does_not_override_active_rpc_deadline(remote):
+    execution = MagicMock()
+    with patch.object(remote, "_sync_execution", return_value=execution):
+        with patch("flytekit.remote.remote.scoped_grpc_deadline") as mock_deadline:
+            with scoped_grpc_deadline(5):
+                assert remote.sync_execution(execution, rpc_timeout=30) is execution
+
+    mock_deadline.assert_not_called()
 
 
 @pytest.fixture

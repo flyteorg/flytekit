@@ -157,7 +157,6 @@ class PKCEAuthenticator(Authenticator):
                 return
             except AccessTokenNotFoundError:
                 logging.warning("Failed to refresh token. Kicking off a full authorization flow.")
-                KeyringStore.delete(self._endpoint)
 
         self._creds = self._auth_client.get_creds_from_remote()
         KeyringStore.store(self._creds)
@@ -183,10 +182,18 @@ class CommandAuthenticator(Authenticator):
         logging.debug("Starting external process to generate id token. Command `{}`".format(" ".join(cmd_joined)))
         try:
             output = subprocess.run(self._cmd, capture_output=True, text=True, check=True)
-        except subprocess.CalledProcessError:
-            logging.error("Failed to generate token from command `{}`".format(cmd_joined))
+        except subprocess.CalledProcessError as e:
+            logging.error(
+                "Failed to generate token from command `%s`. stdout: %s | stderr: %s",
+                cmd_joined,
+                e.stdout,
+                e.stderr,
+            )
             raise AuthenticationError(
-                f"Failed to refresh token with command `{cmd_joined}`. Please execute this command in your terminal to debug."
+                f"Failed to refresh token with command `{cmd_joined}`.\n"
+                f"stdout: {e.stdout}\n"
+                f"stderr: {e.stderr}\n"
+                f"Please execute this command in your terminal to debug."
             )
         self._creds = Credentials(output.stdout.strip())
 
@@ -317,7 +324,6 @@ class DeviceCodeAuthenticator(Authenticator):
                 return
             except (AuthenticationError, AuthenticationPending):
                 logging.warning("Failed to refresh token. Kicking off a full authorization flow.")
-                KeyringStore.delete(self._endpoint)
 
         """Fall back to device flow"""
         resp = token_client.get_device_code(
@@ -333,20 +339,16 @@ class DeviceCodeAuthenticator(Authenticator):
         full_uri = f"{resp.verification_uri}?user_code={resp.user_code}"
         text = f"To Authenticate, navigate in a browser to the following URL: {click.style(full_uri, fg='blue', underline=True)}"
         click.secho(text)
-        try:
-            token, refresh_token, expires_in = token_client.poll_token_endpoint(
-                resp,
-                self._token_endpoint,
-                client_id=self._client_id,
-                audience=self._audience,
-                scopes=self._scopes,
-                http_proxy_url=self._http_proxy_url,
-                verify=self._verify,
-            )
-            self._creds = Credentials(
-                access_token=token, refresh_token=refresh_token, expires_in=expires_in, for_endpoint=self._endpoint
-            )
-            KeyringStore.store(self._creds)
-        except Exception:
-            KeyringStore.delete(self._endpoint)
-            raise
+        token, refresh_token, expires_in = token_client.poll_token_endpoint(
+            resp,
+            self._token_endpoint,
+            client_id=self._client_id,
+            audience=self._audience,
+            scopes=self._scopes,
+            http_proxy_url=self._http_proxy_url,
+            verify=self._verify,
+        )
+        self._creds = Credentials(
+            access_token=token, refresh_token=refresh_token, expires_in=expires_in, for_endpoint=self._endpoint
+        )
+        KeyringStore.store(self._creds)

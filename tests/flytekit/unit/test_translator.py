@@ -1,8 +1,12 @@
 import typing
 from collections import OrderedDict
 
+import pytest
+from kubernetes import client
+from kubernetes.client import V1Container, V1PodSpec
+
 import flytekit.configuration
-from flytekit import ContainerTask, Resources, PodTemplate
+from flytekit import ContainerTask, PodTemplate, Resources, map_task
 from flytekit.configuration import FastSerializationSettings, Image, ImageConfig
 from flytekit.core.base_task import kwtypes
 from flytekit.core.launch_plan import LaunchPlan, ReferenceLaunchPlan
@@ -13,9 +17,6 @@ from flytekit.deck import Deck
 from flytekit.models.core import identifier as identifier_models
 from flytekit.models.task import Resources as resource_model
 from flytekit.tools.translator import get_serializable
-from kubernetes import client
-from kubernetes.client import V1PodSpec, V1Container
-import pytest
 
 default_img = Image(name="default", fqn="test", tag="tag")
 serialization_settings = flytekit.configuration.SerializationSettings(
@@ -234,3 +235,119 @@ def test_task_with_pod_template_override(fast_registration_enabled: bool):
     assert len(pod_template_override.pod_spec['containers']) == 1
     container = pod_template_override.pod_spec['containers'][0]
     assert container['env'] == [{'name': 'MY_KEY', 'value': 'MY_VALUE'}]
+
+
+@pytest.mark.parametrize(
+    "fast_registration_enabled",
+    [
+        pytest.param(True, id="fast registration enabled"),
+        pytest.param(False, id="fast registration disabled"),
+    ],
+)
+def test_map_task_with_pod_template_override(fast_registration_enabled: bool):
+    # Regression test for https://github.com/flyteorg/flyte/issues/7076
+    # map_task(...).with_overrides(pod_template=...) was silently dropped at serialization.
+    custom_pod_template = PodTemplate(
+        primary_container_name="primary",
+        labels={"lKeyA": "lValA"},
+        annotations={"aKeyA": "aValA"},
+        pod_spec=V1PodSpec(
+            containers=[
+                V1Container(
+                    name="primary",
+                    env=[client.V1EnvVar(name="MY_KEY", value="MY_VALUE")],
+                )
+            ]
+        ),
+    )
+
+    @task
+    def t(a: int) -> str:
+        return str(a)
+
+    @workflow
+    def wf(xs: typing.List[int]):
+        map_task(t)(a=xs).with_overrides(pod_template=custom_pod_template)
+
+    settings = (
+        serialization_settings.new_builder()
+        .with_fast_serialization_settings(FastSerializationSettings(enabled=fast_registration_enabled))
+        .build()
+    )
+
+    wf_spec = get_serializable(OrderedDict(), settings, wf)
+    assert len(wf_spec.template.nodes) == 1
+    node = wf_spec.template.nodes[0]
+    # map_task is serialized as an array_node wrapping an inner task node
+    assert node.array_node is not None
+    inner_task_node = node.array_node.node.task_node
+    assert inner_task_node is not None
+    assert inner_task_node.overrides.pod_template is not None
+    pod_template_override = inner_task_node.overrides.pod_template
+    assert pod_template_override.primary_container_name == "primary"
+    assert pod_template_override.labels == {"lKeyA": "lValA"}
+    assert pod_template_override.annotations == {"aKeyA": "aValA"}
+    assert pod_template_override.pod_spec  # validate not empty
+    assert len(pod_template_override.pod_spec["containers"]) == 1
+    container = pod_template_override.pod_spec["containers"][0]
+    assert {"name": "MY_KEY", "value": "MY_VALUE"} in container["env"]
+
+
+@pytest.mark.parametrize(
+    "fast_registration_enabled",
+    [
+        pytest.param(True, id="fast registration enabled"),
+        pytest.param(False, id="fast registration disabled"),
+    ],
+)
+def test_map_task_with_pod_template_override_replaces_task_pod_template(fast_registration_enabled: bool):
+    # Ensure with_overrides(pod_template=...) on a map_task whose underlying task
+    # already declares a pod_template still surfaces the override at the array_node.
+    base_pod_template = PodTemplate(
+        primary_container_name="primary",
+        labels={"lKeyBase": "lValBase"},
+        annotations={"aKeyBase": "aValBase"},
+    )
+    override_pod_template = PodTemplate(
+        primary_container_name="primary",
+        labels={"lKeyOverride": "lValOverride"},
+        annotations={"aKeyOverride": "aValOverride"},
+        pod_spec=V1PodSpec(
+            containers=[
+                V1Container(
+                    name="primary",
+                    env=[client.V1EnvVar(name="OVERRIDE_KEY", value="OVERRIDE_VALUE")],
+                )
+            ]
+        ),
+    )
+
+    @task(pod_template=base_pod_template)
+    def t(a: int) -> str:
+        return str(a)
+
+    @workflow
+    def wf(xs: typing.List[int]):
+        map_task(t)(a=xs).with_overrides(pod_template=override_pod_template)
+
+    settings = (
+        serialization_settings.new_builder()
+        .with_fast_serialization_settings(FastSerializationSettings(enabled=fast_registration_enabled))
+        .build()
+    )
+
+    wf_spec = get_serializable(OrderedDict(), settings, wf)
+    assert len(wf_spec.template.nodes) == 1
+    node = wf_spec.template.nodes[0]
+    assert node.array_node is not None
+    inner_task_node = node.array_node.node.task_node
+    assert inner_task_node is not None
+    assert inner_task_node.overrides.pod_template is not None
+    pod_template_override = inner_task_node.overrides.pod_template
+    assert pod_template_override.primary_container_name == "primary"
+    assert pod_template_override.labels == {"lKeyOverride": "lValOverride"}
+    assert pod_template_override.annotations == {"aKeyOverride": "aValOverride"}
+    assert pod_template_override.pod_spec  # validate not empty
+    assert len(pod_template_override.pod_spec["containers"]) == 1
+    container = pod_template_override.pod_spec["containers"][0]
+    assert {"name": "OVERRIDE_KEY", "value": "OVERRIDE_VALUE"} in container["env"]

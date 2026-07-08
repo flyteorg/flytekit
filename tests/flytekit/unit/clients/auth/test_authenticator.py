@@ -12,7 +12,7 @@ from flytekit.clients.auth.authenticator import (
     PKCEAuthenticator,
     StaticClientConfigStore,
 )
-from flytekit.clients.auth.exceptions import AuthenticationError, AccessTokenNotFoundError
+from flytekit.clients.auth.exceptions import AccessTokenNotFoundError, AuthenticationError
 from flytekit.clients.auth.keyring import Credentials
 from flytekit.clients.auth.token_client import DeviceCodeResponse
 
@@ -51,6 +51,25 @@ def test_pkce_authenticator(mock_refresh: MagicMock, mock_get_creds: MagicMock, 
     mock_refresh.assert_called()
 
 
+@patch("flytekit.clients.auth.authenticator.KeyringStore")
+@patch("flytekit.clients.auth.auth_client.AuthorizationClient.get_creds_from_remote")
+@patch("flytekit.clients.auth.auth_client.AuthorizationClient.refresh_access_token")
+def test_pkce_refresh_failure_keeps_cached_credentials(
+    mock_refresh: MagicMock, mock_get_creds: MagicMock, mock_keyring: MagicMock
+):
+    # A cached token exists, but refreshing it fails.
+    mock_keyring.retrieve.return_value = Credentials("access", "refresh", ENDPOINT)
+    mock_refresh.side_effect = AccessTokenNotFoundError("expired")
+
+    authn = PKCEAuthenticator(ENDPOINT, static_cfg_store, verify=False)
+    authn.refresh_credentials()
+
+    # A failed refresh must not delete the cached credentials
+    mock_keyring.delete.assert_not_called()
+    mock_get_creds.assert_called_once()
+    mock_keyring.store.assert_called()
+
+
 @patch("subprocess.run")
 def test_command_authenticator(mock_subprocess: MagicMock):
     with pytest.raises(AuthenticationError):
@@ -62,10 +81,14 @@ def test_command_authenticator(mock_subprocess: MagicMock):
     assert authn._creds
     mock_subprocess.assert_called()
 
-    mock_subprocess.side_effect = subprocess.CalledProcessError(-1, ["x"])
+    mock_subprocess.side_effect = subprocess.CalledProcessError(
+        returncode=-1, cmd=["x"], output="some stdout output", stderr="Please run 'az login' to setup account"
+    )
 
-    with pytest.raises(AuthenticationError):
+    with pytest.raises(AuthenticationError, match="Please run 'az login'") as excinfo:
         authn.refresh_credentials()
+    assert "some stdout output" in str(excinfo.value)
+    assert "Please run 'az login' to setup account" in str(excinfo.value)
 
 
 @patch("flytekit.clients.auth.token_client.requests.Session")
