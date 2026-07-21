@@ -242,7 +242,7 @@ jobs:
           make setup-global-uv
           uv pip freeze
       - name: Install FlyteCTL
-        uses: unionai-oss/flytectl-setup-action@master
+        uses: unionai-oss/flytectl-setup-action@v0.0.4
       - name: Setup Flyte Sandbox
         run: |
           flytectl demo start --disable-agent
@@ -418,6 +418,12 @@ jobs:
           # TODO: remove this when numpy v2 in onnx has been resolved
           if [[ ${{ matrix.plugin-names }} == *"onnx"* || ${{ matrix.plugin-names }} == "flytekit-sqlalchemy" || ${{ matrix.plugin-names }} == "flytekit-pandera" ]]; then
             uv pip install --system "numpy<2.0.0"
+          fi
+          # The -U step above re-resolves aiohttp (a flytekit dependency) back to the latest,
+          # which aioresponses (spark test dep) cannot build a mocked ClientResponse against on
+          # 3.14. Re-pin it after the upgrade. See https://github.com/flyteorg/flyte/issues/7604.
+          if [[ ${{ matrix.plugin-names }} == "flytekit-spark" ]]; then
+            uv pip install --system "aiohttp<3.14"
           fi
           uv pip freeze
       - name: Test with coverage

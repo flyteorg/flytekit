@@ -2,6 +2,7 @@ import importlib
 import os
 import subprocess
 import sys
+from typing import Dict, Optional
 
 from flyteidl.core import literals_pb2 as _literals_pb2
 
@@ -63,14 +64,27 @@ def get_task_inputs(task_module_name, task_name, context_working_dir):
     return native_inputs
 
 
-def execute_command(cmd):
+def execute_command(cmd: str, env: Optional[Dict[str, str]] = None):
     """
     Execute a command in the shell.
+
+    Args:
+        cmd (str): The command to execute.
+        env (Optional[Dict[str, str]]): Environment variables to set for the subprocess. These are merged on top of
+            the current process environment, so callers can override specific variables (e.g. ``PORT``) without
+            dropping the rest of the inherited environment.
+
+    Raises:
+        RuntimeError: If the command exits with a non-zero return code.
     """
 
     logger = flytekit.current_context().logging
 
-    process = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    subprocess_env = None
+    if env is not None:
+        subprocess_env = {**os.environ, **env}
+
+    process = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=subprocess_env)
     logger.info(f"cmd: {cmd}")
     stdout, stderr = process.communicate()
     if process.returncode != EXIT_CODE_SUCCESS:
