@@ -13,9 +13,9 @@ import os
 from datetime import timedelta
 from typing import List
 
-import flytekit as fl
 from flytekitplugins.sleep import Sleep
 
+import flytekit as fl
 from flytekit import map_task, task, workflow
 
 sleep_image = fl.ImageSpec(
@@ -51,13 +51,21 @@ if __name__ == "__main__":
     runner = CliRunner()
     path = os.path.realpath(__file__)
 
-    result = runner.invoke(pyflyte.main, [
-        "--config", os.path.expanduser("~/.flyte/config-sandbox.yaml"),
-        "run", "--remote",
-        path, "wf",
-        "--sleep_duration", "10s",
-        "--n_children", "400",
-    ])
+    result = runner.invoke(
+        pyflyte.main,
+        [
+            "--config",
+            os.path.expanduser("~/.flyte/config-sandbox.yaml"),
+            "run",
+            "--remote",
+            path,
+            "wf",
+            "--sleep_duration",
+            "10s",
+            "--n_children",
+            "400",
+        ],
+    )
     print(result.output)
     if result.exception:
         raise result.exception

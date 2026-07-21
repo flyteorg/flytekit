@@ -14,10 +14,7 @@ from flytekitplugins.sleep import Sleep
 from flytekit import task, workflow
 
 
-@task(
-    cache_version="2",
-    task_config=Sleep()
-)
+@task(cache_version="2", task_config=Sleep())
 def sleep_for(duration: timedelta) -> None:
     # This body only runs during local execution.
     # On the cluster, the backend sleeps for `duration` without running this.
@@ -36,5 +33,17 @@ if __name__ == "__main__":
 
     runner = CliRunner()
     path = os.path.realpath(__file__)
-    result = runner.invoke(pyflyte.main, ["--config", os.path.expanduser("~/.flyte/config-sandbox.yaml"), "run", "--remote", path, "wf", "--duration", "10s"])
+    result = runner.invoke(
+        pyflyte.main,
+        [
+            "--config",
+            os.path.expanduser("~/.flyte/config-sandbox.yaml"),
+            "run",
+            "--remote",
+            path,
+            "wf",
+            "--duration",
+            "10s",
+        ],
+    )
     print("Remote Execution: ", result.output)

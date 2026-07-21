@@ -16,9 +16,9 @@ Usage (remote):
 import os
 from datetime import timedelta
 
-import flytekit as fl
 from flytekitplugins.sleep import Sleep
 
+import flytekit as fl
 from flytekit import dynamic, task, workflow
 
 fanout_image = fl.ImageSpec(
@@ -56,13 +56,21 @@ if __name__ == "__main__":
     runner = CliRunner()
     path = os.path.realpath(__file__)
 
-    result = runner.invoke(pyflyte.main, [
-        "--config", os.path.expanduser("~/.flyte/config-sandbox.yaml"),
-        "run", "--remote",
-        path, "wf",
-        "--n_children", "400",
-        "--sleep_duration", "10s",
-    ])
+    result = runner.invoke(
+        pyflyte.main,
+        [
+            "--config",
+            os.path.expanduser("~/.flyte/config-sandbox.yaml"),
+            "run",
+            "--remote",
+            path,
+            "wf",
+            "--n_children",
+            "400",
+            "--sleep_duration",
+            "10s",
+        ],
+    )
     print(result.output)
     if result.exception:
         raise result.exception
