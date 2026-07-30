@@ -51,3 +51,30 @@ stringData:
 The namespace Secret takes precedence over connector-level credentials.
 `get` and `delete` operations cache short-lived OAuth tokens and retry once
 with a refreshed token when the Databricks API returns HTTP 401.
+
+### OIDC workload identity federation
+
+The connector can exchange its own projected workload JWT for a short-lived
+Databricks token without storing a client secret:
+
+```yaml
+env:
+  - name: FLYTE_DATABRICKS_AUTH_TYPE
+    value: oidc_federation
+  - name: DATABRICKS_CLIENT_ID
+    value: "<service-principal-client-id>"
+  - name: FLYTE_DATABRICKS_OIDC_TOKEN_FILE
+    value: /var/run/secrets/databricks/token
+```
+
+The token file is resolved in this order:
+
+1. `databricks_oidc_token_file` task override or
+   `FLYTE_DATABRICKS_OIDC_TOKEN_FILE`
+2. `AWS_WEB_IDENTITY_TOKEN_FILE`
+3. `/var/run/secrets/databricks/token`
+
+The connector deployment is responsible for projecting a JWT at one of these
+paths and configuring a matching federation policy for the Databricks service
+principal. PAT remains the default unless `oidc_federation` is selected
+explicitly.

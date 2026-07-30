@@ -90,11 +90,16 @@ class DatabricksV2(Spark):
         databricks_token_secret (Optional[str]): Custom name for the K8s secret containing
             the Databricks token. Defaults to 'databricks-token' if not specified.
         databricks_auth_type (Optional[str]): Authentication mode. Supported values are
-            ``"pat"`` and ``"oauth_m2m"``. When unset, PAT remains the default.
+            ``"pat"``, ``"oauth_m2m"``, and ``"oidc_federation"``. When unset, PAT
+            remains the default.
         databricks_client_id (Optional[str]): Databricks service-principal client ID used
             for OAuth M2M. Falls back to ``DATABRICKS_CLIENT_ID`` on the connector.
         databricks_oauth_secret (Optional[str]): Name of the namespace K8s secret containing
             ``client_id`` and ``client_secret``. Defaults to ``databricks-oauth``.
+        databricks_oidc_token_file (Optional[str]): Path to the connector workload's
+            projected OIDC JWT. Falls back to ``AWS_WEB_IDENTITY_TOKEN_FILE``.
+        databricks_oidc_audience (Optional[str]): Audience associated with the projected
+            JWT. Defaults to ``databricks``.
         notebook_path (Optional[str]): Path to Databricks notebook
             (e.g., "/Users/user@example.com/notebook").
         notebook_base_parameters (Optional[Dict[str, str]]): Parameters to pass to the notebook.
@@ -208,6 +213,8 @@ class DatabricksV2(Spark):
     databricks_auth_type: Optional[str] = None
     databricks_client_id: Optional[str] = None
     databricks_oauth_secret: Optional[str] = None
+    databricks_oidc_token_file: Optional[str] = None
+    databricks_oidc_audience: Optional[str] = None
     notebook_path: Optional[str] = None
     notebook_base_parameters: Optional[Dict[str, str]] = None
 
@@ -329,6 +336,10 @@ class PysparkFunctionTask(AsyncConnectorExecutorMixin, PythonFunctionTask[Spark]
                 custom_dict["databricksClientId"] = cfg.databricks_client_id
             if cfg.databricks_oauth_secret:
                 custom_dict["databricksOauthSecret"] = cfg.databricks_oauth_secret
+            if cfg.databricks_oidc_token_file:
+                custom_dict["databricksOidcTokenFile"] = cfg.databricks_oidc_token_file
+            if cfg.databricks_oidc_audience:
+                custom_dict["databricksOidcAudience"] = cfg.databricks_oidc_audience
             if cfg.notebook_path:
                 custom_dict["notebookPath"] = cfg.notebook_path
             if cfg.notebook_base_parameters:
