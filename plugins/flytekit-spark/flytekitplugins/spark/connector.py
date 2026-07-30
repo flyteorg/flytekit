@@ -43,6 +43,7 @@ class DatabricksJobMetadata(ResourceMeta):
     client_id: Optional[str] = None
     oauth_secret_name: Optional[str] = None
     oidc_token_file: Optional[str] = None
+    oidc_service_account: Optional[str] = None
     oidc_audience: Optional[str] = None
     namespace: Optional[str] = None
 
@@ -307,15 +308,24 @@ class DatabricksConnector(AsyncConnectorBase):
                     raise RuntimeError(f"Failed to create databricks job with error: {response}")
 
         logger.info(f"Successfully created Databricks job with run_id: {response['run_id']}")
+        discovered = getattr(auth, "discovered", None)
+        persisted_client_id = discovered.client_id if discovered is not None else auth.settings.client_id
+        persisted_service_account = discovered.service_account if discovered is not None else None
+        persisted_audience = (
+            discovered.audience
+            if discovered is not None
+            else (auth.settings.oidc_audience if auth.auth_type == "oidc_federation" else None)
+        )
         return DatabricksJobMetadata(
             databricks_instance=databricks_instance,
             run_id=str(response["run_id"]),
             auth_token=auth_token if auth.auth_type == "pat" else None,
             auth_type=auth.auth_type,
-            client_id=auth.settings.client_id,
+            client_id=persisted_client_id,
             oauth_secret_name=auth.settings.oauth_secret_name,
             oidc_token_file=(auth.settings.oidc_token_file if auth.auth_type == "oidc_federation" else None),
-            oidc_audience=(auth.settings.oidc_audience if auth.auth_type == "oidc_federation" else None),
+            oidc_service_account=persisted_service_account,
+            oidc_audience=persisted_audience,
             namespace=namespace,
         )
 
@@ -392,6 +402,7 @@ class DatabricksConnector(AsyncConnectorBase):
                 oauth_secret_name=resource_meta.oauth_secret_name,
                 oidc_token_file=resource_meta.oidc_token_file,
                 oidc_audience=resource_meta.oidc_audience,
+                oidc_service_account=resource_meta.oidc_service_account,
             )
 
         token = resource_meta.auth_token
@@ -435,6 +446,32 @@ class DatabricksConnectorV2(DatabricksConnector):
 
     def __init__(self):
         super(DatabricksConnector, self).__init__(task_type_name="databricks", metadata_type=DatabricksJobMetadata)
+
+
+def list_serviceaccounts_in_k8s(namespace: str, label_selector: Optional[str] = None) -> list:
+    """List labelled ServiceAccounts in a workflow namespace."""
+    try:
+        from kubernetes import client, config
+
+        try:
+            config.load_incluster_config()
+        except config.ConfigException:
+            config.load_kube_config()
+
+        arguments = {"namespace": namespace}
+        if label_selector:
+            arguments["label_selector"] = label_selector
+        response = client.CoreV1Api().list_namespaced_service_account(**arguments)
+        return list(response.items or [])
+    except ImportError:
+        logger.warning("Kubernetes Python client is unavailable; skipping namespace " "ServiceAccount discovery")
+    except Exception as error:
+        logger.warning(
+            "Unable to discover ServiceAccounts in namespace '%s': %s",
+            namespace,
+            error,
+        )
+    return []
 
 
 def get_secret_from_k8s(secret_name: str, secret_key: str, namespace: str) -> Optional[str]:

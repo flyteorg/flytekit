@@ -30,9 +30,15 @@ DATABRICKS_CLIENT_ID_ENV = "DATABRICKS_CLIENT_ID"
 DATABRICKS_CLIENT_SECRET_ENV = "DATABRICKS_CLIENT_SECRET"
 AWS_WEB_IDENTITY_TOKEN_FILE_ENV = "AWS_WEB_IDENTITY_TOKEN_FILE"
 
+LABEL_DATABRICKS_ENABLED = "flyte.org/databricks-enabled"
+ANNOTATION_DATABRICKS_CLIENT_ID = "flyte.org/databricks-client-id"
+ANNOTATION_DATABRICKS_AUDIENCE = "flyte.org/databricks-audience"
+DATABRICKS_ENABLED_LABEL_SELECTOR = f"{LABEL_DATABRICKS_ENABLED}=true"
+
 DEFAULT_OAUTH_SECRET_NAME = "databricks-oauth"
 DEFAULT_OIDC_AUDIENCE = "databricks"
 DEFAULT_PROJECTED_SA_TOKEN_PATH = "/var/run/secrets/databricks/token"
+NAMESPACE_DISCOVERY_CACHE_TTL_SECONDS = 300
 TOKEN_REFRESH_BUFFER_SECONDS = 60
 TOKEN_ENDPOINT_MAX_RETRIES = 3
 TOKEN_ENDPOINT_BACKOFF_BASE_SECONDS = 0.2
@@ -144,6 +150,53 @@ class _TokenCache:
 _TOKEN_CACHE = _TokenCache()
 
 
+@dataclass
+class _DiscoveredOIDCConfig:
+    service_account: str
+    client_id: str
+    audience: str
+
+
+@dataclass
+class _CachedDiscovery:
+    config: Optional[_DiscoveredOIDCConfig]
+    expires_at: float
+
+
+class _NamespaceDiscoveryCache:
+    """Cache namespace ServiceAccount discovery results, including misses."""
+
+    def __init__(self) -> None:
+        self._store: Dict[str, _CachedDiscovery] = {}
+        self._lock = asyncio.Lock()
+
+    async def get(self, namespace: str) -> Tuple[bool, Optional[_DiscoveredOIDCConfig]]:
+        async with self._lock:
+            entry = self._store.get(namespace)
+            if entry is None or entry.expires_at <= time.time():
+                self._store.pop(namespace, None)
+                return False, None
+            return True, entry.config
+
+    async def put(
+        self,
+        namespace: str,
+        config: Optional[_DiscoveredOIDCConfig],
+    ) -> None:
+        async with self._lock:
+            self._store[namespace] = _CachedDiscovery(
+                config=config,
+                expires_at=time.time() + NAMESPACE_DISCOVERY_CACHE_TTL_SECONDS,
+            )
+
+    async def invalidate(self, namespace: str) -> None:
+        async with self._lock:
+            self._store.pop(namespace, None)
+
+
+_NAMESPACE_DISCOVERY_CACHE = _NamespaceDiscoveryCache()
+
+
 async def _post_token(
     session: "aiohttp.ClientSession",  # type: ignore[name-defined]
     workspace_url: str,
@@ -186,6 +239,112 @@ async def _post_token(
     raise DatabricksAuthError(
         f"Databricks token endpoint failed after {TOKEN_ENDPOINT_MAX_RETRIES} attempts: {last_error}"
     )
+
+
+def _discover_namespace_oidc_sa_sync(
+    namespace: str,
+    default_audience: str,
+) -> Optional[_DiscoveredOIDCConfig]:
+    """Discover exactly one labelled and annotated ServiceAccount."""
+    from .connector import list_serviceaccounts_in_k8s
+
+    service_accounts = list_serviceaccounts_in_k8s(
+        namespace=namespace,
+        label_selector=DATABRICKS_ENABLED_LABEL_SELECTOR,
+    )
+    matches = []
+    for service_account in service_accounts:
+        metadata = service_account.metadata
+        annotations = (metadata.annotations or {}) if metadata else {}
+        client_id = (annotations.get(ANNOTATION_DATABRICKS_CLIENT_ID) or "").strip()
+        if not client_id:
+            continue
+        audience = (annotations.get(ANNOTATION_DATABRICKS_AUDIENCE) or "").strip() or default_audience
+        matches.append(
+            _DiscoveredOIDCConfig(
+                service_account=metadata.name,
+                client_id=client_id,
+                audience=audience,
+            )
+        )
+
+    if not matches:
+        return None
+    if len(matches) > 1:
+        names = ", ".join(sorted(match.service_account for match in matches))
+        raise DatabricksAuthError(
+            f"Multiple Databricks-enabled ServiceAccounts found in namespace "
+            f"'{namespace}': {names}. Configure exactly one."
+        )
+    return matches[0]
+
+
+async def _discover_namespace_oidc_sa(
+    namespace: str,
+    default_audience: str,
+) -> Optional[_DiscoveredOIDCConfig]:
+    cached, config = await _NAMESPACE_DISCOVERY_CACHE.get(namespace)
+    if cached:
+        return config
+    loop = asyncio.get_running_loop()
+    config = await loop.run_in_executor(
+        None,
+        _discover_namespace_oidc_sa_sync,
+        namespace,
+        default_audience,
+    )
+    await _NAMESPACE_DISCOVERY_CACHE.put(namespace, config)
+    return config
+
+
+def _request_service_account_token(
+    namespace: str,
+    service_account: str,
+    audience: str,
+    expiration_seconds: int = 3600,
+) -> str:
+    """Mint a projected JWT through the Kubernetes TokenRequest API."""
+    try:
+        from kubernetes import client, config
+        from kubernetes.client.exceptions import ApiException
+    except ImportError as error:
+        raise DatabricksAuthError(
+            "Kubernetes Python client is required for namespace ServiceAccount federation"
+        ) from error
+
+    try:
+        config.load_incluster_config()
+    except config.ConfigException:
+        try:
+            config.load_kube_config()
+        except Exception as error:
+            raise DatabricksAuthError(f"Unable to load Kubernetes configuration: {error}") from error
+
+    request = client.AuthenticationV1TokenRequest(
+        spec=client.V1TokenRequestSpec(
+            audiences=[audience],
+            expiration_seconds=expiration_seconds,
+        )
+    )
+    try:
+        response = client.CoreV1Api().create_namespaced_service_account_token(
+            name=service_account,
+            namespace=namespace,
+            body=request,
+        )
+    except ApiException as error:
+        if error.status == 404:
+            raise DatabricksAuthError(f"ServiceAccount '{namespace}/{service_account}' was not found") from error
+        if error.status == 403:
+            raise DatabricksAuthError(
+                f"Connector is forbidden from creating a token for " f"'{namespace}/{service_account}'"
+            ) from error
+        raise DatabricksAuthError(f"TokenRequest failed for '{namespace}/{service_account}': {error}") from error
+
+    token = response.status.token
+    if not token:
+        raise DatabricksAuthError(f"TokenRequest for '{namespace}/{service_account}' returned an empty token")
+    return token
 
 
 class DatabricksAuth(ABC):
@@ -375,6 +534,75 @@ class OIDCConnectorAuth(DatabricksAuth):
         await _TOKEN_CACHE.invalidate(self._cache_key(self._client_id()))
 
 
+class OIDCNamespaceServiceAccountAuth(DatabricksAuth):
+    """Federate as a ServiceAccount discovered in the workflow namespace."""
+
+    auth_type = "oidc_federation"
+    strategy_name = "OIDCNamespaceServiceAccountAuth"
+
+    def __init__(
+        self,
+        workspace_url: str,
+        settings: _Settings,
+        discovered: _DiscoveredOIDCConfig,
+    ):
+        super().__init__(workspace_url, settings)
+        self.discovered = discovered
+
+    @property
+    def cache_key(self) -> Tuple[str, str, str]:
+        return (
+            self.workspace_url,
+            self.discovered.client_id,
+            (
+                f"serviceaccount:{self.settings.namespace}:"
+                f"{self.discovered.service_account}:{self.discovered.audience}"
+            ),
+        )
+
+    async def get_bearer_token(self, session: "aiohttp.ClientSession") -> str:  # type: ignore[name-defined]
+        if not self.settings.namespace:
+            raise DatabricksAuthError("Namespace ServiceAccount federation requires a workflow namespace")
+
+        cached = await _TOKEN_CACHE.get(self.cache_key)
+        if cached:
+            return cached
+
+        loop = asyncio.get_running_loop()
+        subject_token = await loop.run_in_executor(
+            None,
+            _request_service_account_token,
+            self.settings.namespace,
+            self.discovered.service_account,
+            self.discovered.audience,
+        )
+        payload = await _post_token(
+            session,
+            self.workspace_url,
+            {
+                "grant_type": "urn:ietf:params:oauth:grant-type:token-exchange",
+                "scope": "all-apis",
+                "client_id": self.discovered.client_id,
+                "subject_token": subject_token,
+                "subject_token_type": "urn:ietf:params:oauth:token-type:jwt",
+            },
+        )
+        access_token = payload.get("access_token")
+        if not access_token:
+            raise DatabricksAuthError("Databricks OIDC response did not contain access_token")
+        await _TOKEN_CACHE.put(
+            self.cache_key,
+            access_token,
+            int(payload.get("expires_in", 3600)),
+        )
+        return access_token
+
+    async def invalidate_cache(self) -> None:
+        await _TOKEN_CACHE.invalidate(self.cache_key)
+        if self.settings.namespace:
+            await _NAMESPACE_DISCOVERY_CACHE.invalidate(self.settings.namespace)
+
+
 async def select_auth(
     task_template: Optional[TaskTemplate],
     workspace_url: str,
@@ -390,6 +618,17 @@ async def select_auth(
     if auth_type == "oauth_m2m":
         return OAuthM2MAuth(workspace_url, settings)
     if auth_type == "oidc_federation":
+        if namespace:
+            discovered = await _discover_namespace_oidc_sa(
+                namespace,
+                settings.oidc_audience,
+            )
+            if discovered:
+                return OIDCNamespaceServiceAccountAuth(
+                    workspace_url,
+                    settings,
+                    discovered,
+                )
         return OIDCConnectorAuth(workspace_url, settings)
     return PATAuth(workspace_url, settings)
 
@@ -402,6 +641,7 @@ def build_auth(
     oauth_secret_name: Optional[str] = None,
     oidc_token_file: Optional[str] = None,
     oidc_audience: Optional[str] = None,
+    oidc_service_account: Optional[str] = None,
 ) -> DatabricksAuth:
     """Rebuild an auth strategy from persisted connector metadata."""
     settings = _Settings(
@@ -419,6 +659,20 @@ def build_auth(
     if auth_type == "pat":
         return PATAuth(workspace_url, settings)
     if auth_type == "oidc_federation":
+        if oidc_service_account:
+            if not namespace or not client_id:
+                raise DatabricksAuthError(
+                    "Rebuilding namespace ServiceAccount federation requires " "namespace and client_id metadata"
+                )
+            return OIDCNamespaceServiceAccountAuth(
+                workspace_url,
+                settings,
+                _DiscoveredOIDCConfig(
+                    service_account=oidc_service_account,
+                    client_id=client_id,
+                    audience=oidc_audience or DEFAULT_OIDC_AUDIENCE,
+                ),
+            )
         return OIDCConnectorAuth(workspace_url, settings)
     raise DatabricksAuthError(
         f"Invalid Databricks auth type '{auth_type}'. Expected one of {sorted(VALID_AUTH_TYPES)}."

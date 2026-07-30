@@ -10,13 +10,20 @@ from aioresponses import aioresponses
 from flytekitplugins.spark.databricks_auth import (
     DEFAULT_OIDC_AUDIENCE,
     DEFAULT_OAUTH_SECRET_NAME,
+    DATABRICKS_ENABLED_LABEL_SELECTOR,
     DatabricksAuthError,
     OIDCConnectorAuth,
+    OIDCNamespaceServiceAccountAuth,
     OAuthM2MAuth,
     PATAuth,
+    _DiscoveredOIDCConfig,
+    _NAMESPACE_DISCOVERY_CACHE,
     _TokenCache,
     _Settings,
+    _discover_namespace_oidc_sa,
+    _discover_namespace_oidc_sa_sync,
     _post_token,
+    _request_service_account_token,
     _resolve_oidc_token_file,
     build_auth,
     select_auth,
@@ -27,6 +34,18 @@ def _task_template(**custom):
     task_template = MagicMock()
     task_template.custom = custom
     return task_template
+
+
+def _service_account(name, client_id=None, audience=None):
+    annotations = {}
+    if client_id is not None:
+        annotations["flyte.org/databricks-client-id"] = client_id
+    if audience is not None:
+        annotations["flyte.org/databricks-audience"] = audience
+    service_account = MagicMock()
+    service_account.metadata.name = name
+    service_account.metadata.annotations = annotations or None
+    return service_account
 
 
 @pytest.fixture(autouse=True)
@@ -579,3 +598,273 @@ async def test_connector_create_persists_oidc_metadata(tmp_path):
     assert result.client_id == "connector-client"
     assert result.oidc_token_file == str(token_file)
     assert result.oidc_audience == "example-audience"
+
+
+@pytest.mark.asyncio
+async def test_select_oidc_uses_discovered_namespace_service_account():
+    discovered = _DiscoveredOIDCConfig(
+        service_account="databricks-workload",
+        client_id="namespace-client",
+        audience="databricks",
+    )
+    with patch(
+        "flytekitplugins.spark.databricks_auth._discover_namespace_oidc_sa",
+        AsyncMock(return_value=discovered),
+    ):
+        auth = await select_auth(
+            task_template=_task_template(databricksAuthType="oidc_federation"),
+            workspace_url="namespace-select.cloud.databricks.com",
+            namespace="project-namespace-select",
+        )
+
+    assert isinstance(auth, OIDCNamespaceServiceAccountAuth)
+    assert auth.discovered == discovered
+
+
+@pytest.mark.asyncio
+async def test_select_oidc_falls_back_to_connector_identity():
+    with patch(
+        "flytekitplugins.spark.databricks_auth._discover_namespace_oidc_sa",
+        AsyncMock(return_value=None),
+    ):
+        auth = await select_auth(
+            task_template=_task_template(databricksAuthType="oidc_federation"),
+            workspace_url="namespace-fallback.cloud.databricks.com",
+            namespace="project-namespace-fallback",
+        )
+
+    assert isinstance(auth, OIDCConnectorAuth)
+
+
+def test_namespace_discovery_returns_none_without_match():
+    with patch(
+        "flytekitplugins.spark.connector.list_serviceaccounts_in_k8s",
+        return_value=[],
+    ) as list_serviceaccounts:
+        result = _discover_namespace_oidc_sa_sync("project-empty", "databricks")
+
+    assert result is None
+    list_serviceaccounts.assert_called_once_with(
+        namespace="project-empty",
+        label_selector=DATABRICKS_ENABLED_LABEL_SELECTOR,
+    )
+
+
+def test_namespace_discovery_reads_annotations():
+    service_account = _service_account(
+        "databricks-workload",
+        client_id="namespace-client",
+        audience="custom-audience",
+    )
+    with patch(
+        "flytekitplugins.spark.connector.list_serviceaccounts_in_k8s",
+        return_value=[service_account],
+    ):
+        result = _discover_namespace_oidc_sa_sync("project-one", "databricks")
+
+    assert result == _DiscoveredOIDCConfig(
+        service_account="databricks-workload",
+        client_id="namespace-client",
+        audience="custom-audience",
+    )
+
+
+def test_namespace_discovery_uses_default_audience():
+    service_account = _service_account(
+        "databricks-workload",
+        client_id="namespace-client",
+    )
+    with patch(
+        "flytekitplugins.spark.connector.list_serviceaccounts_in_k8s",
+        return_value=[service_account],
+    ):
+        result = _discover_namespace_oidc_sa_sync("project-default-audience", "default-audience")
+
+    assert result.audience == "default-audience"
+
+
+def test_namespace_discovery_skips_missing_client_id():
+    service_account = _service_account("databricks-workload")
+    with patch(
+        "flytekitplugins.spark.connector.list_serviceaccounts_in_k8s",
+        return_value=[service_account],
+    ):
+        result = _discover_namespace_oidc_sa_sync("project-misconfigured", "databricks")
+
+    assert result is None
+
+
+def test_namespace_discovery_rejects_multiple_matches():
+    service_accounts = [
+        _service_account("first", client_id="first-client"),
+        _service_account("second", client_id="second-client"),
+    ]
+    with patch(
+        "flytekitplugins.spark.connector.list_serviceaccounts_in_k8s",
+        return_value=service_accounts,
+    ):
+        with pytest.raises(DatabricksAuthError, match="Multiple.*first, second"):
+            _discover_namespace_oidc_sa_sync("project-multiple", "databricks")
+
+
+@pytest.mark.asyncio
+async def test_namespace_discovery_cache_avoids_repeated_lookup():
+    namespace = "project-cache-hit"
+    discovered = _DiscoveredOIDCConfig(
+        service_account="databricks-workload",
+        client_id="namespace-client",
+        audience="databricks",
+    )
+    await _NAMESPACE_DISCOVERY_CACHE.invalidate(namespace)
+
+    with patch(
+        "flytekitplugins.spark.databricks_auth._discover_namespace_oidc_sa_sync",
+        return_value=discovered,
+    ) as discover:
+        first = await _discover_namespace_oidc_sa(namespace, "databricks")
+        second = await _discover_namespace_oidc_sa(namespace, "databricks")
+
+    assert first == second == discovered
+    assert discover.call_count == 1
+
+
+def test_token_request_returns_service_account_jwt():
+    response = MagicMock()
+    response.status.token = "namespace-subject-token"
+    with patch("kubernetes.config.load_incluster_config"), patch(
+        "kubernetes.client.CoreV1Api"
+    ) as api:
+        api.return_value.create_namespaced_service_account_token.return_value = response
+        token = _request_service_account_token(
+            "project-token",
+            "databricks-workload",
+            "databricks",
+        )
+
+    assert token == "namespace-subject-token"
+
+
+@pytest.mark.parametrize(
+    ("status", "message"),
+    [(403, "forbidden"), (404, "was not found")],
+)
+def test_token_request_translates_kubernetes_errors(status, message):
+    from kubernetes.client.exceptions import ApiException
+
+    with patch("kubernetes.config.load_incluster_config"), patch(
+        "kubernetes.client.CoreV1Api"
+    ) as api:
+        api.return_value.create_namespaced_service_account_token.side_effect = ApiException(
+            status=status
+        )
+        with pytest.raises(DatabricksAuthError, match=message):
+            _request_service_account_token(
+                "project-token-error",
+                "databricks-workload",
+                "databricks",
+            )
+
+
+@pytest.mark.asyncio
+async def test_namespace_service_account_exchanges_minted_jwt():
+    auth = build_auth(
+        "namespace-exchange.cloud.databricks.com",
+        "oidc_federation",
+        namespace="project-exchange",
+        client_id="namespace-client",
+        oidc_service_account="databricks-workload",
+        oidc_audience="databricks",
+    )
+    posted = {}
+
+    async def _capture(session, workspace_url, form):
+        posted.update(form)
+        return {"access_token": "namespace-access-token", "expires_in": 3600}
+
+    with patch(
+        "flytekitplugins.spark.databricks_auth._request_service_account_token",
+        return_value="namespace-subject-token",
+    ), patch(
+        "flytekitplugins.spark.databricks_auth._post_token",
+        side_effect=_capture,
+    ):
+        async with ClientSession() as session:
+            token = await auth.get_bearer_token(session)
+
+    assert token == "namespace-access-token"
+    assert posted["subject_token"] == "namespace-subject-token"
+    assert posted["client_id"] == "namespace-client"
+
+
+@pytest.mark.asyncio
+async def test_namespace_auth_invalidation_clears_discovery_cache():
+    namespace = "project-cache-invalidation"
+    discovered = _DiscoveredOIDCConfig(
+        service_account="databricks-workload",
+        client_id="namespace-client",
+        audience="databricks",
+    )
+    auth = OIDCNamespaceServiceAccountAuth(
+        "namespace-cache.cloud.databricks.com",
+        _Settings.from_task(None, namespace),
+        discovered,
+    )
+    await _NAMESPACE_DISCOVERY_CACHE.put(namespace, discovered)
+
+    await auth.invalidate_cache()
+    is_cached, _ = await _NAMESPACE_DISCOVERY_CACHE.get(namespace)
+
+    assert is_cached is False
+
+
+@pytest.mark.asyncio
+async def test_connector_create_persists_namespace_oidc_metadata():
+    from flytekit.extend.backend.base_agent import AgentRegistry
+    from flytekitplugins.spark.connector import DATABRICKS_API_ENDPOINT
+
+    discovered = _DiscoveredOIDCConfig(
+        service_account="databricks-workload",
+        client_id="namespace-client",
+        audience="namespace-audience",
+    )
+    task_template = _task_template(
+        databricksInstance="namespace-create.cloud.databricks.com",
+        databricksAuthType="oidc_federation",
+    )
+    execution_metadata = MagicMock(namespace="project-create-namespace")
+    connector = AgentRegistry.get_agent("spark")
+
+    with patch(
+        "flytekitplugins.spark.connector._get_databricks_job_spec",
+        return_value={"run_name": "example"},
+    ), patch(
+        "flytekitplugins.spark.databricks_auth._discover_namespace_oidc_sa",
+        AsyncMock(return_value=discovered),
+    ), patch(
+        "flytekitplugins.spark.databricks_auth._request_service_account_token",
+        return_value="namespace-subject-token",
+    ):
+        with aioresponses() as mocked:
+            mocked.post(
+                "https://namespace-create.cloud.databricks.com/oidc/v1/token",
+                status=200,
+                payload={"access_token": "namespace-access-token", "expires_in": 3600},
+            )
+            mocked.post(
+                (
+                    "https://namespace-create.cloud.databricks.com"
+                    f"{DATABRICKS_API_ENDPOINT}/runs/submit"
+                ),
+                status=200,
+                payload={"run_id": 42},
+            )
+            result = await connector.create(
+                task_template,
+                task_execution_metadata=execution_metadata,
+            )
+
+    assert result.auth_type == "oidc_federation"
+    assert result.client_id == "namespace-client"
+    assert result.oidc_service_account == "databricks-workload"
+    assert result.oidc_audience == "namespace-audience"
+    assert result.namespace == "project-create-namespace"

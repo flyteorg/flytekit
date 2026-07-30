@@ -78,3 +78,41 @@ The connector deployment is responsible for projecting a JWT at one of these
 paths and configuring a matching federation policy for the Databricks service
 principal. PAT remains the default unless `oidc_federation` is selected
 explicitly.
+
+#### Per-namespace ServiceAccount identity
+
+When OIDC federation is selected, the connector first looks for one
+ServiceAccount in the workflow namespace with this configuration:
+
+```yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: databricks-workload
+  namespace: "<workflow-namespace>"
+  labels:
+    flyte.org/databricks-enabled: "true"
+  annotations:
+    flyte.org/databricks-client-id: "<service-principal-client-id>"
+    flyte.org/databricks-audience: "databricks"
+```
+
+If found, the connector creates a short-lived JWT for that ServiceAccount
+through the Kubernetes TokenRequest API and exchanges it for a Databricks
+token. If no matching ServiceAccount exists, connector-identity OIDC remains
+the fallback.
+
+The connector ServiceAccount needs these additional Kubernetes permissions:
+
+```yaml
+rules:
+  - apiGroups: [""]
+    resources: ["serviceaccounts"]
+    verbs: ["get", "list"]
+  - apiGroups: [""]
+    resources: ["serviceaccounts/token"]
+    verbs: ["create"]
+```
+
+Configure exactly one Databricks-enabled ServiceAccount per workflow
+namespace. Multiple matching ServiceAccounts are treated as an error.
