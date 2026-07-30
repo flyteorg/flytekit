@@ -8,13 +8,16 @@ from aiohttp import ClientSession
 from aioresponses import aioresponses
 
 from flytekitplugins.spark.databricks_auth import (
+    DEFAULT_OIDC_AUDIENCE,
     DEFAULT_OAUTH_SECRET_NAME,
     DatabricksAuthError,
+    OIDCConnectorAuth,
     OAuthM2MAuth,
     PATAuth,
     _TokenCache,
     _Settings,
     _post_token,
+    _resolve_oidc_token_file,
     build_auth,
     select_auth,
 )
@@ -31,8 +34,11 @@ def _clear_auth_environment(monkeypatch):
     for name in (
         "FLYTE_DATABRICKS_AUTH_TYPE",
         "FLYTE_DATABRICKS_OAUTH_SECRET_NAME",
+        "FLYTE_DATABRICKS_OIDC_TOKEN_FILE",
+        "FLYTE_DATABRICKS_OIDC_AUDIENCE",
         "DATABRICKS_CLIENT_ID",
         "DATABRICKS_CLIENT_SECRET",
+        "AWS_WEB_IDENTITY_TOKEN_FILE",
     ):
         monkeypatch.delenv(name, raising=False)
 
@@ -76,6 +82,8 @@ async def test_pat_auth_delegates_to_existing_token_lookup():
         client_id=None,
         oauth_secret_name=DEFAULT_OAUTH_SECRET_NAME,
         token_secret_name="custom-token",
+        oidc_token_file=None,
+        oidc_audience=DEFAULT_OIDC_AUDIENCE,
         namespace="project-a",
     )
     auth = PATAuth("example.cloud.databricks.com", settings)
@@ -381,3 +389,193 @@ async def test_connector_does_not_retry_non_401(monkeypatch):
         requests = [call for calls in mocked.requests.values() for call in calls]
 
     assert len(requests) == 1
+
+
+def test_oidc_token_file_precedence(tmp_path, monkeypatch):
+    explicit = tmp_path / "explicit.jwt"
+    fallback = tmp_path / "fallback.jwt"
+    explicit.write_text("explicit")
+    fallback.write_text("fallback")
+    monkeypatch.setenv("AWS_WEB_IDENTITY_TOKEN_FILE", str(fallback))
+    settings = _Settings.from_task(
+        _task_template(databricksOidcTokenFile=str(explicit)),
+        namespace=None,
+    )
+
+    assert _resolve_oidc_token_file(settings) == str(explicit)
+
+
+@pytest.mark.asyncio
+async def test_select_auth_uses_explicit_oidc():
+    auth = await select_auth(
+        task_template=_task_template(databricksAuthType="oidc_federation"),
+        workspace_url="oidc-select.cloud.databricks.com",
+        namespace=None,
+    )
+
+    assert isinstance(auth, OIDCConnectorAuth)
+
+
+@pytest.mark.asyncio
+async def test_oidc_exchanges_projected_jwt(tmp_path):
+    token_file = tmp_path / "workload.jwt"
+    token_file.write_text("example-subject-token")
+    auth = build_auth(
+        "oidc-exchange.cloud.databricks.com",
+        "oidc_federation",
+        client_id="oidc-client",
+        oidc_token_file=str(token_file),
+    )
+    posted = {}
+
+    async def _capture(session, workspace_url, form):
+        posted.update(form)
+        return {"access_token": "oidc-access-token", "expires_in": 3600}
+
+    with patch(
+        "flytekitplugins.spark.databricks_auth._post_token",
+        side_effect=_capture,
+    ):
+        async with ClientSession() as session:
+            token = await auth.get_bearer_token(session)
+
+    assert token == "oidc-access-token"
+    assert posted["client_id"] == "oidc-client"
+    assert posted["subject_token"] == "example-subject-token"
+    assert posted["grant_type"] == "urn:ietf:params:oauth:grant-type:token-exchange"
+
+
+@pytest.mark.asyncio
+async def test_oidc_rereads_projected_jwt_after_refresh(tmp_path):
+    token_file = tmp_path / "rotating.jwt"
+    token_file.write_text("version-one")
+    auth = build_auth(
+        "oidc-refresh.cloud.databricks.com",
+        "oidc_federation",
+        client_id="refresh-client",
+        oidc_token_file=str(token_file),
+    )
+    observed = []
+
+    async def _capture(session, workspace_url, form):
+        observed.append(form["subject_token"])
+        return {"access_token": f"token-{len(observed)}", "expires_in": 3600}
+
+    with patch(
+        "flytekitplugins.spark.databricks_auth._post_token",
+        side_effect=_capture,
+    ):
+        async with ClientSession() as session:
+            await auth.get_bearer_token(session)
+            await auth.invalidate_cache()
+            token_file.write_text("version-two")
+            await auth.get_bearer_token(session)
+
+    assert observed == ["version-one", "version-two"]
+
+
+@pytest.mark.asyncio
+async def test_oidc_requires_projected_token_file():
+    auth = build_auth(
+        "oidc-missing-file.cloud.databricks.com",
+        "oidc_federation",
+        client_id="oidc-client",
+        oidc_token_file="/does/not/exist",
+    )
+
+    with patch("os.path.exists", return_value=False):
+        async with ClientSession() as session:
+            with pytest.raises(DatabricksAuthError, match="requires a projected JWT"):
+                await auth.get_bearer_token(session)
+
+
+@pytest.mark.asyncio
+async def test_oidc_requires_client_id(tmp_path):
+    token_file = tmp_path / "workload.jwt"
+    token_file.write_text("example-subject-token")
+    auth = build_auth(
+        "oidc-missing-client.cloud.databricks.com",
+        "oidc_federation",
+        oidc_token_file=str(token_file),
+    )
+
+    async with ClientSession() as session:
+        with pytest.raises(DatabricksAuthError, match="requires a client ID"):
+            await auth.get_bearer_token(session)
+
+
+@pytest.mark.asyncio
+async def test_oidc_rejects_missing_access_token(tmp_path):
+    token_file = tmp_path / "workload.jwt"
+    token_file.write_text("example-subject-token")
+    auth = build_auth(
+        "oidc-missing-response.cloud.databricks.com",
+        "oidc_federation",
+        client_id="oidc-client",
+        oidc_token_file=str(token_file),
+    )
+
+    with patch(
+        "flytekitplugins.spark.databricks_auth._post_token",
+        return_value={"expires_in": 3600},
+    ):
+        async with ClientSession() as session:
+            with pytest.raises(DatabricksAuthError, match="did not contain access_token"):
+                await auth.get_bearer_token(session)
+
+
+@pytest.mark.asyncio
+async def test_token_endpoint_rejects_invalid_json():
+    async with ClientSession() as session:
+        with aioresponses() as mocked:
+            mocked.post(
+                "https://invalid-json.cloud.databricks.com/oidc/v1/token",
+                status=200,
+                body="not-json",
+            )
+            with pytest.raises(DatabricksAuthError, match="invalid JSON"):
+                await _post_token(
+                    session,
+                    "invalid-json.cloud.databricks.com",
+                    {"grant_type": "example"},
+                )
+
+
+@pytest.mark.asyncio
+async def test_connector_create_persists_oidc_metadata(tmp_path):
+    from flytekit.extend.backend.base_agent import AgentRegistry
+    from flytekitplugins.spark.connector import DATABRICKS_API_ENDPOINT
+
+    token_file = tmp_path / "connector.jwt"
+    token_file.write_text("connector-subject-token")
+    task_template = _task_template(
+        databricksInstance="oidc-create.cloud.databricks.com",
+        databricksAuthType="oidc_federation",
+        databricksClientId="connector-client",
+        databricksOidcTokenFile=str(token_file),
+        databricksOidcAudience="example-audience",
+    )
+    connector = AgentRegistry.get_agent("spark")
+
+    with patch(
+        "flytekitplugins.spark.connector._get_databricks_job_spec",
+        return_value={"run_name": "example"},
+    ):
+        with aioresponses() as mocked:
+            mocked.post(
+                "https://oidc-create.cloud.databricks.com/oidc/v1/token",
+                status=200,
+                payload={"access_token": "connector-access-token", "expires_in": 3600},
+            )
+            mocked.post(
+                f"https://oidc-create.cloud.databricks.com{DATABRICKS_API_ENDPOINT}/runs/submit",
+                status=200,
+                payload={"run_id": 42},
+            )
+            result = await connector.create(task_template)
+
+    assert result.auth_type == "oidc_federation"
+    assert result.auth_token is None
+    assert result.client_id == "connector-client"
+    assert result.oidc_token_file == str(token_file)
+    assert result.oidc_audience == "example-audience"

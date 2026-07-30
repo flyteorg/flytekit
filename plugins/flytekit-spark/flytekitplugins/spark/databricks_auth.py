@@ -24,14 +24,19 @@ logger = logging.getLogger(__name__)
 
 FLYTE_DATABRICKS_AUTH_TYPE_ENV = "FLYTE_DATABRICKS_AUTH_TYPE"
 FLYTE_DATABRICKS_OAUTH_SECRET_NAME_ENV = "FLYTE_DATABRICKS_OAUTH_SECRET_NAME"
+FLYTE_DATABRICKS_OIDC_TOKEN_FILE_ENV = "FLYTE_DATABRICKS_OIDC_TOKEN_FILE"
+FLYTE_DATABRICKS_OIDC_AUDIENCE_ENV = "FLYTE_DATABRICKS_OIDC_AUDIENCE"
 DATABRICKS_CLIENT_ID_ENV = "DATABRICKS_CLIENT_ID"
 DATABRICKS_CLIENT_SECRET_ENV = "DATABRICKS_CLIENT_SECRET"
+AWS_WEB_IDENTITY_TOKEN_FILE_ENV = "AWS_WEB_IDENTITY_TOKEN_FILE"
 
 DEFAULT_OAUTH_SECRET_NAME = "databricks-oauth"
+DEFAULT_OIDC_AUDIENCE = "databricks"
+DEFAULT_PROJECTED_SA_TOKEN_PATH = "/var/run/secrets/databricks/token"
 TOKEN_REFRESH_BUFFER_SECONDS = 60
 TOKEN_ENDPOINT_MAX_RETRIES = 3
 TOKEN_ENDPOINT_BACKOFF_BASE_SECONDS = 0.2
-VALID_AUTH_TYPES = {"pat", "oauth_m2m"}
+VALID_AUTH_TYPES = {"pat", "oauth_m2m", "oidc_federation"}
 
 
 class DatabricksAuthError(Exception):
@@ -47,6 +52,8 @@ class _Settings:
     client_id: Optional[str]
     oauth_secret_name: str
     token_secret_name: Optional[str]
+    oidc_token_file: Optional[str]
+    oidc_audience: str
     namespace: Optional[str]
 
     @staticmethod
@@ -74,8 +81,28 @@ class _Settings:
             )
             or DEFAULT_OAUTH_SECRET_NAME,
             token_secret_name=custom.get("databricksTokenSecret"),
+            oidc_token_file=_pick(
+                "databricksOidcTokenFile",
+                FLYTE_DATABRICKS_OIDC_TOKEN_FILE_ENV,
+            ),
+            oidc_audience=_pick(
+                "databricksOidcAudience",
+                FLYTE_DATABRICKS_OIDC_AUDIENCE_ENV,
+                DEFAULT_OIDC_AUDIENCE,
+            )
+            or DEFAULT_OIDC_AUDIENCE,
             namespace=namespace,
         )
+
+
+def _resolve_oidc_token_file(settings: _Settings) -> Optional[str]:
+    """Resolve the first configured projected JWT file that exists."""
+    candidates = (
+        settings.oidc_token_file,
+        os.getenv(AWS_WEB_IDENTITY_TOKEN_FILE_ENV),
+        DEFAULT_PROJECTED_SA_TOKEN_PATH,
+    )
+    return next((path for path in candidates if path and os.path.exists(path)), None)
 
 
 @dataclass
@@ -280,6 +307,74 @@ class OAuthM2MAuth(DatabricksAuth):
         await _TOKEN_CACHE.invalidate((self.workspace_url, client_id, self.settings.namespace or "_"))
 
 
+class OIDCConnectorAuth(DatabricksAuth):
+    """Exchange the connector workload's projected JWT for a Databricks token."""
+
+    auth_type = "oidc_federation"
+    strategy_name = "OIDCConnectorAuth"
+
+    def _client_id(self) -> str:
+        client_id = self.settings.client_id or os.getenv(DATABRICKS_CLIENT_ID_ENV)
+        if not client_id:
+            raise DatabricksAuthError(
+                "OIDC federation requires a client ID. Configure databricks_client_id " "or DATABRICKS_CLIENT_ID."
+            )
+        return client_id
+
+    def _subject_token_file(self) -> str:
+        token_file = _resolve_oidc_token_file(self.settings)
+        if not token_file:
+            raise DatabricksAuthError(
+                "OIDC federation requires a projected JWT file. Configure "
+                "databricks_oidc_token_file, FLYTE_DATABRICKS_OIDC_TOKEN_FILE, "
+                "or AWS_WEB_IDENTITY_TOKEN_FILE."
+            )
+        return token_file
+
+    def _cache_key(self, client_id: str) -> Tuple[str, str, str]:
+        return (
+            self.workspace_url,
+            client_id,
+            f"oidc:{self.settings.oidc_audience}",
+        )
+
+    async def get_bearer_token(self, session: "aiohttp.ClientSession") -> str:  # type: ignore[name-defined]
+        client_id = self._client_id()
+        key = self._cache_key(client_id)
+        cached = await _TOKEN_CACHE.get(key)
+        if cached:
+            return cached
+
+        token_file = self._subject_token_file()
+        try:
+            with open(token_file) as token_stream:
+                subject_token = token_stream.read().strip()
+        except OSError as error:
+            raise DatabricksAuthError(f"Unable to read projected OIDC token file '{token_file}': {error}") from error
+        if not subject_token:
+            raise DatabricksAuthError(f"Projected OIDC token file '{token_file}' is empty")
+
+        payload = await _post_token(
+            session,
+            self.workspace_url,
+            {
+                "grant_type": "urn:ietf:params:oauth:grant-type:token-exchange",
+                "scope": "all-apis",
+                "client_id": client_id,
+                "subject_token": subject_token,
+                "subject_token_type": "urn:ietf:params:oauth:token-type:jwt",
+            },
+        )
+        access_token = payload.get("access_token")
+        if not access_token:
+            raise DatabricksAuthError("Databricks OIDC response did not contain access_token")
+        await _TOKEN_CACHE.put(key, access_token, int(payload.get("expires_in", 3600)))
+        return access_token
+
+    async def invalidate_cache(self) -> None:
+        await _TOKEN_CACHE.invalidate(self._cache_key(self._client_id()))
+
+
 async def select_auth(
     task_template: Optional[TaskTemplate],
     workspace_url: str,
@@ -294,6 +389,8 @@ async def select_auth(
         )
     if auth_type == "oauth_m2m":
         return OAuthM2MAuth(workspace_url, settings)
+    if auth_type == "oidc_federation":
+        return OIDCConnectorAuth(workspace_url, settings)
     return PATAuth(workspace_url, settings)
 
 
@@ -303,6 +400,8 @@ def build_auth(
     namespace: Optional[str] = None,
     client_id: Optional[str] = None,
     oauth_secret_name: Optional[str] = None,
+    oidc_token_file: Optional[str] = None,
+    oidc_audience: Optional[str] = None,
 ) -> DatabricksAuth:
     """Rebuild an auth strategy from persisted connector metadata."""
     settings = _Settings(
@@ -311,12 +410,16 @@ def build_auth(
         client_id=client_id,
         oauth_secret_name=oauth_secret_name or DEFAULT_OAUTH_SECRET_NAME,
         token_secret_name=None,
+        oidc_token_file=oidc_token_file,
+        oidc_audience=oidc_audience or DEFAULT_OIDC_AUDIENCE,
         namespace=namespace,
     )
     if auth_type == "oauth_m2m":
         return OAuthM2MAuth(workspace_url, settings)
     if auth_type == "pat":
         return PATAuth(workspace_url, settings)
+    if auth_type == "oidc_federation":
+        return OIDCConnectorAuth(workspace_url, settings)
     raise DatabricksAuthError(
         f"Invalid Databricks auth type '{auth_type}'. Expected one of {sorted(VALID_AUTH_TYPES)}."
     )

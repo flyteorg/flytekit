@@ -42,6 +42,8 @@ class DatabricksJobMetadata(ResourceMeta):
     auth_type: Optional[str] = None
     client_id: Optional[str] = None
     oauth_secret_name: Optional[str] = None
+    oidc_token_file: Optional[str] = None
+    oidc_audience: Optional[str] = None
     namespace: Optional[str] = None
 
 
@@ -312,6 +314,8 @@ class DatabricksConnector(AsyncConnectorBase):
             auth_type=auth.auth_type,
             client_id=auth.settings.client_id,
             oauth_secret_name=auth.settings.oauth_secret_name,
+            oidc_token_file=(auth.settings.oidc_token_file if auth.auth_type == "oidc_federation" else None),
+            oidc_audience=(auth.settings.oidc_audience if auth.auth_type == "oidc_federation" else None),
             namespace=namespace,
         )
 
@@ -379,13 +383,15 @@ class DatabricksConnector(AsyncConnectorBase):
         from .databricks_auth import DatabricksAuthError, build_auth
 
         auth = None
-        if resource_meta.auth_type == "oauth_m2m":
+        if resource_meta.auth_type in {"oauth_m2m", "oidc_federation"}:
             auth = build_auth(
                 workspace_url=resource_meta.databricks_instance,
                 auth_type=resource_meta.auth_type,
                 namespace=resource_meta.namespace,
                 client_id=resource_meta.client_id,
                 oauth_secret_name=resource_meta.oauth_secret_name,
+                oidc_token_file=resource_meta.oidc_token_file,
+                oidc_audience=resource_meta.oidc_audience,
             )
 
         token = resource_meta.auth_token
