@@ -220,6 +220,86 @@ training `InputDataConfig` S3 URI) or after one for evaluation. The
 `SageMakerStopProcessingJobTask` / `SageMakerDescribeProcessingJobTask` helpers
 mirror their training-job counterparts.
 
+## Pythonic Training and Processing
+
+Training and Processing also support a Flyte-native mode for code that is more
+naturally expressed as a typed Python function than as a complete boto3 job
+request. Use `SageMakerProcessing` or `SageMakerTraining` as the `task_config`
+on a normal `@task`:
+
+```python
+from flytekit import ImageSpec, task
+from flytekitplugins.awssagemaker_processing import SageMakerProcessing
+from flytekitplugins.awssagemaker_training import SageMakerTraining
+
+ROLE = "arn:aws:iam::<account-id>:role/<sagemaker-execution-role>"
+REGION = "us-east-1"
+
+# The registry must resolve to Amazon ECR. When base_image is omitted, Flytekit
+# supplies its version-compatible default image before building and pushing.
+image = ImageSpec(
+    name="sagemaker-pythonic",
+    registry="<account-id>.dkr.ecr.us-east-1.amazonaws.com",
+    packages=["numpy"],
+)
+
+
+@task(
+    task_config=SageMakerProcessing(
+        execution_role_arn=ROLE,
+        region=REGION,
+        instance_type="ml.m5.large",
+    ),
+    container_image=image,
+)
+def preprocess(values: list[float]) -> list[float]:
+    mean = sum(values) / len(values)
+    return [value - mean for value in values]
+
+
+@task(
+    task_config=SageMakerTraining(
+        execution_role_arn=ROLE,
+        region=REGION,
+        instance_type="ml.m5.xlarge",
+    ),
+    container_image=image,
+)
+def train(values: list[float]) -> float:
+    return sum(value * value for value in values)
+```
+
+The connector puts Flyte's rendered container arguments into SageMaker's
+`ContainerEntrypoint`. Inside the SageMaker container, `pyflyte-execute` runs
+the function and writes its typed result to Flyte's `outputs.pb`. User failures
+are written to `error.pb`, preserve recoverable/non-recoverable semantics, and
+fail the SageMaker job.
+
+Requirements and current constraints:
+
+- `container_image` is required. An `ImageSpec` is the simplest option; a plain
+  image URI must already contain a compatible Flytekit runtime and must be
+  available through a SageMaker-supported ECR registry.
+- Pythonic jobs currently require `instance_count=1`. Running the same Flyte
+  function on every SageMaker host would duplicate side effects and race on
+  Flyte output files.
+- The connector identity needs the relevant SageMaker lifecycle permissions and
+  `iam:PassRole`. The SageMaker execution role needs ECR pull, CloudWatch Logs,
+  and read/write access to Flyte's S3 input, fast-registration, and output
+  prefixes.
+- Kubernetes-mounted secrets and Flyte pod environment injection are not
+  available inside SageMaker. Use the SageMaker execution role and an AWS secret
+  service for runtime credentials. Do not place secrets in `environment`; task
+  configuration and container environment values are serialized in the Flyte
+  task template.
+- `SageMakerProcessing.network_config` accepts the boto3 `NetworkConfig` shape.
+  `EnableNetworkIsolation=True` is not supported because the Flyte entrypoint
+  must access S3. `SageMakerTraining.vpc_config` accepts the training-job
+  `VpcConfig` shape.
+- Pythonic Training returns the function's typed Flyte output; it does not treat
+  SageMaker's generated `model.tar.gz` as the task result. Set `output_s3_path`
+  only when that SageMaker-side archive is also needed.
+
 ## Hyperparameter Tuning
 
 `SageMakerHyperParameterTuningJobTask` runs `CreateHyperParameterTuningJob` and

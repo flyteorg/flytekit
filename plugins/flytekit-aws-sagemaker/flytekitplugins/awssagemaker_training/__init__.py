@@ -9,13 +9,22 @@
    SageMakerTrainingJobTask
    SageMakerStopTrainingJobTask
    SageMakerDescribeTrainingJobTask
+   SageMakerTraining
+   SageMakerTrainingTask
+   SageMakerTrainingTaskConnector
 """
 
-from .connector import SageMakerTrainingJobConnector, SageMakerTrainingJobMetadata
+from .connector import (
+    SageMakerTrainingJobConnector,
+    SageMakerTrainingJobMetadata,
+    SageMakerTrainingTaskConnector,
+)
 from .task import (
     SageMakerDescribeTrainingJobTask,
     SageMakerStopTrainingJobTask,
+    SageMakerTraining,
     SageMakerTrainingJobTask,
+    SageMakerTrainingTask,
 )
 
 __all__ = [
@@ -24,4 +33,7 @@ __all__ = [
     "SageMakerTrainingJobTask",
     "SageMakerStopTrainingJobTask",
     "SageMakerDescribeTrainingJobTask",
+    "SageMakerTraining",
+    "SageMakerTrainingTask",
+    "SageMakerTrainingTaskConnector",
 ]

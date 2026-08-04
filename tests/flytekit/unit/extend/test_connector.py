@@ -374,6 +374,7 @@ def test_is_terminal_phase():
     assert is_terminal_phase(TaskExecution.SUCCEEDED)
     assert is_terminal_phase(TaskExecution.ABORTED)
     assert is_terminal_phase(TaskExecution.FAILED)
+    assert is_terminal_phase(TaskExecution.RETRYABLE_FAILED)
     assert not is_terminal_phase(TaskExecution.RUNNING)
 
 

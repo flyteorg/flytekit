@@ -18,6 +18,12 @@ from flytekitplugins.awssagemaker_inference.boto3_mixin import (
     Boto3ConnectorMixin,
     CustomException,
 )
+from flytekitplugins.awssagemaker_inference.pythonic_base import (
+    PythonicSageMakerJobConnector,
+    _build_environment,
+    _container_entrypoint,
+    _tags_to_list,
+)
 
 from flytekit.extend.backend.base_connector import (
     AsyncConnectorBase,
@@ -184,3 +190,58 @@ class SageMakerTrainingJobConnector(Boto3ConnectorMixin, AsyncConnectorBase):
 
 
 ConnectorRegistry.register(SageMakerTrainingJobConnector())
+
+
+class SageMakerTrainingTaskConnector(PythonicSageMakerJobConnector):
+    """Pythonic-mode connector: runs a Flyte ``@task`` function inside a training job."""
+
+    name = "SageMaker Training Task Connector"
+
+    task_type_name = "sagemaker-training-task"
+    create_method = "create_training_job"
+    describe_method = "describe_training_job"
+    stop_method = "stop_training_job"
+    job_name_key = "TrainingJobName"
+    status_key = "TrainingJobStatus"
+    secondary_status_key = "SecondaryStatus"
+    _state_map = _STATE_MAP
+
+    def _build_request(self, *, container, config, job_name, output_prefix):
+        resource_config: Dict[str, Any] = {
+            "InstanceType": config.get("instance_type", "ml.m5.large"),
+            "InstanceCount": config.get("instance_count", 1),
+            "VolumeSizeInGB": config.get("volume_size_in_gb", 30),
+        }
+        kms_key_id = config.get("kms_key_id")
+        if kms_key_id:
+            resource_config["VolumeKmsKeyId"] = kms_key_id
+
+        # Pythonic mode returns results via Flyte outputs.pb; SageMaker still
+        # requires OutputDataConfig, so default it to the Flyte output prefix
+        # (the resulting model.tar.gz is harmless and unused).
+        output_s3_path = config.get("output_s3_path") or f"{output_prefix}/_sagemaker_model"
+
+        request: Dict[str, Any] = {
+            "TrainingJobName": job_name,
+            "RoleArn": config["execution_role_arn"],
+            "AlgorithmSpecification": {
+                "TrainingImage": container.image,
+                "ContainerEntrypoint": _container_entrypoint(container),
+                "TrainingInputMode": "File",
+            },
+            "ResourceConfig": resource_config,
+            "OutputDataConfig": {"S3OutputPath": output_s3_path},
+            "StoppingCondition": {"MaxRuntimeInSeconds": config.get("max_runtime_in_seconds", 3600)},
+        }
+
+        request["Environment"] = _build_environment(container, config)
+        vpc_config = config.get("vpc_config")
+        if vpc_config:
+            request["VpcConfig"] = vpc_config
+        tags = _tags_to_list(config.get("tags"))
+        if tags:
+            request["Tags"] = tags
+        return request
+
+
+ConnectorRegistry.register(SageMakerTrainingTaskConnector())

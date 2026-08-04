@@ -23,6 +23,12 @@ from flytekitplugins.awssagemaker_inference.boto3_mixin import (
     Boto3ConnectorMixin,
     CustomException,
 )
+from flytekitplugins.awssagemaker_inference.pythonic_base import (
+    PythonicSageMakerJobConnector,
+    _build_environment,
+    _container_entrypoint,
+    _tags_to_list,
+)
 
 from flytekit.extend.backend.base_connector import (
     AsyncConnectorBase,
@@ -184,3 +190,56 @@ class SageMakerProcessingJobConnector(Boto3ConnectorMixin, AsyncConnectorBase):
 
 
 ConnectorRegistry.register(SageMakerProcessingJobConnector())
+
+
+class SageMakerProcessingTaskConnector(PythonicSageMakerJobConnector):
+    """Pythonic-mode connector: runs a Flyte ``@task`` function inside a processing job."""
+
+    name = "SageMaker Processing Task Connector"
+
+    task_type_name = "sagemaker-processing-task"
+    create_method = "create_processing_job"
+    describe_method = "describe_processing_job"
+    stop_method = "stop_processing_job"
+    job_name_key = "ProcessingJobName"
+    status_key = "ProcessingJobStatus"
+    secondary_status_key = None  # processing jobs have no SecondaryStatus
+    _state_map = _STATE_MAP
+
+    def _build_request(self, *, container, config, job_name, output_prefix):
+        cluster_config: Dict[str, Any] = {
+            "InstanceType": config.get("instance_type", "ml.m5.large"),
+            "InstanceCount": config.get("instance_count", 1),
+            "VolumeSizeInGB": config.get("volume_size_in_gb", 30),
+        }
+        kms_key_id = config.get("kms_key_id")
+        if kms_key_id:
+            cluster_config["VolumeKmsKeyId"] = kms_key_id
+
+        request: Dict[str, Any] = {
+            "ProcessingJobName": job_name,
+            "RoleArn": config["execution_role_arn"],
+            "AppSpecification": {
+                "ImageUri": container.image,
+                "ContainerEntrypoint": _container_entrypoint(container),
+            },
+            "ProcessingResources": {"ClusterConfig": cluster_config},
+            "StoppingCondition": {"MaxRuntimeInSeconds": config.get("max_runtime_in_seconds", 3600)},
+        }
+
+        request["Environment"] = _build_environment(container, config)
+        network_config = config.get("network_config")
+        if network_config:
+            if network_config.get("EnableNetworkIsolation"):
+                raise ValueError(
+                    "EnableNetworkIsolation=True is incompatible with Pythonic mode because pyflyte-execute "
+                    "must access Flyte's S3 input and output prefixes."
+                )
+            request["NetworkConfig"] = network_config
+        tags = _tags_to_list(config.get("tags"))
+        if tags:
+            request["Tags"] = tags
+        return request
+
+
+ConnectorRegistry.register(SageMakerProcessingTaskConnector())
