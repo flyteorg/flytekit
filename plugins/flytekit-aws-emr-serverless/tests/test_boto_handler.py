@@ -91,6 +91,7 @@ class TestEMRServerlessHandlerStartJobRun:
             tags=tags,
             execution_timeout_minutes=120,
             name="test-job",
+            client_token="stable-token",
         )
 
         call_kwargs = mock_call.call_args.kwargs
@@ -98,6 +99,7 @@ class TestEMRServerlessHandlerStartJobRun:
         assert call_kwargs["tags"] == tags
         assert call_kwargs["executionTimeoutMinutes"] == 120
         assert call_kwargs["name"] == "test-job"
+        assert call_kwargs["clientToken"] == "stable-token"
 
     @pytest.mark.asyncio
     async def test_start_job_run_with_retry_policy(self, mock_call):
@@ -334,3 +336,49 @@ class TestEMRServerlessHandlerEnsureApplicationStarted:
         handler = EMRServerlessHandler()
         with pytest.raises(RuntimeError, match="terminal state"):
             await handler.ensure_application_started("app-1")
+
+
+class TestEMRServerlessHandlerStartApplicationIfNeeded:
+    @pytest.mark.asyncio
+    async def test_returns_true_when_started(self, mock_call):
+        mock_call.return_value = {"application": {"applicationId": "app-1", "state": "STARTED"}}
+
+        handler = EMRServerlessHandler()
+        result = await handler.start_application_if_needed("app-1")
+
+        assert result is True
+        mock_call.assert_awaited_once_with("get_application", applicationId="app-1")
+
+    @pytest.mark.asyncio
+    async def test_requests_start_without_waiting(self, mock_call):
+        mock_call.side_effect = [
+            {"application": {"applicationId": "app-1", "state": "STOPPED"}},
+            {},
+        ]
+
+        handler = EMRServerlessHandler()
+        result = await handler.start_application_if_needed("app-1")
+
+        assert result is False
+        assert [call.args[0] for call in mock_call.await_args_list] == [
+            "get_application",
+            "start_application",
+        ]
+
+    @pytest.mark.asyncio
+    async def test_returns_false_for_transitioning_application(self, mock_call):
+        mock_call.return_value = {"application": {"applicationId": "app-1", "state": "CREATING"}}
+
+        handler = EMRServerlessHandler()
+        result = await handler.start_application_if_needed("app-1")
+
+        assert result is False
+        mock_call.assert_awaited_once_with("get_application", applicationId="app-1")
+
+    @pytest.mark.asyncio
+    async def test_raises_on_terminal_state(self, mock_call):
+        mock_call.return_value = {"application": {"applicationId": "app-1", "state": "TERMINATED"}}
+
+        handler = EMRServerlessHandler()
+        with pytest.raises(RuntimeError, match="terminal state"):
+            await handler.start_application_if_needed("app-1")

@@ -25,6 +25,7 @@ def _make_handler(**overrides) -> AsyncMock:
     """Build a mock EMRServerlessHandler with sensible defaults."""
     handler = AsyncMock()
     handler.ensure_application_started = AsyncMock()
+    handler.start_application_if_needed = AsyncMock(return_value=True)
     handler.start_job_run = AsyncMock(return_value="job-123")
     handler.create_application = AsyncMock(return_value="new-app-123")
     handler.get_application = AsyncMock(return_value={
@@ -51,6 +52,8 @@ class TestEMRServerlessJobMetadata:
         assert metadata.job_run_id == "job-456"
         assert metadata.region == "us-east-1"
         assert metadata.created_application is False
+        assert metadata.is_script_mode is False
+        assert metadata.pending_job_request is None
 
     def test_metadata_with_created_app(self):
         metadata = EMRServerlessJobMetadata(
@@ -60,6 +63,23 @@ class TestEMRServerlessJobMetadata:
             created_application=True,
         )
         assert metadata.created_application is True
+
+    def test_pending_metadata_round_trip(self):
+        metadata = EMRServerlessJobMetadata(
+            application_id="app-123",
+            job_run_id="",
+            region="us-east-1",
+            is_script_mode=True,
+            pending_job_request={
+                "execution_role_arn": "arn:aws:iam::123456789012:role/Role",
+                "job_driver": {"sparkSubmit": {"entryPoint": "s3://bucket/main.py"}},
+                "client_token": "stable-token",
+            },
+        )
+
+        decoded = EMRServerlessJobMetadata.decode(metadata.encode())
+
+        assert decoded == metadata
 
 
 class TestEMRServerlessConnector:
@@ -84,8 +104,31 @@ class TestEMRServerlessConnector:
         assert isinstance(metadata, EMRServerlessJobMetadata)
         assert metadata.application_id == sample_config.application_id
         assert metadata.job_run_id == "job-123"
-        mock_handler.ensure_application_started.assert_called_once()
+        assert metadata.is_script_mode is True
+        mock_handler.start_application_if_needed.assert_called_once()
         mock_handler.start_job_run.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_create_defers_job_submission_while_application_starts(self, sample_config):
+        connector = EMRServerlessConnector()
+        mock_handler = _make_handler()
+        mock_handler.start_application_if_needed = AsyncMock(return_value=False)
+
+        mock_template = MagicMock()
+        mock_template.custom = sample_config.to_dict()
+        mock_template.id = MagicMock()
+        mock_template.id.name = "test-task"
+
+        with patch.object(connector, "_get_handler", return_value=mock_handler):
+            with patch.object(connector, "_extract_config", return_value=sample_config):
+                metadata = await connector.create(mock_template)
+
+        assert metadata.application_id == sample_config.application_id
+        assert metadata.job_run_id == ""
+        assert metadata.is_script_mode is True
+        assert metadata.pending_job_request is not None
+        assert metadata.pending_job_request["client_token"]
+        mock_handler.start_job_run.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_create_with_new_application(self, sample_spark_job_driver):
@@ -760,6 +803,74 @@ class TestEMRServerlessConnector:
             resource = await connector.get(sample_job_metadata)
 
         assert resource.phase == TaskExecution.SUCCEEDED
+        assert resource.outputs is None
+
+    @pytest.mark.asyncio
+    async def test_get_waits_for_application_before_deferred_submission(self):
+        connector = EMRServerlessConnector()
+        metadata = EMRServerlessJobMetadata(
+            application_id="00f5abc123def456",
+            job_run_id="",
+            region="us-east-1",
+            is_script_mode=True,
+            pending_job_request={
+                "execution_role_arn": "arn:aws:iam::123456789012:role/Role",
+                "job_driver": {"sparkSubmit": {"entryPoint": "s3://bucket/main.py"}},
+                "client_token": "stable-token",
+            },
+        )
+        mock_handler = _make_handler()
+        mock_handler.start_application_if_needed = AsyncMock(return_value=False)
+
+        with patch.object(connector, "_get_handler", return_value=mock_handler):
+            resource = await connector.get(metadata)
+
+        assert resource.phase == TaskExecution.RUNNING
+        assert "is starting" in resource.message
+        mock_handler.start_job_run.assert_not_called()
+        mock_handler.get_job_run.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_get_submits_deferred_job_idempotently_and_returns_script_outputs(self):
+        connector = EMRServerlessConnector()
+        pending_request = {
+            "execution_role_arn": "arn:aws:iam::123456789012:role/Role",
+            "job_driver": {"sparkSubmit": {"entryPoint": "s3://bucket/main.py"}},
+            "client_token": "stable-token",
+        }
+        metadata = EMRServerlessJobMetadata(
+            application_id="00f5abc123def456",
+            job_run_id="",
+            region="us-east-1",
+            is_script_mode=True,
+            pending_job_request=pending_request,
+        )
+        mock_handler = _make_handler()
+        mock_handler.start_job_run = AsyncMock(return_value="deferred-job-123")
+        mock_handler.get_job_run = AsyncMock(
+            return_value={
+                "state": "SUCCESS",
+                "stateDetails": "Job completed successfully",
+            }
+        )
+
+        with patch.object(connector, "_get_handler", return_value=mock_handler):
+            resource = await connector.get(metadata)
+
+        mock_handler.start_job_run.assert_awaited_once_with(
+            application_id=metadata.application_id,
+            **pending_request,
+        )
+        mock_handler.get_job_run.assert_awaited_once_with(
+            application_id=metadata.application_id,
+            job_run_id="deferred-job-123",
+        )
+        assert resource.phase == TaskExecution.SUCCEEDED
+        assert resource.outputs is not None
+        assert resource.outputs.literals == {}
+        assert "deferred-job-123" in resource.log_links[0].uri
+        resource_idl = await resource.to_flyte_idl()
+        assert resource_idl.HasField("outputs")
 
     @pytest.mark.asyncio
     async def test_get_failed_job(self, sample_job_metadata):
