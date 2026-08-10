@@ -287,6 +287,32 @@ class EMRServerlessHandler:
             )
             await asyncio.sleep(poll_interval_seconds)
 
+    async def start_application_if_needed(self, application_id: str) -> bool:
+        """Request application startup without waiting for the transition.
+
+        Returns ``True`` when the application is already ``STARTED``. For
+        ``CREATED`` or ``STOPPED`` applications, this sends ``StartApplication``
+        and returns ``False``. Other non-terminal transitional states also
+        return ``False`` so the connector can continue the startup from its
+        polling path instead of blocking the CreateTask RPC.
+        """
+        app = await self.get_application(application_id)
+        state = app.get("state", "")
+
+        if state == _APP_STARTED:
+            return True
+
+        if state in _APP_TERMINAL:
+            raise RuntimeError(f"Application {application_id} is in terminal state '{state}' and cannot be started")
+
+        if state in _APP_NEEDS_START:
+            logger.info("Application %s is in state '%s', sending StartApplication request", application_id, state)
+            await self._call("start_application", applicationId=application_id)
+        else:
+            logger.info("Application %s is transitioning in state '%s'", application_id, state)
+
+        return False
+
     # ------------------------------------------------------------------
     # Job management
     # ------------------------------------------------------------------
@@ -301,6 +327,7 @@ class EMRServerlessHandler:
         execution_timeout_minutes: int = 60,
         name: Optional[str] = None,
         retry_policy: Optional[Dict[str, Any]] = None,
+        client_token: Optional[str] = None,
     ) -> str:
         logger.info(
             "StartJobRun: applicationId=%s, name=%s, timeout=%dm",
@@ -324,6 +351,8 @@ class EMRServerlessHandler:
         if retry_policy:
             params["retryPolicy"] = retry_policy
             logger.debug("StartJobRun: retryPolicy=%s", retry_policy)
+        if client_token:
+            params["clientToken"] = client_token
 
         logger.debug("StartJobRun: jobDriver type=%s", list(job_driver.keys()))
         resp = await self._call("start_job_run", **params)
