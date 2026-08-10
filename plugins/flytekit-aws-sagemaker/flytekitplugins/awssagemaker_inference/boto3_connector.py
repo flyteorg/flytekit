@@ -19,19 +19,6 @@ from flytekit.models.task import TaskTemplate
 from .boto3_mixin import Boto3ConnectorMixin, CustomException
 
 
-# https://github.com/flyteorg/flyte/issues/4505
-def convert_floats_with_no_fraction_to_ints(data):
-    if isinstance(data, dict):
-        for key, value in data.items():
-            data[key] = convert_floats_with_no_fraction_to_ints(value)
-    elif isinstance(data, list):
-        for i, item in enumerate(data):
-            data[i] = convert_floats_with_no_fraction_to_ints(item)
-    elif isinstance(data, float) and data.is_integer():
-        return int(data)
-    return data
-
-
 class BotoConnector(SyncConnectorBase):
     """A general purpose boto3 connector that can be used to call any boto3 method."""
 
@@ -50,9 +37,7 @@ class BotoConnector(SyncConnectorBase):
         custom = task_template.custom
 
         service = custom.get("service")
-        raw_config = custom.get("config")
-        convert_floats_with_no_fraction_to_ints(raw_config)
-        config = raw_config
+        config = custom.get("config")
         region = custom.get("region")
         method = custom.get("method")
         images = custom.get("images")
