@@ -440,7 +440,7 @@ pure-eval==0.2.2
     # via stack-data
 pyarrow==16.1.0
     # via -r dev-requirements.in
-pyasn1==0.6.0
+pyasn1==0.6.3
     # via
     #   pyasn1-modules
     #   rsa
