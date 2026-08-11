@@ -74,8 +74,6 @@ The Ollama plugin allows you to serve LLMs locally.
 You can either pull an existing model or create a new one.
 
 ```python
-from textwrap import dedent
-
 from flytekit import ImageSpec, Resources, task, workflow
 from flytekitplugins.inference import Ollama, Model
 from flytekit.extras.accelerators import A10G
@@ -91,13 +89,10 @@ image = ImageSpec(
 ollama_instance = Ollama(
     model=Model(
         name="llama3-mario",
-        modelfile=dedent("""\
-        FROM llama3
-        ADAPTER {inputs.gguf}
-        PARAMETER temperature 1
-        PARAMETER num_ctx 4096
-        SYSTEM You are Mario from super mario bros, acting as an assistant.\
-        """),
+        from_="llama3",
+        adapters=["gguf"],
+        parameters={"temperature": 1, "num_ctx": 4096},
+        system="You are Mario from super mario bros, acting as an assistant."
     )
 )
 
