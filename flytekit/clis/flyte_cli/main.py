@@ -1170,6 +1170,36 @@ def terminate_execution(host, insecure, cause, urn=None):
         _terminate_one_execution(client, urn, cause)
 
 
+@_flyte_cli.command("delete-execution-phase", cls=_FlyteSubCommand)
+@_host_option
+@_insecure_option
+@click.option("-p", "--project", required=True, help="Project to delete execution phase from")
+@click.option("-d", "--domain", required=True, help="Domain to delete execution phase from")
+@click.option("-ph", "--phase", required=True, help="Phase to delete")
+def delete_execution_phase(host, insecure, project, domain, phase):
+    """
+    Delete a phase from executions. This command deletes a phase from executions
+    in the specified project and domain.
+
+    e.g.,
+        $ flyte-cli -h localhost:30081 delete-execution-phase \
+            -p flyteexamples -d development -ph RUNNING
+    """
+    _welcome_message()
+    client = _get_client(host, insecure)
+
+    click.echo("Deleting phase from executions:\n")
+    click.echo("{:40} {:40} {:40}".format("Project", "Domain", "Phase"))
+    click.echo("{:40} {:40} {:40}".format(project, domain, phase))
+
+    try:
+        client.delete_execution_phase(project, domain, phase)
+        click.echo("\nSuccessfully deleted phase from executions.")
+    except Exception as e:
+        click.echo(f"\nFailed to delete phase from executions: {str(e)}")
+        sys.exit(1)
+
+
 @_flyte_cli.command("list-executions", cls=_FlyteSubCommand)
 @_project_option
 @_domain_option
