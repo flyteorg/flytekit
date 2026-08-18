@@ -262,6 +262,8 @@ class DatabricksConnector(AsyncConnectorBase):
         task_execution_metadata: Optional[TaskExecutionMetadata] = None,
         **kwargs,
     ) -> DatabricksJobMetadata:
+        from .databricks_auth import select_auth
+
         data = json.dumps(_get_databricks_job_spec(task_template))
         databricks_instance = task_template.custom.get(
             "databricksInstance", os.getenv(DEFAULT_DATABRICKS_INSTANCE_ENV_KEY)
@@ -272,22 +274,13 @@ class DatabricksConnector(AsyncConnectorBase):
                 f"Missing databricks instance. Please set the value through the task config or set the {DEFAULT_DATABRICKS_INSTANCE_ENV_KEY} environment variable in the connector."
             )
 
-        # Get workflow-specific token or fall back to default
         namespace = task_execution_metadata.namespace if task_execution_metadata else None
-
-        # Extract custom secret name from task template (if provided)
-        custom_secret_name = task_template.custom.get("databricksTokenSecret")
-
-        logger.info(f"Creating Databricks job for namespace: {namespace or 'unknown'}")
-        if custom_secret_name:
-            logger.info(f"Using custom secret name: {custom_secret_name}")
-
-        auth_token = get_databricks_token(
-            namespace=namespace, task_template=task_template, secret_name=custom_secret_name
-        )
+        auth = await select_auth(task_template=task_template, namespace=namespace)
+        logger.info("Databricks auth resolved: %s", auth.describe())
         databricks_url = f"https://{databricks_instance}{DATABRICKS_API_ENDPOINT}/runs/submit"
 
         async with aiohttp.ClientSession() as session:
+            auth_token = await auth.get_bearer_token(session)
             async with session.post(databricks_url, headers=get_header(auth_token=auth_token), data=data) as resp:
                 response = await resp.json()
                 if resp.status != http.HTTPStatus.OK:
