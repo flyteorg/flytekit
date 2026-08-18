@@ -9,6 +9,7 @@ import hashlib
 import logging
 import os
 import re
+import uuid
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, Optional
@@ -75,6 +76,8 @@ class EMRServerlessJobMetadata(ResourceMeta):
     job_run_id: str
     region: str
     created_application: bool = False
+    is_script_mode: bool = False
+    pending_job_request: Optional[Dict[str, Any]] = None
 
 
 class EMRServerlessConnector(AsyncConnectorBase):
@@ -655,9 +658,6 @@ class EMRServerlessConnector(AsyncConnectorBase):
         elif not created_application:
             logger.debug("sync_image is disabled, skipping image sync for %s", application_id)
 
-        logger.info("Ensuring application %s is in STARTED state", application_id)
-        await handler.ensure_application_started(application_id)
-
         # --- Build job driver ---
         if config.is_script_mode:
             logger.info("Building job driver in script mode")
@@ -704,6 +704,35 @@ class EMRServerlessConnector(AsyncConnectorBase):
                 list(effective_config_overrides.keys()),
             )
 
+        client_token = uuid.uuid4().hex
+        job_request = {
+            "execution_role_arn": config.execution_role_arn,
+            "job_driver": job_driver,
+            "configuration_overrides": effective_config_overrides,
+            "tags": self._merge_tags(config.tags),
+            "execution_timeout_minutes": config.execution_timeout_minutes,
+            "name": job_name,
+            "retry_policy": config.retry_policy,
+            "client_token": client_token,
+        }
+        region = config.region or handler.client.meta.region_name
+
+        logger.info("Ensuring application %s startup has been requested", application_id)
+        application_started = await handler.start_application_if_needed(application_id)
+        if not application_started:
+            logger.info(
+                "Application %s is still starting; deferring job submission to get()",
+                application_id,
+            )
+            return EMRServerlessJobMetadata(
+                application_id=application_id,
+                job_run_id="",
+                region=region,
+                created_application=created_application,
+                is_script_mode=config.is_script_mode,
+                pending_job_request=job_request,
+            )
+
         logger.info(
             "Submitting job run: application=%s, job_name=%s, execution_role=%s, timeout=%dm",
             application_id,
@@ -713,16 +742,9 @@ class EMRServerlessConnector(AsyncConnectorBase):
         )
         job_run_id = await handler.start_job_run(
             application_id=application_id,
-            execution_role_arn=config.execution_role_arn,
-            job_driver=job_driver,
-            configuration_overrides=effective_config_overrides,
-            tags=self._merge_tags(config.tags),
-            execution_timeout_minutes=config.execution_timeout_minutes,
-            name=job_name,
-            retry_policy=config.retry_policy,
+            **job_request,
         )
 
-        region = config.region or handler.client.meta.region_name
         logger.info(
             "Job submitted successfully: application=%s, job_run_id=%s, region=%s, created_application=%s",
             application_id,
@@ -736,6 +758,7 @@ class EMRServerlessConnector(AsyncConnectorBase):
             job_run_id=job_run_id,
             region=region,
             created_application=created_application,
+            is_script_mode=config.is_script_mode,
         )
 
     async def get(
@@ -750,22 +773,50 @@ class EMRServerlessConnector(AsyncConnectorBase):
             resource_meta.region,
         )
         handler = self._get_handler(resource_meta.region)
+        job_run_id = resource_meta.job_run_id
+
+        if not job_run_id:
+            if not resource_meta.pending_job_request:
+                return Resource(
+                    phase=TaskExecution.FAILED,
+                    message="Job submission metadata is missing",
+                )
+
+            try:
+                application_started = await handler.start_application_if_needed(resource_meta.application_id)
+            except RuntimeError as e:
+                return Resource(phase=TaskExecution.FAILED, message=str(e))
+
+            if not application_started:
+                return Resource(
+                    phase=TaskExecution.RUNNING,
+                    message=f"EMR Serverless application {resource_meta.application_id} is starting",
+                )
+
+            logger.info(
+                "Application %s is STARTED; submitting deferred job",
+                resource_meta.application_id,
+            )
+            job_run_id = await handler.start_job_run(
+                application_id=resource_meta.application_id,
+                **resource_meta.pending_job_request,
+            )
 
         try:
             job = await handler.get_job_run(
                 application_id=resource_meta.application_id,
-                job_run_id=resource_meta.job_run_id,
+                job_run_id=job_run_id,
             )
         except Exception as e:
             logger.warning(
                 "Failed to retrieve job %s on application %s: %s",
-                resource_meta.job_run_id,
+                job_run_id,
                 resource_meta.application_id,
                 e,
             )
             return Resource(
                 phase=TaskExecution.FAILED,
-                message=f"Job not found: {resource_meta.job_run_id}",
+                message=f"Job not found: {job_run_id}",
             )
 
         state = job.get("state", "UNKNOWN")
@@ -778,20 +829,22 @@ class EMRServerlessConnector(AsyncConnectorBase):
 
         logger.info(
             "Job %s status: state=%s, phase=%s",
-            resource_meta.job_run_id,
+            job_run_id,
             state,
             phase,
         )
 
-        log_links = self._get_log_links(resource_meta)
+        log_links = self._get_log_links(resource_meta, job_run_id)
+        outputs = LiteralMap(literals={}) if phase == TaskExecution.SUCCEEDED and resource_meta.is_script_mode else None
 
-        return Resource(phase=phase, message=message, log_links=log_links)
+        return Resource(phase=phase, message=message, log_links=log_links, outputs=outputs)
 
-    def _get_log_links(self, resource_meta: EMRServerlessJobMetadata) -> list:
+    def _get_log_links(self, resource_meta: EMRServerlessJobMetadata, job_run_id: Optional[str] = None) -> list:
         region = resource_meta.region or "us-east-1"
+        resolved_job_run_id = job_run_id or resource_meta.job_run_id
         console_url = (
             f"https://{region}.console.aws.amazon.com/emr/home?region={region}"
-            f"#/serverless/{resource_meta.application_id}/jobs/{resource_meta.job_run_id}"
+            f"#/serverless/{resource_meta.application_id}/jobs/{resolved_job_run_id}"
         )
         return [TaskLog(uri=console_url, name="EMR Serverless Console").to_flyte_idl()]
 
@@ -807,16 +860,34 @@ class EMRServerlessConnector(AsyncConnectorBase):
             resource_meta.region,
         )
         handler = self._get_handler(resource_meta.region)
+        job_run_id = resource_meta.job_run_id
         try:
+            if not job_run_id and resource_meta.pending_job_request:
+                application_started = await handler.start_application_if_needed(resource_meta.application_id)
+                if not application_started:
+                    logger.info(
+                        "Application %s is still starting; no submitted job to cancel",
+                        resource_meta.application_id,
+                    )
+                    return
+                job_run_id = await handler.start_job_run(
+                    application_id=resource_meta.application_id,
+                    **resource_meta.pending_job_request,
+                )
+
+            if not job_run_id:
+                logger.info("No submitted job to cancel for application %s", resource_meta.application_id)
+                return
+
             await handler.cancel_job_run(
                 application_id=resource_meta.application_id,
-                job_run_id=resource_meta.job_run_id,
+                job_run_id=job_run_id,
             )
-            logger.info("Delete completed for job %s", resource_meta.job_run_id)
+            logger.info("Delete completed for job %s", job_run_id)
         except Exception as e:
             logger.warning(
                 "Failed to cancel job %s on application %s: %s",
-                resource_meta.job_run_id,
+                job_run_id,
                 resource_meta.application_id,
                 e,
             )

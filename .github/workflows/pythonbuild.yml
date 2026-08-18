@@ -294,6 +294,7 @@ jobs:
           - flytekit-async-fsspec
           - flytekit-aws-athena
           - flytekit-aws-batch
+          - flytekit-aws-emr-serverless
           - flytekit-aws-sagemaker
           - flytekit-bigquery
           - flytekit-comet-ml
