@@ -597,6 +597,11 @@ class TestDatabricksV2TokenSecret:
                 databricks_conf=databricks_conf,
                 databricks_instance="test.cloud.databricks.com",
                 databricks_token_secret="project-x-token",
+                databricks_auth_type="oauth_m2m",
+                databricks_client_id="example-client",
+                databricks_oauth_secret="project-x-oauth",
+                databricks_oidc_token_file="/var/run/secrets/example/token",
+                databricks_oidc_audience="example-audience",
             )
         )
         def my_task(x: int) -> int:
@@ -614,6 +619,11 @@ class TestDatabricksV2TokenSecret:
         custom = my_task.get_custom(settings)
         assert "databricksTokenSecret" in custom
         assert custom["databricksTokenSecret"] == "project-x-token"
+        assert custom["databricksAuthType"] == "oauth_m2m"
+        assert custom["databricksClientId"] == "example-client"
+        assert custom["databricksOauthSecret"] == "project-x-oauth"
+        assert custom["databricksOidcTokenFile"] == "/var/run/secrets/example/token"
+        assert custom["databricksOidcAudience"] == "example-audience"
 
     def test_get_custom_excludes_token_secret_when_none(self):
         """get_custom() does NOT include databricksTokenSecret when None."""
