@@ -293,7 +293,7 @@ def test_ge_schema_remote_flytefile():
         return my_task(dataset=dataset)
 
     result = my_wf(
-        dataset="https://raw.githubusercontent.com/superconductive/ge_tutorials/main/data/yellow_tripdata_sample_2019-01.csv"
+        dataset="https://raw.githubusercontent.com/flyteorg/flytekit/master/plugins/flytekit-greatexpectations/tests/data/yellow_tripdata_sample_2019-01.csv"
     )
     assert result == 10000
 
@@ -313,7 +313,7 @@ def test_ge_schema_remote_flytefile_literal():
     @workflow
     def my_wf() -> int:
         return my_task(
-            dataset="https://raw.githubusercontent.com/superconductive/ge_tutorials/main/data/yellow_tripdata_sample_2019-01.csv"
+            dataset="https://raw.githubusercontent.com/flyteorg/flytekit/master/plugins/flytekit-greatexpectations/tests/data/yellow_tripdata_sample_2019-01.csv"
         )
 
     result = my_wf()
