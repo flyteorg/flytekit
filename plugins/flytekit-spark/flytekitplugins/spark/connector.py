@@ -29,9 +29,20 @@ DEFAULT_DATABRICKS_SERVICE_CREDENTIAL_PROVIDER_ENV_KEY = "FLYTE_DATABRICKS_SERVI
 
 @dataclass
 class DatabricksJobMetadata(ResourceMeta):
+    """Metadata persisted for a Databricks run.
+
+    OAuth metadata allows ``get`` and ``delete`` to obtain fresh short-lived
+    tokens. ``auth_token`` remains populated for PAT jobs and for metadata
+    written by older connector versions.
+    """
+
     databricks_instance: str
     run_id: str
-    auth_token: Optional[str] = None  # Store auth token for get/delete operations
+    auth_token: Optional[str] = None
+    auth_type: Optional[str] = None
+    client_id: Optional[str] = None
+    oauth_secret_name: Optional[str] = None
+    namespace: Optional[str] = None
 
 
 def _configure_serverless(databricks_job: dict, envs: dict) -> str:
@@ -254,6 +265,9 @@ class DatabricksConnector(AsyncConnectorBase):
 
     def __init__(self):
         super().__init__(task_type_name="spark", metadata_type=DatabricksJobMetadata)
+        from .databricks_auth import validate_connector_config
+
+        validate_connector_config()
 
     async def create(
         self,
@@ -262,6 +276,8 @@ class DatabricksConnector(AsyncConnectorBase):
         task_execution_metadata: Optional[TaskExecutionMetadata] = None,
         **kwargs,
     ) -> DatabricksJobMetadata:
+        from .databricks_auth import select_auth
+
         data = json.dumps(_get_databricks_job_spec(task_template))
         databricks_instance = task_template.custom.get(
             "databricksInstance", os.getenv(DEFAULT_DATABRICKS_INSTANCE_ENV_KEY)
@@ -272,22 +288,17 @@ class DatabricksConnector(AsyncConnectorBase):
                 f"Missing databricks instance. Please set the value through the task config or set the {DEFAULT_DATABRICKS_INSTANCE_ENV_KEY} environment variable in the connector."
             )
 
-        # Get workflow-specific token or fall back to default
         namespace = task_execution_metadata.namespace if task_execution_metadata else None
-
-        # Extract custom secret name from task template (if provided)
-        custom_secret_name = task_template.custom.get("databricksTokenSecret")
-
-        logger.info(f"Creating Databricks job for namespace: {namespace or 'unknown'}")
-        if custom_secret_name:
-            logger.info(f"Using custom secret name: {custom_secret_name}")
-
-        auth_token = get_databricks_token(
-            namespace=namespace, task_template=task_template, secret_name=custom_secret_name
+        auth = await select_auth(
+            task_template=task_template,
+            workspace_url=databricks_instance,
+            namespace=namespace,
         )
+        logger.info("Databricks auth resolved: %s", auth.describe())
         databricks_url = f"https://{databricks_instance}{DATABRICKS_API_ENDPOINT}/runs/submit"
 
         async with aiohttp.ClientSession() as session:
+            auth_token = await auth.get_bearer_token(session)
             async with session.post(databricks_url, headers=get_header(auth_token=auth_token), data=data) as resp:
                 response = await resp.json()
                 if resp.status != http.HTTPStatus.OK:
@@ -295,7 +306,13 @@ class DatabricksConnector(AsyncConnectorBase):
 
         logger.info(f"Successfully created Databricks job with run_id: {response['run_id']}")
         return DatabricksJobMetadata(
-            databricks_instance=databricks_instance, run_id=str(response["run_id"]), auth_token=auth_token
+            databricks_instance=databricks_instance,
+            run_id=str(response["run_id"]),
+            auth_token=auth_token if auth.auth_type == "pat" else None,
+            auth_type=auth.auth_type,
+            client_id=auth.settings.client_id,
+            oauth_secret_name=auth.settings.oauth_secret_name,
+            namespace=namespace,
         )
 
     async def get(self, resource_meta: DatabricksJobMetadata, **kwargs) -> Resource:
@@ -304,14 +321,14 @@ class DatabricksConnector(AsyncConnectorBase):
             f"https://{databricks_instance}{DATABRICKS_API_ENDPOINT}/runs/get?run_id={resource_meta.run_id}"
         )
 
-        # Use the stored auth token if available, otherwise fall back to default
-        headers = get_header(auth_token=resource_meta.auth_token)
-
         async with aiohttp.ClientSession() as session:
-            async with session.get(databricks_url, headers=headers) as resp:
-                if resp.status != http.HTTPStatus.OK:
-                    raise RuntimeError(f"Failed to get databricks job {resource_meta.run_id} with error: {resp.reason}")
-                response = await resp.json()
+            response = await self._request_with_auth(
+                session=session,
+                method="GET",
+                url=databricks_url,
+                resource_meta=resource_meta,
+                action_label=f"get databricks job {resource_meta.run_id}",
+            )
 
         cur_phase = TaskExecution.UNDEFINED
         message = ""
@@ -339,16 +356,66 @@ class DatabricksConnector(AsyncConnectorBase):
         databricks_url = f"https://{resource_meta.databricks_instance}{DATABRICKS_API_ENDPOINT}/runs/cancel"
         data = json.dumps({"run_id": resource_meta.run_id})
 
-        # Use the stored auth token if available, otherwise fall back to default
-        headers = get_header(auth_token=resource_meta.auth_token)
-
         async with aiohttp.ClientSession() as session:
-            async with session.post(databricks_url, headers=headers, data=data) as resp:
-                if resp.status != http.HTTPStatus.OK:
-                    raise RuntimeError(
-                        f"Failed to cancel databricks job {resource_meta.run_id} with error: {resp.reason}"
-                    )
-                await resp.json()
+            await self._request_with_auth(
+                session=session,
+                method="POST",
+                url=databricks_url,
+                resource_meta=resource_meta,
+                data=data,
+                action_label=f"cancel databricks job {resource_meta.run_id}",
+            )
+
+    async def _request_with_auth(
+        self,
+        session: "aiohttp.ClientSession",  # type: ignore[name-defined]
+        method: str,
+        url: str,
+        resource_meta: DatabricksJobMetadata,
+        action_label: str,
+        data: Optional[str] = None,
+    ) -> dict:
+        """Call the Jobs API and retry once after refreshing OAuth on 401."""
+        from .databricks_auth import DatabricksAuthError, build_auth
+
+        auth = None
+        if resource_meta.auth_type == "oauth_m2m":
+            auth = build_auth(
+                workspace_url=resource_meta.databricks_instance,
+                auth_type=resource_meta.auth_type,
+                namespace=resource_meta.namespace,
+                client_id=resource_meta.client_id,
+                oauth_secret_name=resource_meta.oauth_secret_name,
+            )
+
+        token = resource_meta.auth_token
+        if auth is not None:
+            try:
+                token = await auth.get_bearer_token(session)
+            except DatabricksAuthError as error:
+                raise RuntimeError(f"Failed to {action_label}: could not obtain Databricks auth: {error}") from error
+
+        def _request(bearer: Optional[str]):
+            headers = get_header(auth_token=bearer)
+            if method.upper() == "GET":
+                return session.get(url, headers=headers)
+            return session.post(url, headers=headers, data=data)
+
+        async with _request(token) as response:
+            if response.status == http.HTTPStatus.UNAUTHORIZED and auth is not None:
+                await auth.invalidate_cache()
+                try:
+                    refreshed_token = await auth.get_bearer_token(session)
+                except DatabricksAuthError as error:
+                    raise RuntimeError(f"Failed to {action_label}: auth refresh failed after 401: {error}") from error
+                async with _request(refreshed_token) as retry_response:
+                    if retry_response.status != http.HTTPStatus.OK:
+                        raise RuntimeError(f"Failed to {action_label} with error: {retry_response.reason}")
+                    return await retry_response.json()
+
+            if response.status != http.HTTPStatus.OK:
+                raise RuntimeError(f"Failed to {action_label} with error: {response.reason}")
+            return await response.json()
 
 
 class DatabricksConnectorV2(DatabricksConnector):
