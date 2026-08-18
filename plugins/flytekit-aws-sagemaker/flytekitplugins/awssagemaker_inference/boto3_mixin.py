@@ -144,7 +144,7 @@ class Boto3ConnectorMixin:
         hash = ""
         if "idempotence_token" in str(updated_config):
             # compute hash of the config
-            hash = xxhash.xxh64(sorted_dict_str(updated_config)).hexdigest()
+            hash = xxhash.xxh64(sorted_dict_str(updated_config).encode("utf-8")).hexdigest()
             updated_config = format_dict(self._service, updated_config, args, idempotence_token=hash)
 
         # Asynchronous Boto3 session
