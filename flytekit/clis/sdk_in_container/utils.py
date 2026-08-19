@@ -85,7 +85,8 @@ def pretty_print_grpc_error(e: grpc.RpcError):
     if isinstance(e, grpc._channel._InactiveRpcError):  # noqa
         click.secho(f"RPC Failed, with Status: {e.code()}", fg="red", bold=True)
         click.secho(f"\tDetails: {e.details()}", fg="magenta", bold=True)
-    return
+    else:
+        click.secho(f"RPC Failed, with Error: {e}", fg="red", bold=True)
 
 
 def remove_unwanted_traceback_frames(
@@ -164,19 +165,11 @@ def pretty_print_exception(e: Exception, verbosity: int = 1):
     if isinstance(e, FlyteException):
         if isinstance(e, FlyteInvalidInputException):
             click.secho("Request rejected by the API, due to Invalid input.", fg="red")
-        cause = e.__cause__
-        if cause:
-            if isinstance(cause, grpc.RpcError):
-                pretty_print_grpc_error(cause)
-            else:
-                pretty_print_traceback(e, verbosity)
-        else:
-            pretty_print_traceback(e, verbosity)
-        return
+        if e.__cause__ and isinstance(e.__cause__, grpc.RpcError):
+            pretty_print_grpc_error(e.__cause__)
 
     if isinstance(e, grpc.RpcError):
         pretty_print_grpc_error(e)
-        return
 
     pretty_print_traceback(e, verbosity)
 
