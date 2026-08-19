@@ -17,6 +17,7 @@ from click import Context
 from mashumaro.codecs.json import JSONEncoder
 from rich.progress import Progress, TextColumn, TimeElapsedColumn
 from typing_extensions import get_origin
+from typing_inspect import is_optional_type
 
 from flytekit import Annotations, FlyteContext, FlyteContextManager, Labels, LaunchPlan, Literal, WorkflowExecutionPhase
 from flytekit.clis.sdk_in_container.helpers import (
@@ -696,9 +697,16 @@ def run_command(ctx: click.Context, entity: typing.Union[PythonFunctionWorkflow,
             inputs = {}
             for input_name, v in entity.python_interface.inputs_with_defaults.items():
                 processed_click_value = kwargs.get(input_name)
+                skip_default_value_selection = False
+                if (
+                    is_optional_type(v[0])
+                    and isinstance(processed_click_value, str)
+                    and processed_click_value.lower() == "none"
+                ):
+                    processed_click_value = None
+                    skip_default_value_selection = True
                 optional_v = False
 
-                skip_default_value_selection = False
                 if processed_click_value is None and isinstance(v, typing.Tuple):
                     if entity_type == "workflow" and hasattr(v[0], "__args__"):
                         origin_base_type = get_origin(v[0])
@@ -730,6 +738,8 @@ def run_command(ctx: click.Context, entity: typing.Union[PythonFunctionWorkflow,
                     inputs[input_name] = processed_click_value
                 if processed_click_value is None and v[0] == bool:
                     inputs[input_name] = False
+                if processed_click_value is None and is_optional(v[0]):
+                    inputs[input_name] = None
 
             if not run_level_params.is_remote:
                 with FlyteContextManager.with_context(_update_flyte_context(run_level_params)):
