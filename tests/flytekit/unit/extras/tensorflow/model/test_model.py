@@ -1,3 +1,10 @@
+import sys
+
+import pytest
+
+pytest.importorskip("tensorflow", reason="tensorflow is not available for Python 3.12+")
+pytestmark = pytest.mark.skipif(sys.version_info >= (3, 12), reason="tensorflow is not available for Python 3.12+")
+
 import tensorflow as tf
 
 from flytekit import task, workflow
