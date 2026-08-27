@@ -1079,14 +1079,15 @@ class EnumTransformer(TypeTransformer[enum.Enum]):
         return LiteralType(enum_type=_core_types.EnumType(values=values))
 
     def to_literal(
-        self, ctx: FlyteContext, python_val: enum.Enum, python_type: Type[T], expected: LiteralType
+        self, ctx: FlyteContext, python_val: Union[enum.Enum, str], python_type: Type[T], expected: LiteralType
     ) -> Literal:
-        if type(python_val).__class__ != enum.EnumMeta:
-            raise TypeTransformerFailedError("Expected an enum")
-        if type(python_val.value) != str:
-            raise TypeTransformerFailedError("Only string-valued enums are supported")
-
-        return Literal(scalar=Scalar(primitive=Primitive(string_value=python_val.value)))  # type: ignore
+        # Accept either an enum member or a raw string matching one of its values.
+        val = python_val.value if isinstance(python_val, enum.Enum) else python_val
+        if not isinstance(val, str):
+            raise TypeTransformerFailedError(f"Expected an enum or matching string, got {type(python_val)}")
+        if val not in [item.value for item in cast(Type[enum.Enum], python_type)]:
+            raise TypeTransformerFailedError(f"Value {python_val} is not in Enum {python_type}")
+        return Literal(scalar=Scalar(primitive=Primitive(string_value=val)))
 
     def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T]) -> T:
         if lv.scalar and lv.scalar.binary:
@@ -2074,44 +2075,40 @@ class UnionTransformer(AsyncTypeTransformer[T]):
     ) -> typing.Union[Literal, asyncio.Future]:
         python_type = get_underlying_type(python_type)
 
-        potential_types = []
-        found_res = False
-        is_ambiguous = False
-        res = None
-        res_type = None
-        t = None
-        for i in range(len(get_args(python_type))):
+        # (type, literal, literal_type) for every variant that accepts the value
+        matches: typing.List[typing.Tuple[type, Literal, LiteralType]] = []
+        for i, t in enumerate(get_args(python_type)):
             try:
-                t = get_args(python_type)[i]
                 trans: TypeTransformer[T] = TypeEngine.get_transformer(t)
                 if isinstance(trans, AsyncTypeTransformer):
-                    attempt = trans.async_to_literal(ctx, python_val, t, expected.union_type.variants[i])
-                    res = await attempt
+                    res = await trans.async_to_literal(ctx, python_val, t, expected.union_type.variants[i])
                 else:
                     res = trans.to_literal(ctx, python_val, t, expected.union_type.variants[i])
-                if found_res:
-                    logger.debug(f"Current type {get_args(python_type)[i]} old res {res_type}")
-                    is_ambiguous = True
                 res_type = _add_tag_to_type(trans.get_literal_type(t), trans.name)
-                found_res = True
-                potential_types.append(t)
+                matches.append((t, res, res_type))
             except Exception as e:
                 logger.debug(
                     f"UnionTransformer failed attempt to convert from {python_val} to {t} error: {e}",
                 )
                 continue
 
-        if is_ambiguous:
-            raise TypeError(
-                f"Ambiguous choice of variant for union type.\n"
-                f"Potential types: {potential_types}\n"
-                "These types are structurally the same, because it's attributes have the same names and associated types."
-            )
+        if not matches:
+            raise TypeTransformerFailedError(f"Cannot convert from {python_val} to {python_type}")
 
-        if found_res:
-            return Literal(scalar=Scalar(union=Union(value=res, stored_type=res_type)))
+        if len(matches) > 1:
+            # A bare string matches both `str` and an enum whose values include it -- prefer `str` (the exact type).
+            # Every other multi-variant match stays ambiguous: structurally-identical variants are a read-back hazard.
+            exact = [m for m in matches if m[0] is str] if type(python_val) is str else []
+            if len(exact) != 1:
+                raise TypeError(
+                    "Ambiguous choice of variant for union type.\n"
+                    f"Potential types: {[m[0] for m in matches]}\n"
+                    "These types are structurally the same, because it's attributes have the same names and associated types."
+                )
+            matches = exact
 
-        raise TypeTransformerFailedError(f"Cannot convert from {python_val} to {python_type}")
+        _, res, res_type = matches[0]
+        return Literal(scalar=Scalar(union=Union(value=res, stored_type=res_type)))
 
     async def async_to_python_value(
         self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T]

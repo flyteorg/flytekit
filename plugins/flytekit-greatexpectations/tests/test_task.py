@@ -205,7 +205,7 @@ def test_ge_remote_flytefile():
     )
 
     task_object(
-        dataset="https://raw.githubusercontent.com/superconductive/ge_tutorials/main/data/yellow_tripdata_sample_2019-01.csv"
+        dataset="https://raw.githubusercontent.com/flyteorg/flytekit/master/plugins/flytekit-greatexpectations/tests/data/yellow_tripdata_sample_2019-01.csv"
     )
 
 
@@ -229,7 +229,7 @@ def test_ge_remote_flytefile_with_task():
         return my_task(dataset=dataset)
 
     result = my_wf(
-        dataset="https://raw.githubusercontent.com/superconductive/ge_tutorials/main/data/yellow_tripdata_sample_2019-01.csv"
+        dataset="https://raw.githubusercontent.com/flyteorg/flytekit/master/plugins/flytekit-greatexpectations/tests/data/yellow_tripdata_sample_2019-01.csv"
     )
     assert result == 10000
 
@@ -246,7 +246,7 @@ def test_ge_remote_flytefile_workflow():
 
     @workflow
     def valid_wf(
-        dataset: CSVFile = "https://raw.githubusercontent.com/superconductive/ge_tutorials/main/data/yellow_tripdata_sample_2019-01.csv",
+        dataset: CSVFile = "https://raw.githubusercontent.com/flyteorg/flytekit/master/plugins/flytekit-greatexpectations/tests/data/yellow_tripdata_sample_2019-01.csv",
     ) -> None:
         task_object(dataset=dataset)
 
@@ -298,8 +298,8 @@ def test_ge_flytefile_multiple_args():
 
     @workflow
     def wf(
-        dataset_one: FlyteFile = "https://raw.githubusercontent.com/superconductive/ge_tutorials/main/data/yellow_tripdata_sample_2019-01.csv",
-        dataset_two: FlyteFile = "https://raw.githubusercontent.com/superconductive/ge_tutorials/main/data/yellow_tripdata_sample_2019-02.csv",
+        dataset_one: FlyteFile = "https://raw.githubusercontent.com/flyteorg/flytekit/master/plugins/flytekit-greatexpectations/tests/data/yellow_tripdata_sample_2019-01.csv",
+        dataset_two: FlyteFile = "https://raw.githubusercontent.com/flyteorg/flytekit/master/plugins/flytekit-greatexpectations/tests/data/yellow_tripdata_sample_2019-02.csv",
     ) -> typing.Tuple[int, int]:
         task_object_one(dataset=dataset_one)
         task_object_two(dataset=dataset_two)

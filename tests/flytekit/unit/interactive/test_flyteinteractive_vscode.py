@@ -1,3 +1,4 @@
+import os
 from collections import OrderedDict
 
 import mock
@@ -13,6 +14,7 @@ from flytekit.interactive import (
 from flytekit.interactive.constants import (
     EXIT_CODE_SUCCESS,
 )
+from flytekit.interactive.utils import execute_command
 from flytekit.interactive.vscode_lib.decorator import (
     get_code_server_info,
     get_installed_extensions,
@@ -363,3 +365,49 @@ def test_get_installed_extensions_failed(mock_run):
 
     expected_extensions = []
     assert installed_extensions == expected_extensions
+
+
+def test_vscode_passes_port_env_to_child_process(vscode_patches, mock_remote_execution):
+    """code-server must bind to self.port regardless of a PORT env var inherited from the pod/image."""
+    (
+        mock_process,
+        _,
+        _,
+        _,
+        _,
+        _,
+        _,
+    ) = vscode_patches
+
+    @task
+    @vscode(port=1234)
+    def t():
+        return
+
+    @workflow
+    def wf():
+        t()
+
+    with mock.patch.dict(os.environ, {"PORT": "9999"}):
+        wf()
+
+    mock_process.assert_called_once()
+    _, kwargs = mock_process.call_args
+    assert kwargs["kwargs"]["env"] == {"PORT": "1234"}
+
+
+@mock.patch("subprocess.Popen")
+def test_execute_command_passes_env_to_subprocess(mock_popen):
+    """execute_command should merge the provided env over os.environ when launching the subprocess."""
+    mock_proc = mock.Mock()
+    mock_proc.returncode = EXIT_CODE_SUCCESS
+    mock_proc.communicate.return_value = (b"", b"")
+    mock_popen.return_value = mock_proc
+
+    with mock.patch.dict(os.environ, {"PORT": "9999", "EXISTING": "keep"}):
+        execute_command("code-server --bind-addr 0.0.0.0:1234", env={"PORT": "1234"})
+
+    _, kwargs = mock_popen.call_args
+    assert kwargs["env"]["PORT"] == "1234"
+    # The inherited environment is preserved for other variables.
+    assert kwargs["env"]["EXISTING"] == "keep"

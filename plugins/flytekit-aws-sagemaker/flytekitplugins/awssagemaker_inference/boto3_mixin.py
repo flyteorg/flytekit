@@ -21,9 +21,25 @@ def sorted_dict_str(d):
     if isinstance(d, dict):
         return "{" + ", ".join(f"{sorted_dict_str(k)}: {sorted_dict_str(v)}" for k, v in sorted(d.items())) + "}"
     elif isinstance(d, list):
-        return "[" + ", ".join(sorted_dict_str(i) for i in sorted(d, key=lambda x: str(x))) + "]"
+        # Dictionary order is irrelevant to a request, but list order can be
+        # semantically significant (for example, ContainerArguments).
+        return "[" + ", ".join(sorted_dict_str(i) for i in d) + "]"
     else:
         return str(d)
+
+
+# https://github.com/flyteorg/flyte/issues/4505
+def convert_floats_with_no_fraction_to_ints(data):
+    """Recursively rewrite whole-number floats to ints so boto3 doesn't reject integer fields."""
+    if isinstance(data, dict):
+        for key, value in data.items():
+            data[key] = convert_floats_with_no_fraction_to_ints(value)
+    elif isinstance(data, list):
+        for i, item in enumerate(data):
+            data[i] = convert_floats_with_no_fraction_to_ints(item)
+    elif isinstance(data, float) and data.is_integer():
+        return int(data)
+    return data
 
 
 account_id_map = {
@@ -120,10 +136,15 @@ class Boto3ConnectorMixin:
 
         updated_config = format_dict(self._service, config, args)
 
+        # boto3 rejects whole-number floats for integer-typed fields (e.g. InstanceCount,
+        # MaxRuntimeInSeconds). Normalize before hashing so semantically equivalent
+        # integer values produce the same idempotence token.
+        updated_config = convert_floats_with_no_fraction_to_ints(updated_config)
+
         hash = ""
         if "idempotence_token" in str(updated_config):
             # compute hash of the config
-            hash = xxhash.xxh64(sorted_dict_str(updated_config)).hexdigest()
+            hash = xxhash.xxh64(sorted_dict_str(updated_config).encode("utf-8")).hexdigest()
             updated_config = format_dict(self._service, updated_config, args, idempotence_token=hash)
 
         # Asynchronous Boto3 session
