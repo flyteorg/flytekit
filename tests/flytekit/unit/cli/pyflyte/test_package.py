@@ -1,6 +1,7 @@
 import os
 import shutil
 
+import rich_click as click
 from click.testing import CliRunner
 from flyteidl.admin import task_pb2
 
@@ -177,7 +178,11 @@ def test_package():
 
 
 def test_pkgs():
-    pp = flytekit.clis.sdk_in_container.utils.validate_package(None, None, ["a.b", "a.c,b.a", "cc.a"])
+    ctx = click.Context(click.Command('test'))
+    ctx.obj = dict()
+    ctx.obj["verbose"] = 0
+
+    pp = flytekit.clis.sdk_in_container.utils.validate_package(ctx, None, ["a.b", "a.c,b.a", "cc.a"])
     assert pp == ["a.b", "a.c", "b.a", "cc.a"]
 
 
