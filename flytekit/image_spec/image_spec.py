@@ -286,7 +286,7 @@ class ImageSpec:
         Return None if failed to check if the image exists due to the permission issue or other reasons.
         """
         import docker
-        from docker.errors import APIError, ImageNotFound
+        from docker.errors import APIError, DockerException, ImageNotFound
 
         try:
             client = docker.from_env()
@@ -339,6 +339,16 @@ class ImageSpec:
                     f"You can upgrade the package by running:\n"
                     f"    pip install --upgrade docker"
                 )
+
+            if isinstance(e, DockerException) and "Error while fetching server API version" in str(e):
+                click.secho(
+                    "Unable to connect to Docker daemon. Please ensure Docker is installed and running.\n"
+                    "You can start Docker by:\n"
+                    "  - Windows/Mac: Start the Docker Desktop application\n"
+                    "  - Linux: Run 'sudo systemctl start docker'",
+                    fg="red",
+                )
+                return None
 
             click.secho(f"Failed to check if the image exists with error:\n {e}", fg="red")
             return None
