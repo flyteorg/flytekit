@@ -65,6 +65,7 @@ from flytekit.remote import (
     FlyteRemote,
     FlyteTask,
     FlyteWorkflow,
+    raw_script,
     remote_fs,
 )
 from flytekit.remote.executions import FlyteWorkflowExecution
@@ -802,6 +803,82 @@ def run_command(ctx: click.Context, entity: typing.Union[PythonFunctionWorkflow,
     return _run
 
 
+def file_lister() -> typing.List[str]:
+    """
+    Lists all python files in the current path
+    """
+    files = [str(p) for p in pathlib.Path(".").glob("*.py") if str(p) != "__init__.py"]
+    return sorted(files)
+
+
+def yaml_json_load(stream, param_hint) -> typing.Any:
+    try:
+        inputs = yaml.safe_load(stream)
+    except yaml.YAMLError as e:
+        yaml_e = e
+        try:
+            inputs = json.loads(stream)
+        except json.JSONDecodeError as e:
+            raise click.BadParameter(
+                message=f"Could not load the {param_hint}. Please make sure it is a valid JSON or YAML file."
+                f"\n json error: {e},"
+                f"\n yaml error: {yaml_e}",
+                param_hint=f"--{param_hint}",
+            )
+    return inputs
+
+
+class RawScriptRunCommand(click.RichCommand):
+    _help = """
+    This command can be used to execute a raw script onto a Flyte cluster. This is akin to having a simple
+    Remote Job runner. These can be arbitrary python scripts, without the need to even import flytekit.
+    TODO: support more than single node execution, e.g. distributed training, spark jobs, ray jobs etc
+    """
+    __doc__ = _help
+    SCRIPT_COMMAND = "script"
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, name="script", help=self._help, **kwargs)
+
+    def get_params(self, ctx: Context) -> typing.List[click.Parameter]:
+        ctx.obj.remote = True
+        if not self.params:
+            self.params = [
+                click.Option(
+                    ["--cfg", "--config-file"],
+                    help="Config file to use to launch the command, you can generate a template config file ... TODO",
+                    required=False,
+                    type=click.Path(exists=True, file_okay=True, dir_okay=False, readable=True, resolve_path=True),
+                ),
+                click.Argument(
+                    ["script_file"],
+                    type=click.Path(exists=True, file_okay=True, dir_okay=False, readable=True, resolve_path=True),
+                ),
+            ]
+        return super().get_params(ctx)
+
+    def invoke(self, ctx: click.Context) -> typing.Any:
+        run_level_params: RunLevelParams = ctx.obj
+        r = run_level_params.remote_instance()
+        script = ctx.params["script_file"]
+        cfg_file = ctx.params["cfg"]
+        cfg = None
+        if cfg_file:
+            with open(cfg_file, "r") as f:
+                cfg = yaml_json_load(f.read(), "cfg")
+                cfg = raw_script.TaskLaunchConfig.from_dict(cfg)
+        exe = raw_script.run(script=script, cfg=cfg, remote=r, local=not run_level_params.is_remote)
+        console_url = r.generate_console_url(exe)
+        s = (
+            click.style("\n[✔] ", fg="green")
+            + "Go to "
+            + click.style(console_url, fg="cyan")
+            + " to see execution in the console."
+        )
+        click.echo(s)
+        return None
+
+
 class DynamicEntityLaunchCommand(click.RichCommand):
     """
     This is a dynamic command that is created for each launch plan. This is used to execute a launch plan.
@@ -1003,6 +1080,11 @@ class RemoteEntityGroup(click.RichGroup):
 
 
 class YamlFileReadingCommand(click.RichCommand):
+    """
+    A Wrapper command for reading inputs from a YAML file and passing them to the task, workflow or launchplan
+    execution.
+    """
+
     def __init__(
         self,
         name: str,
@@ -1022,20 +1104,7 @@ class YamlFileReadingCommand(click.RichCommand):
 
     def parse_args(self, ctx: Context, args: t.List[str]) -> t.List[str]:
         def load_inputs(f: str) -> t.Dict[str, str]:
-            try:
-                inputs = yaml.safe_load(f)
-            except yaml.YAMLError as e:
-                yaml_e = e
-                try:
-                    inputs = json.loads(f)
-                except json.JSONDecodeError as e:
-                    raise click.BadParameter(
-                        message=f"Could not load the inputs file. Please make sure it is a valid JSON or YAML file."
-                        f"\n json error: {e},"
-                        f"\n yaml error: {yaml_e}",
-                        param_hint="--inputs-file",
-                    )
-
+            yaml_json_load(f, "inputs-file")
             return inputs
 
         inputs = {}
@@ -1209,13 +1278,13 @@ class RunCommand(click.RichGroup):
     def list_commands(self, ctx, add_remote: bool = True):
         if self._files:
             return self._files
-        self._files = [str(p) for p in pathlib.Path(".").glob("*.py") if str(p) != "__init__.py"]
-        self._files = sorted(self._files)
+        self._files = file_lister()
         if add_remote:
             self._files = self._files + [
                 RemoteEntityGroup.LAUNCHPLAN_COMMAND,
                 RemoteEntityGroup.WORKFLOW_COMMAND,
                 RemoteEntityGroup.TASK_COMMAND,
+                RawScriptRunCommand.SCRIPT_COMMAND,
             ]
         return self._files
 
@@ -1233,6 +1302,8 @@ class RunCommand(click.RichGroup):
             return RemoteEntityGroup(RemoteEntityGroup.WORKFLOW_COMMAND)
         elif filename == RemoteEntityGroup.TASK_COMMAND:
             return RemoteEntityGroup(RemoteEntityGroup.TASK_COMMAND)
+        elif filename == RawScriptRunCommand.SCRIPT_COMMAND:
+            return RawScriptRunCommand()
         return WorkflowCommand(filename, name=filename, help=f"Run a [workflow|task|launch plan] from {filename}")
 
 
