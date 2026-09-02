@@ -2587,10 +2587,17 @@ class FlyteRemote(object):
         self,
         execution: FlyteWorkflowExecution,
         sync_nodes: bool = False,
+        _depth: int = 0,
+        _max_depth: int = 50,
     ) -> FlyteWorkflowExecution:
         """
         Sync a FlyteWorkflowExecution object with its corresponding remote state.
         """
+        if _depth > _max_depth:
+            raise FlyteAssertion(
+                f"Nesting depth {_depth} exceeds _max_depth={_max_depth} for execution "
+                f"{execution.id}. Refusing to recurse further to avoid RecursionError."
+            )
         # Update closure, and then data, because we don't want the execution to finish between when we get the data,
         # and then for the closure to have is_done to be true.
         execution._closure = self.client.get_execution(execution.id).closure
@@ -2642,7 +2649,9 @@ class FlyteRemote(object):
         if sync_nodes:
             node_execs = {}
             for n in underlying_node_executions:
-                node_execs[n.id.node_id] = self.sync_node_execution(n, node_mapping)  # noqa
+                node_execs[n.id.node_id] = self.sync_node_execution(  # noqa
+                    n, node_mapping, _depth=_depth + 1, _max_depth=_max_depth
+                )
             execution._node_executions = node_execs
         return self._assign_inputs_and_outputs(execution, execution_data, node_interface)
 
@@ -2650,6 +2659,8 @@ class FlyteRemote(object):
         self,
         execution: FlyteNodeExecution,
         node_mapping: typing.Dict[str, FlyteNode],
+        _depth: int = 0,
+        _max_depth: int = 50,
     ) -> FlyteNodeExecution:
         """
         Get data backing a node execution. These FlyteNodeExecution objects should've come from Admin with the model
@@ -2669,6 +2680,11 @@ class FlyteRemote(object):
         The data model is complicated, so ascertaining which of these happened is a bit tricky. That logic is
         encapsulated in this function.
         """
+        if _depth > _max_depth:
+            raise FlyteAssertion(
+                f"Nesting depth {_depth} exceeds _max_depth={_max_depth} for node "
+                f"{execution.id}. Refusing to recurse further to avoid RecursionError."
+            )
         # For single task execution - the metadata spec node id is missing. In these cases, revert to regular node id
         node_id = execution.metadata.spec_node_id
         # This case supports single-task execution compiled workflows.
@@ -2712,7 +2728,7 @@ class FlyteRemote(object):
             launched_exec = self.fetch_execution(
                 project=launched_exec_id.project, domain=launched_exec_id.domain, name=launched_exec_id.name
             )
-            self.sync_execution(launched_exec, sync_nodes=True)
+            self._sync_execution(launched_exec, sync_nodes=True, _depth=_depth + 1, _max_depth=_max_depth)
             if launched_exec.is_done:
                 # The synced underlying execution should've had these populated.
                 execution._inputs = launched_exec.inputs
@@ -2743,7 +2759,12 @@ class FlyteRemote(object):
 
                 dynamic_flyte_wf = FlyteWorkflow.promote_from_closure(compiled_wf, node_launch_plans)
                 execution._underlying_node_executions = [
-                    self.sync_node_execution(FlyteNodeExecution.promote_from_model(cne), dynamic_flyte_wf._node_map)
+                    self.sync_node_execution(
+                        FlyteNodeExecution.promote_from_model(cne),
+                        dynamic_flyte_wf._node_map,
+                        _depth=_depth + 1,
+                        _max_depth=_max_depth,
+                    )
                     for cne in child_node_executions
                 ]
                 execution._task_executions = [
@@ -2757,7 +2778,12 @@ class FlyteRemote(object):
                 sub_flyte_workflow = execution._node.flyte_entity
                 sub_node_mapping = {n.id: n for n in sub_flyte_workflow.flyte_nodes}
                 execution._underlying_node_executions = [
-                    self.sync_node_execution(FlyteNodeExecution.promote_from_model(cne), sub_node_mapping)
+                    self.sync_node_execution(
+                        FlyteNodeExecution.promote_from_model(cne),
+                        sub_node_mapping,
+                        _depth=_depth + 1,
+                        _max_depth=_max_depth,
+                    )
                     for cne in child_node_executions
                 ]
                 execution._interface = sub_flyte_workflow.interface
@@ -2778,7 +2804,12 @@ class FlyteRemote(object):
                     sub_node_mapping[else_node.id] = else_node
 
                 execution._underlying_node_executions = [
-                    self.sync_node_execution(FlyteNodeExecution.promote_from_model(cne), sub_node_mapping)
+                    self.sync_node_execution(
+                        FlyteNodeExecution.promote_from_model(cne),
+                        sub_node_mapping,
+                        _depth=_depth + 1,
+                        _max_depth=_max_depth,
+                    )
                     for cne in child_node_executions
                 ]
             else:
@@ -2851,7 +2882,12 @@ class FlyteRemote(object):
                 sub_node_mapping[else_node.id] = else_node
 
             execution._underlying_node_executions = [
-                self.sync_node_execution(FlyteNodeExecution.promote_from_model(cne), sub_node_mapping)
+                self.sync_node_execution(
+                    FlyteNodeExecution.promote_from_model(cne),
+                    sub_node_mapping,
+                    _depth=_depth + 1,
+                    _max_depth=_max_depth,
+                )
                 for cne in child_node_executions
             ]
 
