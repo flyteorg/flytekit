@@ -45,7 +45,8 @@ python-magic; (platform_system=='Darwin' or platform_system=='Linux')
 # The root cause was fixed in googleapis-common-protos>=1.63.2. On python 3.13 the pin is lifted, because the
 # tensorflow releases that support 3.13 require protobuf>=5 (flytekit itself does not cap protobuf).
 protobuf<5; python_version<'3.13'
-types-protobuf<5
+types-protobuf<5; python_version<'3.13'
+types-protobuf; python_version>='3.13'
 
 types-croniter
 types-decorator
