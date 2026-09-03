@@ -9,6 +9,7 @@ from typing_extensions import Protocol
 
 from flytekit.core.context_manager import FlyteContext
 from flytekit.core.type_engine import TypeEngine, TypeTransformer, TypeTransformerFailedError
+from flytekit.extras.pytorch.native import _torch_load
 from flytekit.models.core import types as _core_types
 from flytekit.models.literals import Blob, BlobMetadata, Literal, Scalar
 from flytekit.models.types import LiteralType
@@ -119,7 +120,7 @@ class PyTorchCheckpointTransformer(TypeTransformer[PyTorchCheckpoint]):
             map_location = torch.device("cpu")
 
         # load checkpoint from a file
-        return typing.cast(PyTorchCheckpoint, torch.load(local_path, map_location=map_location))
+        return typing.cast(PyTorchCheckpoint, _torch_load(local_path, map_location=map_location))
 
     def guess_python_type(self, literal_type: LiteralType) -> Type[PyTorchCheckpoint]:
         if (

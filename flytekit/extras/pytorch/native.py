@@ -1,4 +1,6 @@
+import inspect
 import pathlib
+import typing
 from typing import Type, TypeVar
 
 import torch
@@ -10,6 +12,16 @@ from flytekit.models.literals import Blob, BlobMetadata, Literal, Scalar
 from flytekit.models.types import LiteralType
 
 T = TypeVar("T")
+
+
+def _torch_load(path: str, map_location: typing.Any) -> typing.Any:
+    """
+    Load a full object with ``torch.load``. flytekit serializes whole tensors/modules/checkpoints, so ``weights_only``
+    (the default since torch 2.6) must be disabled. The keyword does not exist before torch 1.13, hence the check.
+    """
+    if "weights_only" in inspect.signature(torch.load).parameters:
+        return torch.load(path, map_location=map_location, weights_only=False)
+    return torch.load(path, map_location=map_location)
 
 
 class PyTorchTypeTransformer(TypeTransformer[T]):
@@ -63,7 +75,7 @@ class PyTorchTypeTransformer(TypeTransformer[T]):
             map_location = torch.device("cpu")
 
         # load pytorch tensor/module from a file
-        return torch.load(local_path, map_location=map_location)
+        return _torch_load(local_path, map_location=map_location)
 
 
 class PyTorchTensorTransformer(PyTorchTypeTransformer[torch.Tensor]):

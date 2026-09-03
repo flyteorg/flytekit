@@ -27,9 +27,9 @@ jobs:
       - name: Set Python versions for run
         run: |
           if [[ ${{ github.event_name }} == "schedule" ]]; then
-            echo "python_versions=[\"3.10\",\"3.11\",\"3.12\"]" >> $GITHUB_ENV
+            echo "python_versions=[\"3.10\",\"3.11\",\"3.12\",\"3.13\"]" >> $GITHUB_ENV
           else
-            echo "python_versions=[\"3.12\"]" >> $GITHUB_ENV
+            echo "python_versions=[\"3.12\",\"3.13\"]" >> $GITHUB_ENV
           fi
 
   build:
@@ -139,6 +139,9 @@ jobs:
             pandas: "pandas>=2.0.0"
           - pandas: "pandas<2.0.0"
             python-version: "3.12"
+          # pandas 1.x has no wheels for python 3.13
+          - pandas: "pandas<2.0.0"
+            python-version: "3.13"
 
     steps:
       - uses: actions/checkout@v4
@@ -389,6 +392,27 @@ jobs:
           # Segmentation fault on python 3.12: https://github.com/flyteorg/flyte/issues/5020
           - python-version: 3.12
             plugin-names: "flytekit-kf-pytorch"
+          # Python 3.13: the exclusions below mirror the python 3.12 ones (same dependency limitations) and should
+          # be revisited together with them.
+          - python-version: 3.13
+            plugin-names: "flytekit-airflow"
+          - python-version: 3.13
+            plugin-names: "flytekit-kf-pytorch"
+          - python-version: 3.13
+            plugin-names: "flytekit-modin"
+          - python-version: 3.13
+            plugin-names: "flytekit-onnx-pytorch"
+          - python-version: 3.13
+            plugin-names: "flytekit-ray"
+          - python-version: 3.13
+            plugin-names: "flytekit-vaex"
+          # The tensorflow releases that provide python 3.13 wheels require protobuf>=6, which conflicts with the
+          # "protobuf<5" pin used below for the plugin tests.
+          - python-version: 3.13
+            plugin-names: "flytekit-mlflow"
+          # flytekitplugins-duckdb declares python_requires<3.13 (duckdb<=1.0.0 pin)
+          - python-version: 3.13
+            plugin-names: "flytekit-duckdb"
     steps:
       - uses: actions/checkout@v4
       - name: "Clear action cache"
