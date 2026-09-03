@@ -29,7 +29,7 @@ jobs:
           if [[ ${{ github.event_name }} == "schedule" ]]; then
             echo "python_versions=[\"3.10\",\"3.11\",\"3.12\",\"3.13\"]" >> $GITHUB_ENV
           else
-            echo "python_versions=[\"3.12\",\"3.13\"]" >> $GITHUB_ENV
+            echo "python_versions=[\"3.13\"]" >> $GITHUB_ENV
           fi
 
   build:
@@ -389,8 +389,8 @@ jobs:
           # Segmentation fault on python 3.12: https://github.com/flyteorg/flyte/issues/5020
           - python-version: 3.12
             plugin-names: "flytekit-kf-pytorch"
-          # Python 3.13: the exclusions below mirror the python 3.12 ones (same dependency limitations) and should
-          # be revisited together with them.
+          # Python 3.13: the exclusions below mirror the python 3.12 ones. They have not been verified on 3.13
+          # (several of the underlying issues are closed by now); revisit both lists together.
           - python-version: 3.13
             plugin-names: "flytekit-airflow"
           - python-version: 3.13
@@ -403,7 +403,7 @@ jobs:
             plugin-names: "flytekit-ray"
           - python-version: 3.13
             plugin-names: "flytekit-vaex"
-          # The tensorflow releases that provide python 3.13 wheels require protobuf>=6, which conflicts with the
+          # The tensorflow releases that provide python 3.13 wheels require protobuf>=5, which conflicts with the
           # "protobuf<5" pin used below for the plugin tests.
           - python-version: 3.13
             plugin-names: "flytekit-mlflow"
