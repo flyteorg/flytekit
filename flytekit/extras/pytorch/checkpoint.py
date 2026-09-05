@@ -9,6 +9,7 @@ from typing_extensions import Protocol
 
 from flytekit.core.context_manager import FlyteContext
 from flytekit.core.type_engine import TypeEngine, TypeTransformer, TypeTransformerFailedError
+from flytekit.extras.pytorch.native import load_torch_object
 from flytekit.models.core import types as _core_types
 from flytekit.models.literals import Blob, BlobMetadata, Literal, Scalar
 from flytekit.models.types import LiteralType
@@ -118,8 +119,11 @@ class PyTorchCheckpointTransformer(TypeTransformer[PyTorchCheckpoint]):
         else:
             map_location = torch.device("cpu")
 
-        # load checkpoint from a file
-        return typing.cast(PyTorchCheckpoint, torch.load(local_path, map_location=map_location))
+        # load checkpoint from a file; the hyperparameters can be arbitrary objects, so the weights-only loader
+        # cannot be used
+        return typing.cast(
+            PyTorchCheckpoint, load_torch_object(local_path, map_location=map_location, weights_only=False)
+        )
 
     def guess_python_type(self, literal_type: LiteralType) -> Type[PyTorchCheckpoint]:
         if (
