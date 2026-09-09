@@ -72,6 +72,25 @@ def _default_msgpack_decoder(data: bytes) -> Any:
     return msgpack.unpackb(data, strict_map_key=False)
 
 
+def _sort_dict_keys(obj: Any) -> Any:
+    """
+    Recursively sort the keys of ``obj`` and of any dict nested inside dicts or lists, so that two dicts holding
+    the same items serialize to identical msgpack bytes regardless of insertion order. Propeller derives cache
+    keys from the raw literal bytes, so key order would otherwise cause spurious cache misses.
+    Keys are grouped by type name so that mixed-type keys (e.g. ``int`` and ``str``) can be ordered; if the keys
+    still cannot be compared, the original order is kept.
+    """
+    if isinstance(obj, dict):
+        try:
+            keys = sorted(obj, key=lambda k: (type(k).__name__, k))
+        except TypeError:
+            keys = list(obj)
+        return {k: _sort_dict_keys(obj[k]) for k in keys}
+    if isinstance(obj, list):
+        return [_sort_dict_keys(v) for v in obj]
+    return obj
+
+
 class BatchSize:
     """
     This is used to annotate a FlyteDirectory when we want to download/upload the contents of the directory in batches. For example,
@@ -2290,7 +2309,7 @@ class DictTransformer(AsyncTypeTransformer[dict]):
         try:
             # Handle dictionaries with non-string keys (e.g., Dict[int, Type])
             encoder = MessagePackEncoder(python_type)
-            msgpack_bytes = encoder.encode(v)
+            msgpack_bytes = encoder.encode(_sort_dict_keys(v))
             return Literal(scalar=Scalar(binary=Binary(value=msgpack_bytes, tag=MESSAGEPACK)))
         except TypeError as e:
             if allow_pickle:

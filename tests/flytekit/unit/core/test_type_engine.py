@@ -29,6 +29,7 @@ from typing_extensions import Annotated, get_args
 
 from flytekit import dynamic, kwtypes, task, workflow
 from flytekit.core.annotation import FlyteAnnotation
+from flytekit.core.constants import MESSAGEPACK
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
 from flytekit.core.data_persistence import flyte_tmp_dir
 from flytekit.core.hash import HashMethod
@@ -581,6 +582,34 @@ def test_dict_transformer():
 
     lv._metadata = None
     assert d.to_python_value(ctx, lv, dict) == {"x": "hello"}
+
+
+def test_dict_to_binary_literal_is_independent_of_key_order():
+    ctx = FlyteContext.current_context()
+
+    d1 = {"a": 1, "b": [{"y": 1, "x": 2}], "c": {"y": 1, "x": {"k2": 1, "k1": 2}}}
+    d2 = {"c": {"x": {"k1": 2, "k2": 1}, "y": 1}, "b": [{"x": 2, "y": 1}], "a": 1}
+    assert d1 == d2
+
+    lt = TypeEngine.to_literal_type(dict)
+    lv1 = TypeEngine.to_literal(ctx, d1, dict, lt)
+    lv2 = TypeEngine.to_literal(ctx, d2, dict, lt)
+    assert lv1.scalar.binary.tag == MESSAGEPACK
+    assert lv1.scalar.binary.value == lv2.scalar.binary.value
+    assert TypeEngine.to_python_value(ctx, lv1, dict) == d1
+
+    lt_int = TypeEngine.to_literal_type(Dict[int, str])
+    lv1 = TypeEngine.to_literal(ctx, {2: "b", 1: "a"}, Dict[int, str], lt_int)
+    lv2 = TypeEngine.to_literal(ctx, {1: "a", 2: "b"}, Dict[int, str], lt_int)
+    assert lv1.scalar.binary.value == lv2.scalar.binary.value
+    assert TypeEngine.to_python_value(ctx, lv1, Dict[int, str]) == {1: "a", 2: "b"}
+
+    mixed1 = {"b": 1, 1: "a", None: 2}
+    mixed2 = {None: 2, 1: "a", "b": 1}
+    lv1 = TypeEngine.to_literal(ctx, mixed1, dict, lt)
+    lv2 = TypeEngine.to_literal(ctx, mixed2, dict, lt)
+    assert lv1.scalar.binary.value == lv2.scalar.binary.value
+    assert TypeEngine.to_python_value(ctx, lv1, dict) == mixed1
 
 
 def test_convert_marshmallow_json_schema_to_python_class():

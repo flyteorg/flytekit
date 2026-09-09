@@ -1653,9 +1653,9 @@ def test_guess_dict3():
 
     ctx = context_manager.FlyteContextManager.current_context()
     output_lm = t2.dispatch_execute(ctx, _literal_models.LiteralMap(literals={}))
-    msgpack_bytes = msgpack.dumps({"k1": "v1", "k2": 3, 4: {"one": [1, "two", [3]]}})
-    binary_idl_obj = Binary(value=msgpack_bytes, tag=MESSAGEPACK)
-    assert output_lm.literals["o0"].scalar.binary == binary_idl_obj
+    binary_idl_obj = output_lm.literals["o0"].scalar.binary
+    assert binary_idl_obj.tag == MESSAGEPACK
+    assert msgpack.loads(binary_idl_obj.value, strict_map_key=False) == {"k1": "v1", "k2": 3, 4: {"one": [1, "two", [3]]}}
 
 
 @pytest.mark.skipif(
