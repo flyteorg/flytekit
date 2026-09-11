@@ -74,8 +74,8 @@ def _default_msgpack_decoder(data: bytes) -> Any:
 
 def _sort_dict_keys(obj: Any) -> Any:
     """
-    Recursively sort the keys of ``obj`` and of any dict nested inside dicts or lists, so that two dicts holding
-    the same items serialize to identical msgpack bytes regardless of insertion order. Propeller derives cache
+    Recursively sort the keys of ``obj`` and of any dict nested inside dicts, lists, or tuples, so that two dicts
+    holding the same items serialize to identical msgpack bytes regardless of insertion order. Propeller derives cache
     keys from the raw literal bytes, so key order would otherwise cause spurious cache misses.
     Keys are grouped by type name so that mixed-type keys (e.g. ``int`` and ``str``) can be ordered; if the keys
     still cannot be compared, the original order is kept.
@@ -88,6 +88,8 @@ def _sort_dict_keys(obj: Any) -> Any:
         return {k: _sort_dict_keys(obj[k]) for k in keys}
     if isinstance(obj, list):
         return [_sort_dict_keys(v) for v in obj]
+    if isinstance(obj, tuple):
+        return tuple(_sort_dict_keys(v) for v in obj)
     return obj
 
 
