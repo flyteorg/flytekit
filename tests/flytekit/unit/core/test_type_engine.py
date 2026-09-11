@@ -611,10 +611,14 @@ def test_dict_to_binary_literal_is_independent_of_key_order():
     assert lv1.scalar.binary.value == lv2.scalar.binary.value
     assert TypeEngine.to_python_value(ctx, lv1, dict) == mixed1
 
-    d3 = {"a": ({"y": 1, "x": 2},), "b": [{"y": 1, "x": 2}]}
-    lv3 = TypeEngine.to_literal(ctx, d3, dict, lt)
+    # Test that tuples are handled deterministically: msgpack decodes tuples as lists,
+    # so we compare bytes directly rather than round-tripping through to_python_value.
+    d3a = {"a": ({"y": 1, "x": 2},), "b": [{"y": 1, "x": 2}]}
+    d3b = {"a": ({"x": 2, "y": 1},), "b": [{"y": 1, "x": 2}]}
+    lv3 = TypeEngine.to_literal(ctx, d3a, dict, lt)
     assert lv3.scalar.binary.tag == MESSAGEPACK
-    assert TypeEngine.to_python_value(ctx, lv3, dict) == d3
+    # Two encodings with different key order must produce identical bytes
+    assert lv3.scalar.binary.value == TypeEngine.to_literal(ctx, d3b, dict, lt).scalar.binary.value
 
 
 def test_convert_marshmallow_json_schema_to_python_class():
