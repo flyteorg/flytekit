@@ -327,7 +327,6 @@ class Task(object):
                 outputs_literal_map = LocalTaskCache.get(
                     self.name, self.metadata.cache_version, input_literal_map, self.metadata.cache_ignore_input_vars
                 )
-                # The cache returns None iff the key does not exist in the cache
                 if outputs_literal_map is None:
                     logger.info("Cache miss, task will be executed now")
                 else:
