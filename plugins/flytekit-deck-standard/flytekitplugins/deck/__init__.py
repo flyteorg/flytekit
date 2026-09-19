@@ -14,6 +14,7 @@ This package contains things that are useful when extending Flytekit.
    MarkdownRenderer
    SourceCodeRenderer
    TableRenderer
+   PyTorchProfilingRenderer
 """
 
 from .renderer import (
@@ -24,4 +25,16 @@ from .renderer import (
     MarkdownRenderer,
     SourceCodeRenderer,
     TableRenderer,
+    PyTorchProfilingRenderer
 )
+
+__all__ = [
+    "BoxRenderer",
+    "FrameProfilingRenderer",
+    "GanttChartRenderer",
+    "ImageRenderer",
+    "MarkdownRenderer",
+    "SourceCodeRenderer",
+    "TableRenderer",
+    "PyTorchProfilingRenderer"  
+]
