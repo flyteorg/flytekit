@@ -1,6 +1,7 @@
+import asyncio
 import os
 from unittest import mock
-from unittest.mock import MagicMock, mock_open
+from unittest.mock import AsyncMock, MagicMock, mock_open
 
 import pytest
 from flytekitplugins.async_fsspec import AsyncS3FileSystem
@@ -199,3 +200,28 @@ async def test_get_file_file_size_is_not_none(mock_isdir, mock_info, mock_call_s
         )
     mock_call_s3.assert_has_calls(get_object_calls)
     assert mock_call_s3.call_count == len(get_object_calls)
+
+
+@pytest.mark.asyncio
+async def test_get_file_propagates_completed_chunk_failure(tmp_path):
+    asyncs3fs = AsyncS3FileSystem(anon=True)
+    body = MagicMock()
+    body.read = AsyncMock(side_effect=[b"data", b""])
+
+    async def call_s3(*args, **kwargs):
+        if kwargs["Range"] == "bytes=0-3":
+            raise RuntimeError("download failed")
+        await asyncio.sleep(0.01)
+        return {"Body": body, "ContentLength": 4}
+
+    with (
+        mock.patch.object(asyncs3fs, "_info", return_value={"size": 8}),
+        mock.patch.object(asyncs3fs, "_call_s3", side_effect=call_s3),
+        pytest.raises(RuntimeError, match="download failed"),
+    ):
+        await asyncs3fs._get_file(
+            rpath="s3://bucket/object",
+            lpath=str(tmp_path / "object"),
+            chunksize=4,
+            concurrent_download=2,
+        )

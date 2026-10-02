@@ -236,10 +236,18 @@ class AsyncS3FileSystem(S3FileSystem):
 
                 tasks = set()
                 current_chunk = 0
-                while current_chunk < chunk_count:
-                    while current_chunk < chunk_count and len(tasks) < concurrent_download:
-                        tasks.add(asyncio.create_task(download_chunk(current_chunk)))
-                        current_chunk += 1
-                    _, pending = await asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED)
-                    tasks = pending
-                await asyncio.gather(*tasks)
+                try:
+                    while current_chunk < chunk_count:
+                        while current_chunk < chunk_count and len(tasks) < concurrent_download:
+                            tasks.add(asyncio.create_task(download_chunk(current_chunk)))
+                            current_chunk += 1
+                        done, pending = await asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED)
+                        for task in done:
+                            task.result()
+                        tasks = pending
+                    await asyncio.gather(*tasks)
+                except BaseException:
+                    for task in tasks:
+                        task.cancel()
+                    await asyncio.gather(*tasks, return_exceptions=True)
+                    raise
