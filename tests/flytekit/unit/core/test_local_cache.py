@@ -19,12 +19,27 @@ from flytekit.core.context_manager import FlyteContextManager
 from flytekit.core.dynamic_workflow_task import dynamic
 from flytekit.core.hash import HashMethod
 from flytekit.core.local_cache import LocalTaskCache, _calculate_cache_key, _recursive_hash_placement
+from flytekit.core.local_fsspec import FlyteLocalFileSystem
 from flytekit.core.task import TaskMetadata, task
 from flytekit.core.testing import task_mock
 from flytekit.core.type_engine import TypeEngine
 from flytekit.core.workflow import workflow
-from flytekit.models.literals import Literal, LiteralCollection, LiteralMap, Primitive, Scalar
-from flytekit.models.types import LiteralType, SimpleType
+from flytekit.models.core.types import BlobType
+from flytekit.models.literals import (
+    Blob,
+    BlobMetadata,
+    Literal,
+    LiteralCollection,
+    LiteralMap,
+    Primitive,
+    Scalar,
+    Schema,
+    StructuredDataset,
+    StructuredDatasetMetadata,
+    Union,
+)
+from flytekit.models.types import LiteralType, SchemaType, SimpleType, StructuredDatasetType
+from flytekit.types.file import FlyteFile
 from flytekit.types.schema import FlyteSchema
 
 # Global counter used to validate number of calls to cache
@@ -649,3 +664,154 @@ def test_cache_old_version_of_literal_map():
     # Now load the same object from the cache and confirm that the `_offloaded_metadata` attribute is now present
     loaded_literal_map = LocalTaskCache.get("t.produce_dc", "1", LiteralMap(literals={}), ())
     assert hasattr(loaded_literal_map.literals['o0'], "_offloaded_metadata") is True
+
+
+@pytest.mark.serial
+def test_cached_workflow_recreates_missing_file(tmp_path: pathlib.Path) -> None:
+    calls = 0
+    artifact = tmp_path / "artifact.txt"
+
+    @task(cache=True, cache_version="missing-file-v1")
+    def produce() -> FlyteFile:
+        nonlocal calls
+        calls += 1
+        artifact.write_text("cached contents")
+        return FlyteFile(path=str(artifact))
+
+    @workflow
+    def cached_workflow() -> FlyteFile:
+        return produce()
+
+    assert pathlib.Path(cached_workflow().download()).read_text() == "cached contents"
+    assert pathlib.Path(cached_workflow().download()).read_text() == "cached contents"
+    assert calls == 1
+
+    artifact.rename(tmp_path / "renamed.txt")
+
+    assert pathlib.Path(cached_workflow().download()).read_text() == "cached contents"
+    assert calls == 2
+
+
+@pytest.mark.serial
+@pytest.mark.parametrize("kind", ["blob", "schema", "structured_dataset"])
+@pytest.mark.parametrize("container", ["scalar", "collection", "map", "union"])
+@pytest.mark.parametrize("legacy", [False, True])
+@pytest.mark.parametrize("file_uri", [False, True])
+def test_cache_misses_for_removed_local_artifacts(
+    tmp_path: pathlib.Path, kind: str, container: str, legacy: bool, file_uri: bool
+) -> None:
+    artifact = tmp_path / "artifact"
+    uri = artifact.as_uri() if file_uri else str(artifact)
+    literal: Literal
+    literal_type: LiteralType
+    if kind == "blob":
+        artifact.write_text("cached contents")
+        blob_type = BlobType(format="", dimensionality=BlobType.BlobDimensionality.SINGLE)
+        literal = Literal(
+            scalar=Scalar(
+                blob=Blob(
+                    metadata=BlobMetadata(type=blob_type),
+                    uri=uri,
+                )
+            )
+        )
+        literal_type = LiteralType(blob=blob_type)
+    elif kind == "schema":
+        artifact.mkdir()
+        schema_type = SchemaType(columns=[])
+        literal = Literal(scalar=Scalar(schema=Schema(uri=uri, type=schema_type)))
+        literal_type = LiteralType(schema=schema_type)
+    else:
+        artifact.mkdir()
+        dataset_type = StructuredDatasetType()
+        literal = Literal(
+            scalar=Scalar(
+                structured_dataset=StructuredDataset(
+                    uri=uri,
+                    metadata=StructuredDatasetMetadata(structured_dataset_type=dataset_type),
+                )
+            )
+        )
+        literal_type = LiteralType(structured_dataset_type=dataset_type)
+    if container == "collection":
+        literal = Literal(collection=LiteralCollection(literals=[literal]))
+    elif container == "map":
+        literal = Literal(map=LiteralMap(literals={"artifact": literal}))
+    elif container == "union":
+        literal = Literal(scalar=Scalar(union=Union(value=literal, stored_type=literal_type)))
+
+    inputs = LiteralMap(literals={})
+    outputs = LiteralMap(literals={"o0": literal})
+    if legacy:
+        cache_key: str = _calculate_cache_key(
+            task_name="missing-artifact", cache_version="v1", input_literal_map=inputs
+        )
+        LocalTaskCache._cache.set(key=cache_key, value=outputs)
+    else:
+        LocalTaskCache.set(
+            task_name="missing-artifact", cache_version="v1", input_literal_map=inputs,
+            cache_ignore_input_vars=(), value=outputs,
+        )
+
+    assert LocalTaskCache.get(
+        task_name="missing-artifact", cache_version="v1", input_literal_map=inputs,
+        cache_ignore_input_vars=(),
+    ) == outputs
+    if artifact.is_dir():
+        artifact.rmdir()
+    else:
+        artifact.unlink()
+    assert LocalTaskCache.get(
+        task_name="missing-artifact", cache_version="v1", input_literal_map=inputs,
+        cache_ignore_input_vars=(),
+    ) is None
+
+
+@pytest.mark.serial
+def test_remote_artifact_does_not_need_a_local_path() -> None:
+    inputs = LiteralMap(literals={})
+    outputs = LiteralMap(
+        literals={
+            "o0": Literal(
+                scalar=Scalar(
+                    blob=Blob(
+                        metadata=BlobMetadata(type=BlobType(format="", dimensionality=BlobType.BlobDimensionality.SINGLE)),
+                        uri="s3://bucket/artifact",
+                    )
+                )
+            )
+        }
+    )
+    LocalTaskCache.set(
+        task_name="remote-artifact", cache_version="v1", input_literal_map=inputs,
+        cache_ignore_input_vars=(), value=outputs,
+    )
+    assert LocalTaskCache.get(
+        task_name="remote-artifact", cache_version="v1", input_literal_map=inputs,
+        cache_ignore_input_vars=(),
+    ) == outputs
+
+
+@pytest.mark.serial
+def test_local_artifact_permission_errors_are_not_cache_misses(
+    tmp_path: pathlib.Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    artifact = tmp_path / "artifact.txt"
+    artifact.write_text("cached contents")
+
+    @task(cache=True, cache_version="permission-v1")
+    def produce() -> FlyteFile:
+        return FlyteFile(path=str(artifact))
+
+    @workflow
+    def cached_workflow() -> FlyteFile:
+        return produce()
+
+    cached_workflow()
+
+    def fail_info(self: FlyteLocalFileSystem, path: str, **kwargs: typing.Any) -> typing.NoReturn:
+        raise PermissionError("artifact access denied")
+
+    monkeypatch.setattr(target=FlyteLocalFileSystem, name="info", value=fail_info)
+    with pytest.raises(PermissionError, match="artifact access denied"):
+        cached_workflow()
