@@ -41,6 +41,11 @@ def lazy_module(fullname):
         return sys.modules[fullname]
     # https://docs.python.org/3/library/importlib.html#implementing-lazy-imports
     spec = importlib.util.find_spec(fullname)
+    # Looking up a dotted name imports the parent packages, and a parent's ``__init__`` may import ``fullname``
+    # itself (for example ``skl2onnx`` imports ``skl2onnx.common.data_types``). That module must not be replaced by
+    # a lazy one, or it would be executed a second time and produce a second set of class objects.
+    if fullname in sys.modules:
+        return sys.modules[fullname]
     if spec is None or spec.loader is None:
         # Return a lazy module if the module is not found in the python environment,
         # so that we can raise a proper error when the user tries to access an attribute in the module.
