@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "flytekit"
-dynamic = ["version"]
+version = "1.15.0"
 authors = [{ name = "Flyte Contributors", email = "admin@flyte.org" }]
 description = "Flyte SDK for Python"
 license = { text = "Apache-2.0" }
