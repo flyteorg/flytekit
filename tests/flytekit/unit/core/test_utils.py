@@ -1,3 +1,4 @@
+import re
 from collections import OrderedDict
 
 import pytest
@@ -23,10 +24,56 @@ from tests.flytekit.unit.test_translator import default_img
         ("test$", "test"),
         ("te$t$", "tet"),
         ("t" * 64, f"da4b348ebe-{'t'*52}"),
+        # Consecutive separators collapse into a single '-' and never trail the label.
+        ("test..", "test"),
+        ("test_-", "test"),
+        ("my_task-.name..", "my-task-name"),
     ],
 )
 def test_dnsify(input, expected):
     assert _dnsify(input) == expected
+
+
+# A DNS_LABEL as accepted by Kubernetes: lower-case alphanumerics and '-', not leading or trailing with '-'.
+DNS_LABEL = re.compile(r"^[a-z0-9]([-a-z0-9]*[a-z0-9])?$")
+
+
+@pytest.mark.parametrize(
+    "input",
+    [
+        "TrainImageClassifierOnLargeDatasetWithHyperparameterSweepStage",
+        "A" * 70,
+        "aB" * 40,
+        "MyTaskName" * 10,
+        "my.module.MyVeryLongCamelCaseTaskNameThatKeepsOnGoingAndGoing",
+        "t" * 64,
+        "test..",
+        "-" * 80,
+        "_" * 80,
+    ],
+)
+def test_dnsify_is_a_valid_dns_label(input):
+    """`_dnsify` must always return something Kubernetes accepts as a DNS_LABEL, at most 63 characters long."""
+    result = _dnsify(input)
+    assert len(result) <= 63, f"{result} is {len(result)} characters long"
+    assert result == "" or DNS_LABEL.match(result), f"{result} is not a valid DNS_LABEL"
+
+
+def test_dnsify_node_name_override_is_a_valid_dns_label():
+    """A long camelCase `node_name` override used to overflow the 63 character DNS_LABEL limit."""
+    node_name = "TrainImageClassifierOnLargeDatasetWithHyperparameterSweepStage"
+
+    @task
+    def t1(x: int) -> int:
+        return x
+
+    @flytekit.workflow
+    def wf(x: int) -> int:
+        return t1(x=x).with_overrides(node_name=node_name)
+
+    node_id = wf.nodes[0].id
+    assert len(node_id) <= 63, f"{node_id} is {len(node_id)} characters long"
+    assert DNS_LABEL.match(node_id), f"{node_id} is not a valid DNS_LABEL"
 
 
 def test_timeit():

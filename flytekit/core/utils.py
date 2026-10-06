@@ -35,13 +35,10 @@ def _dnsify(value: str) -> str:
     res = ""
     MAX = 63
     HASH_LEN = 10
-    if len(value) >= MAX:
-        h = _sha224(value.encode("utf-8")).hexdigest()[:HASH_LEN]
-        value = "{}-{}".format(h, value[-(MAX - HASH_LEN - 1) :])
     for ch in value:
         if ch == "_" or ch == "-" or ch == ".":
-            # Convert '_' to '-' unless it's the first character, in which case we drop it.
-            if res != "" and len(res) < 62:
+            # Convert '_' to '-' unless it would lead or repeat a '-', in which case we drop it.
+            if res != "" and res[-1] != "-":
                 res += "-"
         elif not ch.isalnum():
             # Trim non-alphanumeric letters.
@@ -51,14 +48,19 @@ def _dnsify(value: str) -> str:
             res += ch
         else:
             # Character is upper-case. Add a '-' before it for better readability.
-            if res != "" and res[-1] != "-" and len(res) < 62:
+            if res != "" and res[-1] != "-":
                 res += "-"
             res += ch.lower()
 
-    if len(res) > 0 and res[-1] == "-":
-        res = res[: len(res) - 1]
+    # The conversion above can make the string longer than the input, because every upper-case character adds a
+    # '-'. The length therefore has to be enforced on the converted value rather than on the input. The hash is
+    # still taken over the original value so that two inputs sharing a suffix do not collide.
+    if len(res) >= MAX:
+        h = _sha224(value.encode("utf-8")).hexdigest()[:HASH_LEN]
+        res = "{}-{}".format(h, res[-(MAX - HASH_LEN - 1) :].lstrip("-"))
 
-    return res
+    # A DNS label may not end with '-'.
+    return res.rstrip("-")
 
 
 def _get_container_definition(
