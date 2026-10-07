@@ -64,6 +64,8 @@ class AuthUnaryInterceptor(grpc.UnaryUnaryClientInterceptor, grpc.UnaryStreamCli
         Intercepts unary calls and adds auth metadata if available. On Unauthenticated, resets the token and refreshes
         and then retries with the new token
         """
+        if not self.authenticator.get_credentials():
+            self.authenticator.refresh_credentials()
         updated_call_details = self._call_details_with_auth_metadata(client_call_details)
         fut: grpc.Future = continuation(updated_call_details, request)
         e = fut.exception()
@@ -80,6 +82,8 @@ class AuthUnaryInterceptor(grpc.UnaryUnaryClientInterceptor, grpc.UnaryStreamCli
         """
         Handles a stream call and adds authentication metadata if needed
         """
+        if not self.authenticator.get_credentials():
+            self.authenticator.refresh_credentials()
         updated_call_details = self._call_details_with_auth_metadata(client_call_details)
         c: grpc.Call = continuation(updated_call_details, request)
         if c.code() == grpc.StatusCode.UNAUTHENTICATED:
