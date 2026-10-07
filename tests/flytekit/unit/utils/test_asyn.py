@@ -168,3 +168,40 @@ def test_error_two_ways(mock_getter):
         loop_manager.run_sync(runner_2)
 
     assert mock_handler.call_count == 2
+
+
+def test_run_sync_from_running_event_loop():
+    """Test that run_sync works when called from within a running event loop.
+
+    This simulates the scenario where FlyteRemote.execute() is called from
+    an async web framework (e.g., Flask with Gunicorn) that already has a
+    running event loop.
+    """
+
+    async def async_double(x: int) -> int:
+        await asyncio.sleep(0.001)
+        return x * 2
+
+    async def outer():
+        # We're inside a running event loop here.
+        # run_sync should detect this and use a fresh thread instead of _TaskRunner.
+        result = run_sync(async_double, x=21)
+        assert result == 42
+        return result
+
+    # Run the outer coroutine which will call run_sync from within a running loop
+    result = asyncio.run(outer())
+    assert result == 42
+
+
+def test_run_sync_from_running_event_loop_with_exception():
+    """Test that exceptions propagate correctly when run_sync is called from a running loop."""
+
+    async def async_fail():
+        raise ValueError("test error from async")
+
+    async def outer():
+        with pytest.raises(ValueError, match="test error from async"):
+            run_sync(async_fail)
+
+    asyncio.run(outer())
