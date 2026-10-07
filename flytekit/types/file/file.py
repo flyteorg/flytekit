@@ -11,10 +11,8 @@ from typing import Dict, cast
 from urllib.parse import unquote
 
 import msgpack
-from dataclasses_json import config
 from google.protobuf import json_format as _json_format
 from google.protobuf.struct_pb2 import Struct
-from marshmallow import fields
 from mashumaro.mixins.json import DataClassJSONMixin
 from mashumaro.types import SerializableType
 
@@ -60,7 +58,7 @@ T = typing.TypeVar("T")
 
 @dataclass
 class FlyteFile(SerializableType, os.PathLike, typing.Generic[T], DataClassJSONMixin):
-    path: typing.Union[str, os.PathLike] = field(default=None, metadata=config(mm_field=fields.String()))  # type: ignore
+    path: typing.Union[str, os.PathLike] = field(default=None)  # type: ignore
     metadata: typing.Optional[dict[str, str]] = None
     """
     Since there is no native Python implementation of files and directories for the Flyte Blob type, (like how int

@@ -3,7 +3,7 @@ from typing import List, Optional
 from pydantic import BaseModel
 
 from flytekit.core.type_engine import TypeEngine, strict_type_hint_matching
-from mashumaro.codecs.json import JSONDecoder
+from mashumaro.codecs.json import JSONDecoder, JSONEncoder
 
 
 class JobConfig(BaseModel):
@@ -51,7 +51,8 @@ def test_guessing_of_nested_pydantic():
     input_config_dc_version = decoder.decode(input_config_json)
 
     # recover the dataclass back into json, and then back into pydantic, and make sure it matches.
-    json_dc_version = input_config_dc_version.to_json()
+    encoder = JSONEncoder(guessed_type)
+    json_dc_version = encoder.encode(input_config_dc_version)
     reconstituted_pydantic = SchedulerConfig.model_validate_json(json_dc_version)
     assert reconstituted_pydantic == input_config
 
@@ -80,7 +81,8 @@ def test_nested_pydantic_reconstruction_from_raw_json():
     input_config_dc_version = decoder.decode(existing_json)
 
     # recover the dataclass back into json, and then back into pydantic, and make sure it matches.
-    json_dc_version = input_config_dc_version.to_json()
+    encoder = JSONEncoder(guessed_type)
+    json_dc_version = encoder.encode(input_config_dc_version)
     reconstituted_pydantic = SchedulerConfig.model_validate_json(json_dc_version)
     assert reconstituted_pydantic == SchedulerConfig(
         input_storage_bucket="s3://input-storage-bucket",
@@ -120,7 +122,8 @@ def test_guessing_of_nested_pydantic_mapped():
     input_config_dc_version = decoder.decode(input_config_json)
 
     # recover the dataclass back into json, and then back into pydantic, and make sure it matches.
-    json_dc_version = input_config_dc_version.to_json()
+    encoder = JSONEncoder(guessed_type)
+    json_dc_version = encoder.encode(input_config_dc_version)
     reconstituted_pydantic = SchedulerConfigMapped.model_validate_json(json_dc_version)
     assert reconstituted_pydantic == input_config
 
