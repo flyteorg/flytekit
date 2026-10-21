@@ -1,11 +1,13 @@
-from typing import Optional, Tuple
+from typing import TYPE_CHECKING, Optional, Tuple
 
-from diskcache import Cache
 from flyteidl.core.literals_pb2 import LiteralMap
 
 from flytekit import lazy_module
 from flytekit.models.literals import Literal, LiteralCollection
 from flytekit.models.literals import LiteralMap as ModelLiteralMap
+
+if TYPE_CHECKING:
+    from diskcache import Cache
 
 joblib = lazy_module("joblib")
 
@@ -55,11 +57,15 @@ class LocalTaskCache(object):
     This class implements a persistent store able to cache the result of local task executions.
     """
 
-    _cache: Cache
+    _cache: "Cache"
     _initialized: bool = False
 
     @staticmethod
     def initialize():
+        # Import diskcache here rather than at module level, so that importing flytekit
+        # does not require it unless the local cache is actually used.
+        from diskcache import Cache
+
         LocalTaskCache._cache = Cache(CACHE_LOCATION)
         LocalTaskCache._initialized = True
 
