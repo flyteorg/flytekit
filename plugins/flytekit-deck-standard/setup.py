@@ -9,7 +9,8 @@ plugin_requires = ["flytekit"]
 extras = {
     "pandas": ["pandas"],
     "pillow": ["pillow"],
-    "ydata-profiling": ["ydata-profiling"],
+    # ydata-profiling imports pkg_resources, which setuptools 82 removed.
+    "ydata-profiling": ["ydata-profiling", "setuptools<82"],
     "markdown": ["markdown"],
     "plotly": ["plotly"],
     "pygments": ["pygments"],
@@ -18,6 +19,7 @@ extras = {
         "pandas; python_version > '3.9'",
         "pillow",
         "ydata-profiling",
+        "setuptools<82",
         "markdown",
         "plotly",
         "pygments",
