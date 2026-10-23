@@ -1,3 +1,4 @@
+import inspect
 import pathlib
 from typing import Type, TypeVar
 
@@ -10,6 +11,10 @@ from flytekit.models.literals import Blob, BlobMetadata, Literal, Scalar
 from flytekit.models.types import LiteralType
 
 T = TypeVar("T")
+
+# torch>=2.6 defaults weights_only=True, which refuses to unpickle nn.Module objects.
+# torch<1.13 has no weights_only kwarg at all, so only pass it when it exists.
+TORCH_LOAD_KWARGS = {"weights_only": False} if "weights_only" in inspect.signature(torch.load).parameters else {}
 
 
 class PyTorchTypeTransformer(TypeTransformer[T]):
@@ -63,7 +68,7 @@ class PyTorchTypeTransformer(TypeTransformer[T]):
             map_location = torch.device("cpu")
 
         # load pytorch tensor/module from a file
-        return torch.load(local_path, map_location=map_location)
+        return torch.load(local_path, map_location=map_location, **TORCH_LOAD_KWARGS)
 
 
 class PyTorchTensorTransformer(PyTorchTypeTransformer[torch.Tensor]):

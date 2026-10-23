@@ -52,7 +52,8 @@ autoflake
 pillow
 numpy
 pandas
-pyarrow
+# pyarrow>=26 requires numpy>=2, which tensorflow<=2.15.1 above forbids
+pyarrow<26
 scikit-learn
 types-requests
 prometheus-client
