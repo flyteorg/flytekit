@@ -1,5 +1,6 @@
+import inspect
 import pathlib
-from typing import Type, TypeVar
+from typing import Any, Optional, Type, TypeVar
 
 import torch
 
@@ -12,7 +13,25 @@ from flytekit.models.types import LiteralType
 T = TypeVar("T")
 
 
+def load_torch_object(path: str, map_location: Any, weights_only: Optional[bool] = None) -> Any:
+    """
+    Wrapper around ``torch.load``.
+
+    ``weights_only=None`` keeps torch's own default, which is ``True`` since torch 2.6: only tensors, containers and
+    primitives are unpickled. ``weights_only=False`` unpickles arbitrary objects and therefore executes pickle code
+    from the blob. flytekit needs that for ``nn.Module`` and checkpoint objects; the trust model is the same as for
+    ``FlytePickle``, the data was written by flytekit itself in an upstream task. The keyword does not exist before
+    torch 1.13, in which case it is omitted.
+    """
+    if weights_only is not None and "weights_only" in inspect.signature(torch.load).parameters:
+        return torch.load(path, map_location=map_location, weights_only=weights_only)
+    return torch.load(path, map_location=map_location)
+
+
 class PyTorchTypeTransformer(TypeTransformer[T]):
+    # Passed to ``load_torch_object``; ``None`` keeps torch's default.
+    WEIGHTS_ONLY: Optional[bool] = None
+
     def get_literal_type(self, t: Type[T]) -> LiteralType:
         return LiteralType(
             blob=_core_types.BlobType(
@@ -63,7 +82,7 @@ class PyTorchTypeTransformer(TypeTransformer[T]):
             map_location = torch.device("cpu")
 
         # load pytorch tensor/module from a file
-        return torch.load(local_path, map_location=map_location)
+        return load_torch_object(local_path, map_location=map_location, weights_only=self.WEIGHTS_ONLY)
 
 
 class PyTorchTensorTransformer(PyTorchTypeTransformer[torch.Tensor]):
@@ -85,6 +104,8 @@ class PyTorchTensorTransformer(PyTorchTypeTransformer[torch.Tensor]):
 
 class PyTorchModuleTransformer(PyTorchTypeTransformer[torch.nn.Module]):
     PYTORCH_FORMAT = "PyTorchModule"
+    # A whole ``nn.Module`` object is stored, which torch's weights-only loader refuses to unpickle.
+    WEIGHTS_ONLY = False
 
     def __init__(self):
         super().__init__(name="PyTorch Module", t=torch.nn.Module)

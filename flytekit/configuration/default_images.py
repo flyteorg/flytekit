@@ -13,6 +13,7 @@ class PythonVersion(enum.Enum):
     PYTHON_3_10 = (3, 10)
     PYTHON_3_11 = (3, 11)
     PYTHON_3_12 = (3, 12)
+    PYTHON_3_13 = (3, 13)
 
 
 class DefaultImages(object):
@@ -26,6 +27,7 @@ class DefaultImages(object):
         PythonVersion.PYTHON_3_10: "cr.flyte.org/flyteorg/flytekit:py3.10-",
         PythonVersion.PYTHON_3_11: "cr.flyte.org/flyteorg/flytekit:py3.11-",
         PythonVersion.PYTHON_3_12: "cr.flyte.org/flyteorg/flytekit:py3.12-",
+        PythonVersion.PYTHON_3_13: "cr.flyte.org/flyteorg/flytekit:py3.13-",
     }
 
     @classmethod

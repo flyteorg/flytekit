@@ -64,6 +64,7 @@ class OpenAIFileDefaultImages(DefaultImages):
         PythonVersion.PYTHON_3_10: "cr.flyte.org/flyteorg/flytekit:py3.10-openai-batch-",
         PythonVersion.PYTHON_3_11: "cr.flyte.org/flyteorg/flytekit:py3.11-openai-batch-",
         PythonVersion.PYTHON_3_12: "cr.flyte.org/flyteorg/flytekit:py3.12-openai-batch-",
+        PythonVersion.PYTHON_3_13: "cr.flyte.org/flyteorg/flytekit:py3.13-openai-batch-",
     }
 
 
