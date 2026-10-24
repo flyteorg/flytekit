@@ -838,15 +838,13 @@ class FlyteContext(object):
 
             if self.execution_state:
                 if self.execution_state.is_local_execution():
-                    if self.in_a_condition:
-                        if self.execution_state.branch_eval_mode == BranchEvalMode.BRANCH_SKIPPED:
-                            self.execution_state = self.execution_state.with_params()
-                    else:
-                        # In case of local workflow execution we should ensure a conditional section
-                        # is created so that skipped branches result in tasks not being executed
-                        self.execution_state = self.execution_state.with_params(
-                            branch_eval_mode=BranchEvalMode.BRANCH_SKIPPED
-                        )
+                    # In case of local workflow execution we should ensure a conditional section
+                    # is created so that skipped branches result in tasks not being executed.
+                    # This also applies to nested conditionals (inline, or inside a subworkflow called
+                    # from an active branch): they must not inherit the parent's active branch state.
+                    self.execution_state = self.execution_state.with_params(
+                        branch_eval_mode=BranchEvalMode.BRANCH_SKIPPED
+                    )
 
             self.in_a_condition = True
             return self
