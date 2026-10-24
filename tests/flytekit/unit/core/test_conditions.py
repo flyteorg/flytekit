@@ -215,6 +215,44 @@ def test_condition_is_none():
         return conditional("test").if_(result.is_none()).then(success()).else_().then(failed())
 
 
+@pytest.mark.parametrize("value", [None, True, False])
+def test_condition_is_none_on_indexed_promise(value: typing.Optional[bool]) -> None:
+    @task
+    def status(value: typing.Optional[bool]) -> typing.List[typing.Optional[bool]]:
+        return [value, True]
+
+    @workflow
+    def check(value: typing.Optional[bool]) -> float:
+        result = status(value=value)[0]
+        return conditional("test").if_(result.is_none()).then(square(n=3.0)).else_().then(double(n=3.0))
+
+    assert check(value=value) == (9.0 if value is None else 6.0)
+
+    wf_spec = get_serializable(
+        entity_mapping=OrderedDict(),
+        settings=serialization_settings,
+        entity=check,
+    )
+    branch = wf_spec.template.nodes[1]
+    assert branch.inputs[0].binding.promise.attr_path == [0]
+    assert branch.branch_node.if_else.case.condition.comparison.right_value.scalar.none_type is not None
+
+
+@pytest.mark.parametrize(("value", "expected"), [(4, 9.0), (5, 6.0), (6, 6.0)])
+def test_condition_with_indexed_rhs(value: int, expected: float) -> None:
+    @task
+    def values(value: int) -> typing.List[int]:
+        return [value]
+
+    @workflow
+    def check(value: int) -> float:
+        left = five()
+        right = values(value=value)[0]
+        return conditional("test").if_(left > right).then(square(n=3.0)).else_().then(double(n=3.0))
+
+    assert check(value=value) == expected
+
+
 def test_subworkflow_condition_serialization():
     """Test that subworkflows are correctly extracted from serialized workflows with condiationals."""
 
