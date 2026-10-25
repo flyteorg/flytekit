@@ -27,9 +27,9 @@ jobs:
       - name: Set Python versions for run
         run: |
           if [[ ${{ github.event_name }} == "schedule" ]]; then
-            echo "python_versions=[\"3.10\",\"3.11\",\"3.12\"]" >> $GITHUB_ENV
+            echo "python_versions=[\"3.10\",\"3.11\",\"3.12\",\"3.13\",\"3.14\"]" >> $GITHUB_ENV
           else
-            echo "python_versions=[\"3.12\"]" >> $GITHUB_ENV
+            echo "python_versions=[\"3.14\"]" >> $GITHUB_ENV
           fi
 
   build:
@@ -110,9 +110,6 @@ jobs:
           uv pip uninstall --system pandas pyarrow
           uv pip freeze
       - name: Run extras unit tests with coverage
-        # Skip this step if running on python 3.12 due to https://github.com/tensorflow/tensorflow/issues/62003
-        # and https://github.com/pytorch/pytorch/issues/110436
-        if: ${{ matrix.python-version != '3.12' }}
         run: |
           make unit_test_extras_codecov
       - name: Codecov
@@ -139,6 +136,11 @@ jobs:
             pandas: "pandas>=2.0.0"
           - pandas: "pandas<2.0.0"
             python-version: "3.12"
+          # pandas 1.x has no wheels for python 3.13+
+          - pandas: "pandas<2.0.0"
+            python-version: "3.13"
+          - pandas: "pandas<2.0.0"
+            python-version: "3.14"
 
     steps:
       - uses: actions/checkout@v4
@@ -389,6 +391,56 @@ jobs:
           # Segmentation fault on python 3.12: https://github.com/flyteorg/flyte/issues/5020
           - python-version: 3.12
             plugin-names: "flytekit-kf-pytorch"
+          # Python 3.13: the exclusions below mirror the python 3.12 ones. They have not been verified on 3.13
+          # (several of the underlying issues are closed by now); revisit both lists together.
+          - python-version: 3.13
+            plugin-names: "flytekit-airflow"
+          - python-version: 3.13
+            plugin-names: "flytekit-kf-pytorch"
+          - python-version: 3.13
+            plugin-names: "flytekit-modin"
+          - python-version: 3.13
+            plugin-names: "flytekit-onnx-pytorch"
+          - python-version: 3.13
+            plugin-names: "flytekit-ray"
+          - python-version: 3.13
+            plugin-names: "flytekit-vaex"
+          # flytekitplugins-duckdb declares python_requires<3.13 (duckdb<=1.0.0 pin)
+          - python-version: 3.13
+            plugin-names: "flytekit-duckdb"
+          # Python 3.14: same as python 3.13. Not verified either.
+          - python-version: 3.14
+            plugin-names: "flytekit-airflow"
+          - python-version: 3.14
+            plugin-names: "flytekit-kf-pytorch"
+          - python-version: 3.14
+            plugin-names: "flytekit-modin"
+          - python-version: 3.14
+            plugin-names: "flytekit-onnx-pytorch"
+          - python-version: 3.14
+            plugin-names: "flytekit-ray"
+          - python-version: 3.14
+            plugin-names: "flytekit-vaex"
+          - python-version: 3.14
+            plugin-names: "flytekit-duckdb"
+          # Tensorflow, a dependency of the flytekit-mlflow tests, has no python 3.14 wheels yet
+          - python-version: 3.14
+            plugin-names: "flytekit-mlflow"
+          # great-expectations<1.0 and whylogs require numpy<2, which has no python 3.13+ wheels
+          - python-version: 3.13
+            plugin-names: "flytekit-greatexpectations"
+          - python-version: 3.14
+            plugin-names: "flytekit-greatexpectations"
+          - python-version: 3.13
+            plugin-names: "flytekit-whylogs"
+          - python-version: 3.14
+            plugin-names: "flytekit-whylogs"
+          # ydata-profiling declares python_requires<3.14
+          - python-version: 3.14
+            plugin-names: "flytekit-deck-standard"
+          # dbt-core<1.8 (pinned by the plugin) fails to validate its config on python 3.14
+          - python-version: 3.14
+            plugin-names: "flytekit-dbt"
     steps:
       - uses: actions/checkout@v4
       - name: "Clear action cache"
@@ -403,7 +455,7 @@ jobs:
           # This path is specific to Ubuntu
           path: ~/.cache/pip
           # Look to see if there is a cache hit for the corresponding requirements files
-          key: ${{ format('{0}-pip-{1}', runner.os, hashFiles('dev-requirements.txt', format('plugins/{0}/requirements.txt', matrix.plugin-names ))) }}
+          key: ${{ format('{0}-pip-{1}', runner.os, hashFiles('dev-requirements.in', format('plugins/{0}/requirements.txt', matrix.plugin-names ))) }}
       - name: Install dependencies
         run: |
           pip install uv
@@ -413,11 +465,11 @@ jobs:
           cd plugins/${{ matrix.plugin-names }}
           uv pip install --system .
           if [ -f dev-requirements.in ]; then uv pip install --system -r dev-requirements.in; fi
-          # TODO: move to protobuf>=5. Github issue: https://github.com/flyteorg/flyte/issues/5448
           echo "Workspace: $GITHUB_WORKSPACE"
-          uv pip install --system -U $GITHUB_WORKSPACE "protobuf<5" "git+https://github.com/flyteorg/flyte.git@master#subdirectory=flyteidl"
+          uv pip install --system -U $GITHUB_WORKSPACE "git+https://github.com/flyteorg/flyte.git@master#subdirectory=flyteidl"
           # TODO: remove this when numpy v2 in onnx has been resolved
-          if [[ ${{ matrix.plugin-names }} == *"onnx"* || ${{ matrix.plugin-names }} == "flytekit-sqlalchemy" || ${{ matrix.plugin-names }} == "flytekit-pandera" ]]; then
+          # Not on python 3.13+: the pandas/pyarrow releases with 3.13 wheels require numpy>=2.
+          if [[ ${{ matrix.python-version }} != "3.13" && ${{ matrix.python-version }} != "3.14" ]] && [[ ${{ matrix.plugin-names }} == *"onnx"* || ${{ matrix.plugin-names }} == "flytekit-sqlalchemy" || ${{ matrix.plugin-names }} == "flytekit-pandera" ]]; then
             uv pip install --system "numpy<2.0.0"
           fi
           # The -U step above re-resolves aiohttp (a flytekit dependency) back to the latest,

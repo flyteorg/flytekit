@@ -21,14 +21,15 @@ keyrings.alt
 setuptools_scm
 pytest-icdiff
 
-# Tensorflow is not available for python 3.12 yet: https://github.com/tensorflow/tensorflow/issues/62003
 tensorflow<=2.15.1; python_version<'3.12'
+# tensorflow>=2.16 ships python 3.12 wheels and >=2.20 ships python 3.13 wheels (linux x86_64/aarch64, macos arm64,
+# windows). There are no python 3.14 wheels yet, the tensorflow tests are skipped there.
+tensorflow; python_version>='3.12' and python_version<'3.14'
 # Newer versions of torch bring in nvidia dependencies that are not present in windows, so
 # we put this constraint while we do not have per-environment requirements files
 torch<=1.12.1; python_version<'3.11'
-# pytorch 2 supports python 3.11
-# pytorch 2 does not support 3.12 yet: https://github.com/pytorch/pytorch/issues/110436
-torch; python_version<'3.12'
+# pytorch>=2.2 ships python 3.12 wheels, >=2.6 python 3.13 wheels and >=2.9 python 3.14 wheels
+torch; python_version>='3.11'
 pydantic
 
 # TODO: Currently, the python-magic library causes build errors on Windows due to its dependency on DLLs for libmagic.
@@ -36,12 +37,6 @@ pydantic
 # For more details, see the related GitHub issue.
 # Once a solution is found, this should be updated to support Windows as well.
 python-magic; (platform_system=='Darwin' or platform_system=='Linux')
-
-# Google released a new major version of the protobuf library and once that started being used in the ecosystem at large,
-# including `googleapis-common-protos` we started seeing errors in CI, so let's constrain that for now.
-# The issue to support protobuf 5 is being tracked in https://github.com/flyteorg/flyte/issues/5448.
-protobuf<5
-types-protobuf<5
 
 types-croniter
 types-decorator
@@ -64,3 +59,6 @@ orjson
 # kubernetes 37 validates models with pydantic and rejects an ImageSpec as V1Container.image.
 kubernetes>=12.0.1,<37
 httpx
+
+# protobuf type stubs are shipped separate from the protobuf package
+types-protobuf
