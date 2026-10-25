@@ -426,6 +426,21 @@ jobs:
           # Tensorflow, a dependency of the flytekit-mlflow tests, has no python 3.14 wheels yet
           - python-version: 3.14
             plugin-names: "flytekit-mlflow"
+          # great-expectations<1.0 and whylogs require numpy<2, which has no python 3.13+ wheels
+          - python-version: 3.13
+            plugin-names: "flytekit-greatexpectations"
+          - python-version: 3.14
+            plugin-names: "flytekit-greatexpectations"
+          - python-version: 3.13
+            plugin-names: "flytekit-whylogs"
+          - python-version: 3.14
+            plugin-names: "flytekit-whylogs"
+          # ydata-profiling declares python_requires<3.14
+          - python-version: 3.14
+            plugin-names: "flytekit-deck-standard"
+          # dbt-core<1.8 (pinned by the plugin) fails to validate its config on python 3.14
+          - python-version: 3.14
+            plugin-names: "flytekit-dbt"
     steps:
       - uses: actions/checkout@v4
       - name: "Clear action cache"
@@ -453,7 +468,8 @@ jobs:
           echo "Workspace: $GITHUB_WORKSPACE"
           uv pip install --system -U $GITHUB_WORKSPACE "git+https://github.com/flyteorg/flyte.git@master#subdirectory=flyteidl"
           # TODO: remove this when numpy v2 in onnx has been resolved
-          if [[ ${{ matrix.plugin-names }} == *"onnx"* || ${{ matrix.plugin-names }} == "flytekit-sqlalchemy" || ${{ matrix.plugin-names }} == "flytekit-pandera" ]]; then
+          # Not on python 3.13+: the pandas/pyarrow releases with 3.13 wheels require numpy>=2.
+          if [[ ${{ matrix.python-version }} != "3.13" && ${{ matrix.python-version }} != "3.14" ]] && [[ ${{ matrix.plugin-names }} == *"onnx"* || ${{ matrix.plugin-names }} == "flytekit-sqlalchemy" || ${{ matrix.plugin-names }} == "flytekit-pandera" ]]; then
             uv pip install --system "numpy<2.0.0"
           fi
           # The -U step above re-resolves aiohttp (a flytekit dependency) back to the latest,
