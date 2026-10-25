@@ -47,7 +47,7 @@ RUN SETUPTOOLS_SCM_PRETEND_VERSION_FOR_FLYTEKIT=$PSEUDO_VERSION \
             pyarrow \
             pygments \
             scikit-learn \
-            ydata-profiling \
+            "ydata-profiling; python_version<'3.14'" \
     && apt-get clean autoclean \
     && apt-get autoremove --yes \
     && rm -rf /var/lib/{apt,dpkg,cache,log}/ \
