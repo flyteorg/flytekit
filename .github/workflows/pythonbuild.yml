@@ -27,9 +27,9 @@ jobs:
       - name: Set Python versions for run
         run: |
           if [[ ${{ github.event_name }} == "schedule" ]]; then
-            echo "python_versions=[\"3.10\",\"3.11\",\"3.12\",\"3.13\"]" >> $GITHUB_ENV
+            echo "python_versions=[\"3.10\",\"3.11\",\"3.12\",\"3.13\",\"3.14\"]" >> $GITHUB_ENV
           else
-            echo "python_versions=[\"3.13\"]" >> $GITHUB_ENV
+            echo "python_versions=[\"3.14\"]" >> $GITHUB_ENV
           fi
 
   build:
@@ -136,9 +136,11 @@ jobs:
             pandas: "pandas>=2.0.0"
           - pandas: "pandas<2.0.0"
             python-version: "3.12"
-          # pandas 1.x has no wheels for python 3.13
+          # pandas 1.x has no wheels for python 3.13+
           - pandas: "pandas<2.0.0"
             python-version: "3.13"
+          - pandas: "pandas<2.0.0"
+            python-version: "3.14"
 
     steps:
       - uses: actions/checkout@v4
@@ -403,13 +405,27 @@ jobs:
             plugin-names: "flytekit-ray"
           - python-version: 3.13
             plugin-names: "flytekit-vaex"
-          # The tensorflow releases that provide python 3.13 wheels require protobuf>=5, which conflicts with the
-          # "protobuf<5" pin used below for the plugin tests.
-          - python-version: 3.13
-            plugin-names: "flytekit-mlflow"
           # flytekitplugins-duckdb declares python_requires<3.13 (duckdb<=1.0.0 pin)
           - python-version: 3.13
             plugin-names: "flytekit-duckdb"
+          # Python 3.14: same as python 3.13. Not verified either.
+          - python-version: 3.14
+            plugin-names: "flytekit-airflow"
+          - python-version: 3.14
+            plugin-names: "flytekit-kf-pytorch"
+          - python-version: 3.14
+            plugin-names: "flytekit-modin"
+          - python-version: 3.14
+            plugin-names: "flytekit-onnx-pytorch"
+          - python-version: 3.14
+            plugin-names: "flytekit-ray"
+          - python-version: 3.14
+            plugin-names: "flytekit-vaex"
+          - python-version: 3.14
+            plugin-names: "flytekit-duckdb"
+          # Tensorflow, a dependency of the flytekit-mlflow tests, has no python 3.14 wheels yet
+          - python-version: 3.14
+            plugin-names: "flytekit-mlflow"
     steps:
       - uses: actions/checkout@v4
       - name: "Clear action cache"

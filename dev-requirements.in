@@ -23,13 +23,12 @@ pytest-icdiff
 
 tensorflow<=2.15.1; python_version<'3.12'
 # tensorflow>=2.16 ships python 3.12 wheels and >=2.20 ships python 3.13 wheels (linux x86_64/aarch64, macos arm64,
-# windows). With the protobuf pin below this resolves to tensorflow<2.20 on 3.12 and to the latest release on 3.13
-# (tensorflow>=2.20 requires protobuf>=5).
-tensorflow; python_version>='3.12'
+# windows). There are no python 3.14 wheels yet, the tensorflow tests are skipped there.
+tensorflow; python_version>='3.12' and python_version<'3.14'
 # Newer versions of torch bring in nvidia dependencies that are not present in windows, so
 # we put this constraint while we do not have per-environment requirements files
 torch<=1.12.1; python_version<'3.11'
-# pytorch>=2.2 ships python 3.12 wheels and >=2.6 ships python 3.13 wheels
+# pytorch>=2.2 ships python 3.12 wheels, >=2.6 python 3.13 wheels and >=2.9 python 3.14 wheels
 torch; python_version>='3.11'
 pydantic
 
