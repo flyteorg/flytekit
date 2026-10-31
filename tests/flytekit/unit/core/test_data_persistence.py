@@ -1,3 +1,4 @@
+import importlib
 import io
 import os
 import pathlib
@@ -209,6 +210,73 @@ def test_get_file_system():
 
     fp = FileAccessProvider("/tmp", "s3://my-bucket")
     fp.get_filesystem("testgetfs", test_arg="test_arg")
+
+
+@pytest.fixture
+def restore_fsspec_registry():
+    from fsspec.registry import _registry
+
+    saved = dict(_registry)
+    yield
+    _registry.clear()
+    _registry.update(saved)
+
+
+class UnrelatedFileSystem(fsspec.AbstractFileSystem):
+    pass
+
+
+@pytest.mark.parametrize(
+    "protocol, kwargs",
+    [("s3", {}), ("gs", {"token": "anon"})],
+)
+def test_get_filesystem_ignores_unrelated_registered_implementation(restore_fsspec_registry, protocol, kwargs):
+    from fsspec.registry import known_implementations
+
+    module_name, class_name = known_implementations[protocol]["class"].rsplit(".", 1)
+    default_cls = getattr(importlib.import_module(module_name), class_name)
+    fsspec.register_implementation(protocol, UnrelatedFileSystem, clobber=True)
+
+    fp = FileAccessProvider("/tmp", "s3://my-bucket")
+    assert type(fp.get_filesystem(protocol, **kwargs)) is default_cls
+
+
+def test_get_filesystem_keeps_registered_subclass_of_default(restore_fsspec_registry):
+    from s3fs import S3FileSystem
+
+    class CustomS3FileSystem(S3FileSystem):
+        pass
+
+    fsspec.register_implementation("s3", CustomS3FileSystem, clobber=True)
+
+    fp = FileAccessProvider("/tmp", "s3://my-bucket")
+    assert type(fp.get_filesystem("s3")) is CustomS3FileSystem
+
+
+@pytest.mark.parametrize(
+    "protocol, put_target, content_type_kwarg",
+    [
+        ("s3", "s3fs.S3FileSystem._put", "ContentType"),
+        ("gs", "gcsfs.GCSFileSystem._put", "content_type"),
+    ],
+)
+def test_put_data_passes_content_type_with_unrelated_implementation(
+    restore_fsspec_registry, tmp_path, protocol, put_target, content_type_kwarg
+):
+    fsspec.register_implementation(protocol, UnrelatedFileSystem, clobber=True)
+    local_path = tmp_path / "deck.html"
+    local_path.write_text("<html></html>")
+
+    # The upload itself is mocked, so skip gcsfs's credential lookup, which is slow without GCP credentials.
+    with (
+        mock.patch("gcsfs.credentials.GoogleCredentials.connect"),
+        mock.patch(put_target, new_callable=AsyncMock) as mock_put,
+    ):
+        fp = FileAccessProvider("/tmp", f"{protocol}://my-bucket")
+        fp.put_data(str(local_path), f"{protocol}://my-bucket/deck.html", **{content_type_kwarg: "text/html"})
+
+    mock_put.assert_called_once()
+    assert mock_put.call_args.kwargs[content_type_kwarg] == "text/html"
 
 
 def test_get_additional_fsspec_call_kwargs():

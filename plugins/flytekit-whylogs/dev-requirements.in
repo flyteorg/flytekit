@@ -1,0 +1,2 @@
+# CI forces numpy<2 for this plugin, and pandas>=3 needs numpy>=2.0.2 at import time.
+pandas<3

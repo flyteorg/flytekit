@@ -159,7 +159,7 @@ def test_ambiguous_union_transformer_to_literal():
         TypeError,
         match=(
             "Failed to convert outputs of task '.*?' at position 0\\.\n"
-            "Failed to convert type <class '.*?\\.A'> to type typing\\.Union\\[.*?\\]\\.\n"
+            "Failed to convert type <class '.*?\\.A'> to type (typing\\.Union\\[.*?\\]|.*?\\.A \\| .*?\\.B)\\.\n"
             "Error Message: Ambiguous choice of variant for union type\\.\n"
             "Potential types: \\[<class '.*?\\.A'>, <class '.*?\\.B'>\\]\n"
             "These types are structurally the same, because it's attributes have the same names and associated types\\."
