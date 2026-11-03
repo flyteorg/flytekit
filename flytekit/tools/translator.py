@@ -5,7 +5,7 @@ from typing import Callable, Dict, List, Optional, Tuple, Union
 
 from flyteidl.admin import schedule_pb2
 
-from flytekit import ImageSpec, PythonFunctionTask, SourceCode
+from flytekit import ImageSpec, PodTemplate, PythonFunctionTask, SourceCode
 from flytekit.configuration import Image, ImageConfig, SerializationSettings
 from flytekit.core import constants as _common_constants
 from flytekit.core import context_manager
@@ -25,13 +25,15 @@ from flytekit.core.python_auto_container import (
 from flytekit.core.python_function_task import EagerAsyncPythonFunctionTask
 from flytekit.core.reference_entity import ReferenceEntity, ReferenceSpec, ReferenceTemplate
 from flytekit.core.task import ReferenceTask
-from flytekit.core.utils import ClassDecorator, _dnsify
+from flytekit.core.utils import ClassDecorator, _dnsify, _serialize_pod_spec
 from flytekit.core.workflow import ReferenceWorkflow, WorkflowBase
 from flytekit.models import common as _common_models
 from flytekit.models import interface as interface_models
 from flytekit.models import launch_plan as _launch_plan_models
+from flytekit.models import security as _security_models
 from flytekit.models.admin import workflow as admin_workflow_models
 from flytekit.models.admin.workflow import WorkflowSpec
+from flytekit.models.concurrency import ConcurrencyPolicy
 from flytekit.models.core import identifier as _identifier_model
 from flytekit.models.core import workflow as _core_wf
 from flytekit.models.core import workflow as workflow_model
@@ -143,9 +145,9 @@ def get_serializable_task(
                 if isinstance(e.container_image, ImageSpec):
                     if settings.image_config.images is None:
                         settings.image_config = ImageConfig.create_from(settings.image_config.default_image)
-                    settings.image_config.images.append(
-                        Image.look_up_image_info(e.container_image.id, e.get_image(settings))
-                    )
+                    img = Image.look_up_image_info(e.container_image.id, e.get_image(settings))
+                    if img not in settings.image_config.images:
+                        settings.image_config.images.append(img)
 
         # In case of Dynamic tasks, we want to pass the serialization context, so that they can reconstruct the state
         # from the serialization context. This is passed through an environment variable, that is read from
@@ -185,11 +187,13 @@ def get_serializable_task(
                 entity.reset_command_fn()
 
     entity_config = entity.get_config(settings) or {}
-
     extra_config = {}
 
-    if hasattr(entity, "task_function") and isinstance(entity.task_function, ClassDecorator):
-        extra_config = entity.task_function.get_extra_config()
+    if hasattr(entity, "task_function"):
+        if isinstance(entity.task_function, ClassDecorator):
+            extra_config = entity.task_function.get_extra_config()
+    if entity.enable_deck:
+        entity.metadata.generates_deck = True
 
     merged_config = {**entity_config, **extra_config}
 
@@ -226,6 +230,10 @@ def get_serializable_workflow(
         # Ignore start nodes
         if n.id == _common_constants.GLOBAL_INPUT_NODE_ID:
             continue
+
+        # Ensure no node is named the failure node id
+        if n.id == _common_constants.DEFAULT_FAILURE_NODE_ID:
+            raise ValueError(f"Node {n.id} is reserved for the failure node")
 
         # Recursively serialize the node
         serialized_nodes.append(get_serializable(entity_mapping, settings, n, options))
@@ -310,6 +318,26 @@ def get_serializable_workflow(
     )
 
 
+def _merge_security_context(
+    entity_sc: Optional[_security_models.SecurityContext],
+    options_sc: Optional[_security_models.SecurityContext],
+) -> Optional[_security_models.SecurityContext]:
+    """Merge the launch plan's authored security context with the one supplied via registration options.
+
+    Registration options override the authored launch plan per field (not wholesale), so e.g. registering with
+    only a service account does not drop secrets/tokens that were authored on the launch plan.
+    """
+    if options_sc is None:
+        return entity_sc
+    if entity_sc is None:
+        return options_sc
+    return _security_models.SecurityContext(
+        run_as=options_sc.run_as or entity_sc.run_as,
+        secrets=options_sc.secrets or entity_sc.secrets,
+        tokens=options_sc.tokens or entity_sc.tokens,
+    )
+
+
 def get_serializable_launch_plan(
     entity_mapping: OrderedDict,
     settings: SerializationSettings,
@@ -352,6 +380,12 @@ def get_serializable_launch_plan(
     else:
         lc = None
 
+    concurrency_policy = None
+    if entity.concurrency is not None:
+        concurrency_policy = ConcurrencyPolicy(
+            max_concurrency=entity.concurrency.max_concurrency, behavior=entity.concurrency.behavior
+        )
+
     lps = _launch_plan_models.LaunchPlanSpec(
         workflow_id=wf_id,
         entity_metadata=_launch_plan_models.LaunchPlanMetadata(
@@ -366,8 +400,9 @@ def get_serializable_launch_plan(
         auth_role=None,
         raw_output_data_config=raw_prefix_config,
         max_parallelism=options.max_parallelism or entity.max_parallelism,
-        security_context=options.security_context or entity.security_context,
+        security_context=_merge_security_context(entity.security_context, options.security_context),
         overwrite_cache=options.overwrite_cache or entity.overwrite_cache,
+        concurrency_policy=concurrency_policy,
     )
 
     lp_id = _identifier_model.Identifier(
@@ -453,6 +488,14 @@ def get_serializable_node(
         # if entity._aliases:
         #     node_model._output_aliases = entity._aliases
     elif isinstance(entity.flyte_entity, PythonTask):
+        # handle pod template overrides
+        override_pod_spec = {}
+        if entity._pod_template is not None:
+            if settings.should_fast_serialize():
+                entity.flyte_entity.set_command_fn(_fast_serialize_command_fn(settings, entity.flyte_entity))
+            override_pod_spec = _serialize_pod_spec(
+                entity._pod_template, entity.flyte_entity._get_container(settings), settings
+            )
         task_spec = get_serializable(entity_mapping, settings, entity.flyte_entity, options=options)
         node_model = workflow_model.Node(
             id=_dnsify(entity.id),
@@ -466,6 +509,16 @@ def get_serializable_node(
                     resources=entity._resources,
                     extended_resources=entity._extended_resources,
                     container_image=entity._container_image,
+                    pod_template=PodTemplate(
+                        pod_spec=override_pod_spec,
+                        labels=entity._pod_template.labels if entity._pod_template.labels else None,
+                        annotations=entity._pod_template.annotations if entity._pod_template.annotations else None,
+                        primary_container_name=entity._pod_template.primary_container_name
+                        if entity._pod_template.primary_container_name
+                        else None,
+                    )
+                    if entity._pod_template
+                    else None,
                 ),
             ),
         )
@@ -602,6 +655,8 @@ def get_serializable_array_node(
         execution_mode=array_node.execution_mode,
         is_original_sub_node_interface=array_node.is_original_sub_node_interface,
         data_mode=array_node.data_mode,
+        bound_inputs=array_node.bound_inputs,
+        run_all_sub_nodes=array_node.run_all_sub_nodes,
     )
 
 
@@ -614,17 +669,49 @@ def get_serializable_array_node_map_task(
     # TODO Add support for other flyte entities
     entity = node.flyte_entity
     task_spec = get_serializable(entity_mapping, settings, entity, options)
+
+    override_pod_spec = {}
+    if node._pod_template is not None:
+        # get_container (not _get_container) goes through prepare_target() so the
+        # container args carry the map-task command rather than pyflyte-execute.
+        # When the underlying task has its own pod_template, get_container returns
+        # None; fall back to the inner python_function_task._get_container under
+        # prepare_target() so we still have an image/command to merge into the
+        # override pod spec.
+        container = entity.get_container(settings)
+        if container is None and isinstance(entity, (MapPythonTask, ArrayNodeMapTask)):
+            inner = getattr(entity, "python_function_task", None) or getattr(entity, "_run_task", None)
+            if inner is not None and hasattr(inner, "_get_container"):
+                with entity.prepare_target():
+                    container = inner._get_container(settings)
+        if settings.should_fast_serialize() and container is not None:
+            # Mirror get_serializable_task: prefix args post-build rather than
+            # swapping command_fn, since _fast_serialize_command_fn would wrap
+            # the inherited pyflyte-execute default (wrong for map_task).
+            container._args = prefix_with_fast_execute(settings, container.args)
+        override_pod_spec = _serialize_pod_spec(node._pod_template, container, settings)
+
     task_node = workflow_model.TaskNode(
         reference_id=task_spec.template.id,
         overrides=TaskNodeOverrides(
             resources=node._resources,
             extended_resources=node._extended_resources,
             container_image=node._container_image,
+            pod_template=PodTemplate(
+                pod_spec=override_pod_spec,
+                labels=node._pod_template.labels if node._pod_template.labels else None,
+                annotations=node._pod_template.annotations if node._pod_template.annotations else None,
+                primary_container_name=node._pod_template.primary_container_name
+                if node._pod_template.primary_container_name
+                else None,
+            )
+            if node._pod_template
+            else None,
         ),
     )
     node = workflow_model.Node(
         id=entity.name,
-        metadata=entity.construct_sub_node_metadata(),
+        metadata=entity.sub_node_metadata,
         inputs=node.bindings,
         upstream_node_ids=[],
         output_aliases=[],
@@ -637,6 +724,8 @@ def get_serializable_array_node_map_task(
         min_success_ratio=entity.min_success_ratio,
         execution_mode=entity.execution_mode,
         is_original_sub_node_interface=entity.is_original_sub_node_interface,
+        bound_inputs=entity.bound_inputs,
+        run_all_sub_nodes=entity.run_all_sub_nodes,
     )
 
 

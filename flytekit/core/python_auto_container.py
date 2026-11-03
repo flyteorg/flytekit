@@ -5,15 +5,17 @@ import re
 from abc import ABC
 from dataclasses import dataclass
 from typing import Callable, Dict, List, Optional, TypeVar, Union
+from typing import Literal as L
 
 from flyteidl.core import tasks_pb2
 
 from flytekit.configuration import ImageConfig, SerializationSettings
 from flytekit.constants import CopyFileDetection
 from flytekit.core.base_task import PythonTask, TaskMetadata, TaskResolverMixin
+from flytekit.core.constants import RUNTIME_PACKAGES_ENV_NAME
 from flytekit.core.context_manager import FlyteContextManager
 from flytekit.core.pod_template import PodTemplate
-from flytekit.core.resources import Resources, ResourceSpec
+from flytekit.core.resources import Resources, ResourceSpec, construct_extended_resources
 from flytekit.core.tracked_abc import FlyteTrackedABC
 from flytekit.core.tracker import TrackedInstance, extract_task_module
 from flytekit.core.utils import _get_container_definition, _serialize_pod_spec, timeit
@@ -51,6 +53,8 @@ class PythonAutoContainerTask(PythonTask[T], ABC, metaclass=FlyteTrackedABC):
         pod_template: Optional[PodTemplate] = None,
         pod_template_name: Optional[str] = None,
         accelerator: Optional[BaseAccelerator] = None,
+        shared_memory: Optional[Union[L[True], str]] = None,
+        resources: Optional[Resources] = None,
         **kwargs,
     ):
         """
@@ -71,13 +75,19 @@ class PythonAutoContainerTask(PythonTask[T], ABC, metaclass=FlyteTrackedABC):
            to provide secrets and if secrets are available in the configured secrets store.
            Possible options for secret stores are
 
-           - `Vault <https://www.vaultproject.io/>`__
-           - `Confidant <https://lyft.github.io/confidant/>`__
-           - `Kube secrets <https://kubernetes.io/docs/concepts/configuration/secret/>`__
-           - `AWS Parameter store <https://docs.aws.amazon.com/systems-manager/latest/userguide/systems-manager-parameter-store.html>`__
+           - [`Vault`](https://www.vaultproject.io/)
+           - [`Confidant`](https://lyft.github.io/confidant)
+           - [`Kube secrets`](https://kubernetes.io/docs/concepts/configuration/secret)
+           - [`AWS Parameter store`](https://docs.aws.amazon.com/systems-manager/latest/userguide/systems-manager-parameter-store.html)
         :param pod_template: Custom PodTemplate for this task.
         :param pod_template_name: The name of the existing PodTemplate resource which will be used in this task.
         :param accelerator: The accelerator to use for this task.
+        :param shared_memory: If True, then shared memory will be attached to the container where the size is equal
+            to the allocated memory. If str, then the shared memory is set to that size.
+        :param resources: Specify both the request and the limit. When the value is set to a tuple or list, the
+            first value is the request and the second value is the limit. If the value is a single value, then both the
+            requests and limit is set to that value. For example, the `Resource(cpu=("1", "2"), mem="1Gi")` will set
+            the cpu request to 1, cpu limit to 2, and mem request to 1Gi.
         """
         sec_ctx = None
         if secret_requests:
@@ -90,11 +100,24 @@ class PythonAutoContainerTask(PythonTask[T], ABC, metaclass=FlyteTrackedABC):
         kwargs["metadata"] = kwargs["metadata"] if "metadata" in kwargs else TaskMetadata()
         kwargs["metadata"].pod_template_name = pod_template_name
 
+        if kwargs.get("labels") is not None:
+            kwargs["metadata"].labels = kwargs["labels"]
+        if kwargs.get("annotations") is not None:
+            kwargs["metadata"].annotations = kwargs["annotations"]
+
         self._container_image = container_image
         # TODO(katrogan): Implement resource overrides
-        self._resources = ResourceSpec(
-            requests=requests if requests else Resources(), limits=limits if limits else Resources()
-        )
+
+        if resources is not None:
+            if limits is not None or requests is not None:
+                msg = "`resource` can not be used together with the `limits` or `requests`. Please only set `resource`."
+                raise ValueError(msg)
+            self._resources = ResourceSpec.from_multiple_resource(resources)
+        else:
+            self._resources = ResourceSpec(
+                requests=Resources() if requests is None else requests,
+                limits=Resources() if limits is None else limits,
+            )
 
         # The serialization of the other tasks (Task -> protobuf), as well as the initialization of the current task, may occur simultaneously.
         # We should make sure super().__init__ is being called after setting _container_image because PythonAutoContainerTask
@@ -128,6 +151,7 @@ class PythonAutoContainerTask(PythonTask[T], ABC, metaclass=FlyteTrackedABC):
 
         self.pod_template = pod_template
         self.accelerator = accelerator
+        self.shared_memory = shared_memory
 
     @property
     def task_resolver(self) -> TaskResolverMixin:
@@ -213,20 +237,30 @@ class PythonAutoContainerTask(PythonTask[T], ABC, metaclass=FlyteTrackedABC):
         for elem in (settings.env, self.environment):
             if elem:
                 env.update(elem)
+
+        # Override the task's resource spec if it was not set statically in the task definition
+
+        def _resources_unspecified(resources: ResourceSpec) -> bool:
+            return resources == ResourceSpec(
+                requests=Resources(),
+                limits=Resources(),
+            )
+
+        if isinstance(settings.default_resources, ResourceSpec) and _resources_unspecified(self.resources):
+            self._resources = settings.default_resources
+
+        # Add runtime dependencies into environment
+        if isinstance(self.container_image, ImageSpec) and self.container_image.runtime_packages:
+            runtime_packages = " ".join(self.container_image.runtime_packages)
+            env[RUNTIME_PACKAGES_ENV_NAME] = runtime_packages
+
         return _get_container_definition(
             image=self.get_image(settings),
+            resource_spec=self.resources,
             command=[],
             args=self.get_command(settings=settings),
             data_loading_config=None,
             environment=env,
-            ephemeral_storage_request=self.resources.requests.ephemeral_storage,
-            cpu_request=self.resources.requests.cpu,
-            gpu_request=self.resources.requests.gpu,
-            memory_request=self.resources.requests.mem,
-            ephemeral_storage_limit=self.resources.limits.ephemeral_storage,
-            cpu_limit=self.resources.limits.cpu,
-            gpu_limit=self.resources.limits.gpu,
-            memory_limit=self.resources.limits.mem,
         )
 
     def get_k8s_pod(self, settings: SerializationSettings) -> _task_model.K8sPod:
@@ -250,10 +284,7 @@ class PythonAutoContainerTask(PythonTask[T], ABC, metaclass=FlyteTrackedABC):
         """
         Returns the extended resources to allocate to the task on hosted Flyte.
         """
-        if self.accelerator is None:
-            return None
-
-        return tasks_pb2.ExtendedResources(gpu_accelerator=self.accelerator.to_flyte_idl())
+        return construct_extended_resources(accelerator=self.accelerator, shared_memory=self.shared_memory)
 
 
 class DefaultTaskResolver(TrackedInstance, TaskResolverMixin):
@@ -436,10 +467,16 @@ def get_registerable_container_image(img: Optional[Union[str, ImageSpec]], cfg: 
             if img_cfg is None:
                 raise AssertionError(f"Image Config with name {name} not found in the configuration")
             if attr == "version":
-                if img_cfg.version is not None:
-                    img = img.replace(replace_group, img_cfg.version)
+                version = img_cfg.version if img_cfg.version is not None else cfg.default_image.version
+                if ":" in version:
+                    # version is a digest (e.g. sha256:...) — needs @ separator, not :
+                    colon_prefixed = f":{replace_group}"
+                    if colon_prefixed in img:
+                        img = img.replace(colon_prefixed, f"@{version}")
+                    else:
+                        img = img.replace(replace_group, version)
                 else:
-                    img = img.replace(replace_group, cfg.default_image.version)
+                    img = img.replace(replace_group, version)
             elif attr == "fqn":
                 img = img.replace(replace_group, img_cfg.fqn)
             elif attr == "":
@@ -458,4 +495,7 @@ def get_registerable_container_image(img: Optional[Union[str, ImageSpec]], cfg: 
 # fqn will access the fully qualified name of the image (e.g. registry/imagename:version -> registry/imagename)
 # version will access the version part of the image (e.g. registry/imagename:version -> version)
 # With empty attribute, it'll access the full image path (e.g. registry/imagename:version -> registry/imagename:version)
-_IMAGE_REPLACE_REGEX = re.compile(r"({{\s*\.image[s]?(?:\.([a-zA-Z0-9_]+))(?:\.([a-zA-Z0-9_]+))?\s*}})", re.IGNORECASE)
+_IMAGE_TEMPLATE_SUBSTRING_REGEX = r"(?:\.([a-zA-Z0-9_-]+))"
+_IMAGE_REPLACE_REGEX = re.compile(
+    rf"({{{{\s*\.image[s]?{_IMAGE_TEMPLATE_SUBSTRING_REGEX}{_IMAGE_TEMPLATE_SUBSTRING_REGEX}?\s*}}}})", re.IGNORECASE
+)

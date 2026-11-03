@@ -43,6 +43,7 @@ from flytekit.core import context_manager
 from flytekit.core.artifact import ArtifactQuery
 from flytekit.core.base_task import PythonTask
 from flytekit.core.data_persistence import FileAccessProvider
+from flytekit.core.resources import Resources, ResourceSpec
 from flytekit.core.type_engine import TypeEngine
 from flytekit.core.workflow import PythonFunctionWorkflow, WorkflowBase
 from flytekit.exceptions.system import FlyteSystemException
@@ -51,6 +52,7 @@ from flytekit.interaction.click_types import (
     FlyteLiteralConverter,
     key_value_callback,
     labels_callback,
+    resource_callback,
 )
 from flytekit.interaction.string_literals import literal_string_repr
 from flytekit.loggers import logger
@@ -158,7 +160,7 @@ class RunLevelParams(PyFlyteParams):
     )
     poll_interval: int = make_click_option_field(
         click.Option(
-            param_decls=["-i", "--poll-interval", "poll_interval"],
+            param_decls=["--poll-interval", "poll_interval"],
             required=False,
             type=int,
             default=None,
@@ -186,6 +188,17 @@ class RunLevelParams(PyFlyteParams):
             help="Whether to overwrite the cache if it already exists",
         )
     )
+    interruptible: typing.Optional[bool] = make_click_option_field(
+        click.Option(
+            param_decls=["--interruptible"],
+            type=bool,
+            required=False,
+            default=None,
+            help="Specify if the execution should be forced to run with an interruptible flag of true or false."
+            " Use '--interruptible true' or '--interruptible false' to explicitly enable/disable."
+            " If this option is not provided, the default interruptible behavior of the remote Flyte entity is used.",
+        )
+    )
     envvars: typing.Dict[str, str] = make_click_option_field(
         click.Option(
             param_decls=["--envvars", "--env"],
@@ -195,6 +208,28 @@ class RunLevelParams(PyFlyteParams):
             show_default=True,
             callback=key_value_callback,
             help="Environment variables to set in the container, of the format `ENV_NAME=ENV_VALUE`",
+        )
+    )
+    resource_requests: typing.Optional[Resources] = make_click_option_field(
+        click.Option(
+            param_decls=["--resource-requests"],
+            required=False,
+            show_default=True,
+            type=str,
+            callback=resource_callback,
+            help="This overrides default task resource requests for tasks that have no statically defined resource requests in their task decorator. "
+            "Example usage: --resource-requests 'cpu=1,mem=2Gi,gpu=1'",
+        )
+    )
+    resource_limits: typing.Optional[Resources] = make_click_option_field(
+        click.Option(
+            param_decls=["--resource-limits"],
+            required=False,
+            show_default=True,
+            type=str,
+            callback=resource_callback,
+            help="This overrides default task resource limits for tasks that have no statically defined resource limits in their task decorator. "
+            "Example usage: --resource-limits 'cpu=1,mem=2Gi,gpu=1'",
         )
     )
     tags: typing.List[str] = make_click_option_field(
@@ -461,10 +496,8 @@ def to_click_option(
         python_type=python_type,
         is_remote=run_level_params.is_remote,
     )
-
     if literal_converter.is_bool() and not default_val:
         default_val = False
-
     description_extra = ""
     if literal_var.type.simple == SimpleType.STRUCT:
         if default_val and not isinstance(default_val, ArtifactQuery):
@@ -506,6 +539,7 @@ def to_click_option(
         required=required,
         help=literal_var.description + description_extra,
         callback=literal_converter.convert,
+        is_flag=literal_converter.is_bool(),
     )
 
 
@@ -544,8 +578,9 @@ def run_remote(
     if run_level_params.wait_execution:
         msg += " Waiting to complete..."
     p = Progress(TimeElapsedColumn(), TextColumn(msg), transient=True)
-    t = p.add_task("exec")
+    t = p.add_task("exec", visible=False)
     with p:
+        p.update(t, visible=True)
         p.start_task(t)
         execution = remote.execute(
             entity,
@@ -556,6 +591,7 @@ def run_remote(
             options=options_from_run_params(run_level_params),
             type_hints=type_hints,
             overwrite_cache=run_level_params.overwrite_cache,
+            interruptible=run_level_params.interruptible,
             envs=run_level_params.envvars,
             tags=run_level_params.tags,
             cluster_pool=run_level_params.cluster_pool,
@@ -744,6 +780,10 @@ def run_command(ctx: click.Context, entity: typing.Union[PythonFunctionWorkflow,
                     source_path=run_level_params.computed_params.project_root,
                     module_name=run_level_params.computed_params.module,
                     fast_package_options=fast_package_options,
+                    default_resources=ResourceSpec(
+                        requests=run_level_params.resource_requests or Resources(),
+                        limits=run_level_params.resource_limits or Resources(),
+                    ),
                 )
 
                 run_remote(
@@ -770,6 +810,7 @@ class DynamicEntityLaunchCommand(click.RichCommand):
 
     LP_LAUNCHER = "lp"
     TASK_LAUNCHER = "task"
+    WORKFLOW_LAUNCHER = "workflow"
 
     def __init__(self, name: str, h: str, entity_name: str, launcher: str, **kwargs):
         super().__init__(name=name, help=h, **kwargs)
@@ -777,7 +818,7 @@ class DynamicEntityLaunchCommand(click.RichCommand):
         self._launcher = launcher
         self._entity = None
 
-    def _fetch_entity(self, ctx: click.Context) -> typing.Union[FlyteLaunchPlan, FlyteTask]:
+    def _fetch_entity(self, ctx: click.Context) -> typing.Union[FlyteLaunchPlan, FlyteTask, FlyteWorkflow]:
         if self._entity:
             return self._entity
         run_level_params: RunLevelParams = ctx.obj
@@ -797,6 +838,12 @@ class DynamicEntityLaunchCommand(click.RichCommand):
                         )
                     )
                     entity = r.fetch_launch_plan(run_level_params.project, run_level_params.domain, self._entity_name)
+        elif self._launcher == self.WORKFLOW_LAUNCHER:
+            parts = self._entity_name.split(":")
+            if len(parts) == 2:
+                entity = r.fetch_workflow(run_level_params.project, run_level_params.domain, parts[0], parts[1])
+            else:
+                entity = r.fetch_workflow(run_level_params.project, run_level_params.domain, self._entity_name)
         else:
             parts = self._entity_name.split(":")
             if len(parts) == 2:
@@ -819,7 +866,7 @@ class DynamicEntityLaunchCommand(click.RichCommand):
         for name, var in inputs.items():
             if fixed and name in fixed:
                 continue
-            required = True
+            required = not is_optional(native_inputs[name])
             default_val = None
             if defaults and name in defaults:
                 if not defaults[name].required:
@@ -857,12 +904,17 @@ class DynamicEntityLaunchCommand(click.RichCommand):
         run_level_params: RunLevelParams = ctx.obj
         r = run_level_params.remote_instance()
         entity = self._fetch_entity(ctx)
+
+        param_defaults = {param.name: param.default for param in ctx.command.params}
+
+        filtered_inputs = {k: param_defaults.get(k, v) if v is None else v for k, v in ctx.params.items()}
+
         run_remote(
             r,
             entity,
             run_level_params.project,
             run_level_params.domain,
-            ctx.params,
+            filtered_inputs,
             run_level_params,
             type_hints=entity.python_interface.inputs if entity.python_interface else None,
         )
@@ -928,12 +980,19 @@ class RemoteEntityGroup(click.RichGroup):
                 return []
 
     def get_command(self, ctx, name):
-        if self._command_name in [self.LAUNCHPLAN_COMMAND, self.WORKFLOW_COMMAND]:
+        if self._command_name == self.LAUNCHPLAN_COMMAND:
             return DynamicEntityLaunchCommand(
                 name=name,
                 h=f"Execute a {self._command_name}.",
                 entity_name=name,
                 launcher=DynamicEntityLaunchCommand.LP_LAUNCHER,
+            )
+        elif self._command_name == self.WORKFLOW_COMMAND:
+            return DynamicEntityLaunchCommand(
+                name=name,
+                h=f"Execute a {self._command_name}.",
+                entity_name=name,
+                launcher=DynamicEntityLaunchCommand.WORKFLOW_LAUNCHER,
             )
         return DynamicEntityLaunchCommand(
             name=name,
@@ -1051,9 +1110,25 @@ class WorkflowCommand(click.RichGroup):
         r = run_level_params.remote_instance()
         flyte_ctx = r.context
 
+        final_inputs_with_defaults = loaded_entity.python_interface.inputs_with_defaults
+        if isinstance(loaded_entity, LaunchPlan):
+            # For LaunchPlans it is essential to handle fixed inputs and default inputs in a special way
+            # Fixed inputs are inputs that are always passed to the launch plan and cannot be overridden
+            # Default inputs are inputs that are optional and have a default value
+            # The final inputs to the launch plan are a combination of the fixed inputs and the default inputs
+            all_inputs = loaded_entity.python_interface.inputs_with_defaults
+            default_inputs = loaded_entity.saved_inputs
+            pmap = loaded_entity.parameters
+            final_inputs_with_defaults = {}
+            for name, _ in pmap.parameters.items():
+                _type, v = all_inputs[name]
+                if name in default_inputs:
+                    v = default_inputs[name]
+                final_inputs_with_defaults[name] = _type, v
+
         # Add options for each of the workflow inputs
         params = []
-        for input_name, input_type_val in loaded_entity.python_interface.inputs_with_defaults.items():
+        for input_name, input_type_val in final_inputs_with_defaults.items():
             literal_var = loaded_entity.interface.inputs.get(input_name)
             python_type, default_val = input_type_val
             required = type(None) not in get_args(python_type) and default_val is None

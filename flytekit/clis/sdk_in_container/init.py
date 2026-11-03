@@ -57,6 +57,4 @@ def init(template, project_name):
                 processed_contents = project_template_regex.sub(project_name_bytes, zip_contents)
                 dest_file.write(processed_contents)
 
-    click.echo(
-        f"Visit the {project_name} directory and follow the next steps in the Getting started guide (https://docs.flyte.org/en/latest/user_guide/getting_started_with_workflow_development/index.html) to proceed."
-    )
+    click.echo(f"Project initialized in directory {project_name}.")

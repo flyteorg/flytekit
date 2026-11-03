@@ -1,4 +1,4 @@
-ARG PYTHON_VERSION
+ARG PYTHON_VERSION=3.12
 FROM python:${PYTHON_VERSION}-slim-bookworm
 
 WORKDIR /root
@@ -8,11 +8,13 @@ ENV PYTHONPATH /root
 
 ARG VERSION
 
-RUN pip install sqlalchemy \
-		psycopg2-binary \
-		pymysql \
-		flytekitplugins-sqlalchemy==$VERSION \
-		flytekit==$VERSION
+RUN pip install uv --no-cache-dir \
+  && uv pip install --system --no-cache-dir -U \
+    sqlalchemy \
+    psycopg2-binary \
+    pymysql \
+    flytekitplugins-sqlalchemy==$VERSION \
+    flytekit==$VERSION
 
 RUN useradd -u 1000 flytekit
 RUN chown flytekit: /root

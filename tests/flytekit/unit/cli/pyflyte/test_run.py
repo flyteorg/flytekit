@@ -16,7 +16,7 @@ from flytekit.clis.sdk_in_container import pyflyte
 from flytekit.clis.sdk_in_container.run import (
     RunLevelParams,
     get_entities_in_file,
-    run_command,
+    run_command, WorkflowCommand,
 )
 from flytekit.configuration import Config, Image, ImageConfig
 from flytekit.core.task import task
@@ -26,10 +26,12 @@ from flytekit.image_spec.image_spec import (
 )
 from flytekit.interaction.click_types import DirParamType, FileParamType
 from flytekit.remote import FlyteRemote
-from typing import Iterator, List
+from typing import Iterator, List, Optional
 from flytekit.types.iterator import JSON
-from flytekit import workflow
+from flytekit import workflow, LaunchPlan
 
+from flytekit.core.context_manager import FlyteContextManager
+from flytekit.clients.friendly import SynchronousFlyteClient
 
 pytest.importorskip("pandas")
 
@@ -95,6 +97,47 @@ def test_pyflyte_run_wf(remote, remote_flag, workflow_file):
         )
 
         assert result.exit_code == 0
+
+
+@pytest.mark.parametrize("workflow_file", [WorkflowFileLocation.NORMAL], indirect=["workflow_file"])
+@pytest.mark.parametrize(
+    "interruptible_cli_val,expected_interruptible_override",
+    [
+        ("true", True),
+        ("True", True),
+        ("TRUE", True),
+        ("false", False),
+        ("False", False),
+        ("FALSE", False),
+        (None, None),
+    ],
+)
+def test_pyflyte_run_wf_interruptible(workflow_file, interruptible_cli_val, expected_interruptible_override):
+    """Tests that the '--interruptible' option passed to 'pyflyte run' is correctly passed to the remote execution."""
+    # Build the pyflyte args
+    pyflyte_args = [
+        "run",
+        "--remote",
+        str(workflow_file),
+        "wf_with_list",
+        "--a", "[1,2,3]",
+    ]
+    # Insert "--interruptible" if interruptible_cli_val is not None
+    if interruptible_cli_val is not None:
+        pyflyte_args = pyflyte_args[:2] + ["--interruptible", interruptible_cli_val] + pyflyte_args[2:]
+    # Run the command - but mock 'FlyteRemote' to check what value 'remote.execute' was called with
+    with mock.patch("flytekit.configuration.plugin.FlyteRemote") as mocked_remote:
+        runner = CliRunner()
+        result = runner.invoke(
+            pyflyte.main,
+            pyflyte_args,
+            catch_exceptions=False,
+        )
+        assert result.exit_code == 0, result.stdout
+        # Check that 'remote.execute' was called once with the correct interruptible override
+        assert mocked_remote.return_value.execute.call_count == 1
+        assert mocked_remote.return_value.execute.call_args[1]["interruptible"] == expected_interruptible_override
+
 
 
 def test_pyflyte_run_with_labels():
@@ -205,7 +248,7 @@ def test_pyflyte_run_cli(workflow_file):
             "--s",
             json.dumps({"x": {"i": 1, "a": ["h", "e"]}}),
             "--t",
-            json.dumps({"i": [{"i":1,"a":["h","e"]}]}),
+            json.dumps({"i": [{"i": 1, "a": ["h", "e"]}]}),
         ],
         catch_exceptions=False,
     )
@@ -293,7 +336,8 @@ def test_all_types_with_yaml_input():
 
     result = runner.invoke(
         pyflyte.main,
-        ["run", os.path.join(DIR_NAME, "workflow.py"), "my_wf", "--inputs-file", os.path.join(os.path.dirname(os.path.realpath(__file__)), "my_wf_input.yaml")],
+        ["run", os.path.join(DIR_NAME, "workflow.py"), "my_wf", "--inputs-file",
+         os.path.join(os.path.dirname(os.path.realpath(__file__)), "my_wf_input.yaml")],
         catch_exceptions=False,
     )
     assert result.exit_code == 0, result.stdout
@@ -301,7 +345,7 @@ def test_all_types_with_yaml_input():
 
 def test_all_types_with_pipe_input(monkeypatch):
     runner = CliRunner()
-    input= str(json.load(open(os.path.join(os.path.dirname(os.path.realpath(__file__)), "my_wf_input.json"),"r")))
+    input = str(json.load(open(os.path.join(os.path.dirname(os.path.realpath(__file__)), "my_wf_input.json"), "r")))
     monkeypatch.setattr("sys.stdin", io.StringIO(input))
     result = runner.invoke(
         pyflyte.main,
@@ -321,18 +365,18 @@ def test_all_types_with_pipe_input(monkeypatch):
     "pipe_input, option_input",
     [
         (
-            str(
-                json.load(
-                    open(
-                        os.path.join(
-                            os.path.dirname(os.path.realpath(__file__)),
-                            "my_wf_input.json",
-                        ),
-                        "r",
+                str(
+                    json.load(
+                        open(
+                            os.path.join(
+                                os.path.dirname(os.path.realpath(__file__)),
+                                "my_wf_input.json",
+                            ),
+                            "r",
+                        )
                     )
-                )
-            ),
-            "GREEN",
+                ),
+                "GREEN",
         )
     ],
 )
@@ -579,11 +623,11 @@ ic_result_4 = ImageConfig(
     reason="Github macos-latest image does not have docker installed as per https://github.com/orgs/community/discussions/25777",
 )
 def test_pyflyte_run_run(
-    mock_image,
-    image_string,
-    leaf_configuration_file_name,
-    final_image_config,
-    mock_image_spec_builder,
+        mock_image,
+        image_string,
+        leaf_configuration_file_name,
+        final_image_config,
+        mock_image_spec_builder,
 ):
     mock_image.return_value = "cr.flyte.org/flyteorg/flytekit:py3.9-latest"
     ImageBuildEngine.register("test", mock_image_spec_builder)
@@ -597,10 +641,10 @@ def test_pyflyte_run_run(
     image_config = ImageConfig.validate_image(None, "", image_tuple)
 
     pp = (
-        pathlib.Path(__file__).parent.parent.parent
-        / "configuration"
-        / "configs"
-        / leaf_configuration_file_name
+            pathlib.Path(__file__).parent.parent.parent
+            / "configuration"
+            / "configs"
+            / leaf_configuration_file_name
     )
 
     obj = RunLevelParams(
@@ -641,7 +685,7 @@ def jsons():
 
 @mock.patch("flytekit.configuration.default_images.DefaultImages.default_image")
 def test_pyflyte_run_with_iterator_json_type(
-    mock_image, mock_image_spec_builder, caplog
+        mock_image, mock_image_spec_builder, caplog
 ):
     mock_image.return_value = "cr.flyte.org/flyteorg/flytekit:py3.9-latest"
     ImageBuildEngine.register(
@@ -679,10 +723,10 @@ def test_pyflyte_run_with_iterator_json_type(
     image_config = ImageConfig.validate_image(None, "", image_tuple)
 
     pp = (
-        pathlib.Path(__file__).parent.parent.parent
-        / "configuration"
-        / "configs"
-        / "no_images.yaml"
+            pathlib.Path(__file__).parent.parent.parent
+            / "configuration"
+            / "configs"
+            / "no_images.yaml"
     )
 
     obj = RunLevelParams(
@@ -796,9 +840,9 @@ def test_pyflyte_run_with_none(a_val, workflow_file):
     [
         (["--env", "MY_ENV_VAR=hello"], '["MY_ENV_VAR"]', "hello"),
         (
-            ["--env", "MY_ENV_VAR=hello", "--env", "ABC=42"],
-            '["MY_ENV_VAR","ABC"]',
-            "hello,42",
+                ["--env", "MY_ENV_VAR=hello", "--env", "ABC=42"],
+                '["MY_ENV_VAR","ABC"]',
+                "hello,42",
         ),
     ],
 )
@@ -813,16 +857,16 @@ def test_pyflyte_run_with_none(a_val, workflow_file):
 def test_envvar_local_execution(envs, envs_argument, expected_output, workflow_file):
     runner = CliRunner()
     args = (
-        [
-            "run",
-        ]
-        + envs
-        + [
-            workflow_file,
-            "wf_with_env_vars",
-            "--env_vars",
-        ]
-        + [envs_argument]
+            [
+                "run",
+            ]
+            + envs
+            + [
+                workflow_file,
+                "wf_with_env_vars",
+                "--env_vars",
+            ]
+            + [envs_argument]
     )
     result = runner.invoke(
         pyflyte.main,
@@ -867,3 +911,143 @@ def test_entity_non_found_in_file():
     )
     assert result.exit_code == 1
     assert "FlyteEntityNotFoundException: Task/Workflow \'my_wffffff\' not found in module \n\'pyflyte.workflow\'" in result.stdout
+
+@mock.patch("flytekit.configuration.plugin.FlyteRemote", spec=FlyteRemote)
+@mock.patch("flytekit.clis.sdk_in_container.run.run_remote")
+def test_remote_task_boolean_True(mock_run_remote, mock_remote):
+    @task()
+    def example_task(flag: bool) -> bool:
+        return flag
+
+    mock_remote_instance = mock.MagicMock()
+    mock_remote.return_value = mock_remote_instance
+    mock_remote_instance.fetch_task.return_value = example_task
+
+    runner = CliRunner()
+    result = runner.invoke(
+        pyflyte.main,
+        ["run", "remote-task", "some_module.example_task", "--flag"],
+        catch_exceptions=False,
+    )
+
+    assert result.exit_code == 0
+
+    mock_run_remote.assert_called_once()
+    args, _ = mock_run_remote.call_args
+    flag_literal = args[4]["flag"]
+    inputs = flag_literal.scalar.primitive.boolean
+    assert inputs == True
+
+@mock.patch("flytekit.configuration.plugin.FlyteRemote", spec=FlyteRemote)
+@mock.patch("flytekit.clis.sdk_in_container.run.run_remote")
+def test_remote_task_boolean_False(mock_run_remote, mock_remote):
+    @task()
+    def example_task(flag: bool) -> bool:
+        return flag
+
+    mock_remote_instance = mock.MagicMock()
+    mock_remote.return_value = mock_remote_instance
+    mock_remote_instance.fetch_task.return_value = example_task
+
+    runner = CliRunner()
+    result = runner.invoke(
+        pyflyte.main,
+        ["run", "remote-task", "some_module.example_task", "--no-flag"],
+        catch_exceptions=False,
+    )
+
+    assert result.exit_code == 0
+
+    mock_run_remote.assert_called_once()
+    args, _ = mock_run_remote.call_args
+    inputs = args[4]['flag']
+    assert inputs == False
+
+
+@mock.patch("flytekit.configuration.plugin.FlyteRemote", spec=FlyteRemote)
+@mock.patch("flytekit.clis.sdk_in_container.run.run_remote")
+def test_remote_workflow(mock_run_remote, mock_remote):
+    @task()
+    def example_task(x: int, y: str) -> str:
+        return f"{x},{y}"
+
+    @workflow
+    def example_workflow(x: int, y: str) -> str:
+        return example_task(x=x, y=y)
+
+    mock_remote_instance = mock.MagicMock()
+    mock_remote.return_value = mock_remote_instance
+    mock_remote_instance.fetch_workflow.return_value = example_workflow
+
+    runner = CliRunner()
+    result = runner.invoke(
+        pyflyte.main,
+        ["run", "remote-workflow", "some_module.example_workflow", "--x", "42", "--y", "hello"],
+        catch_exceptions=False,
+    )
+
+    assert result.exit_code == 0
+    mock_remote_instance.fetch_workflow.assert_called_once()
+    mock_run_remote.assert_called_once()
+
+
+@mock.patch("flytekit.configuration.plugin.FlyteRemote", spec=FlyteRemote)
+@mock.patch("flytekit.clis.sdk_in_container.run.run_remote")
+def test_remote_workflow_with_version(mock_run_remote, mock_remote):
+    @task()
+    def example_task(x: int) -> int:
+        return x * 2
+
+    @workflow
+    def example_workflow(x: int) -> int:
+        return example_task(x=x)
+
+    mock_remote_instance = mock.MagicMock()
+    mock_remote.return_value = mock_remote_instance
+    mock_remote_instance.fetch_workflow.return_value = example_workflow
+
+    runner = CliRunner()
+    result = runner.invoke(
+        pyflyte.main,
+        ["run", "remote-workflow", "some_module.example_workflow:v1", "--x", "10"],
+        catch_exceptions=False,
+    )
+
+    assert result.exit_code == 0
+    # Verify fetch_workflow was called with the correct arguments (project, domain, name, version)
+    mock_remote_instance.fetch_workflow.assert_called_once()
+    call_args = mock_remote_instance.fetch_workflow.call_args[0]
+    # Should be called with 4 args when version is specified
+    assert len(call_args) == 4
+    assert call_args[2] == "some_module.example_workflow"
+    assert call_args[3] == "v1"
+    mock_run_remote.assert_called_once()
+
+
+@mock.patch("flytekit.configuration.plugin.FlyteRemote", spec=FlyteRemote)
+@mock.patch("flytekit.clis.sdk_in_container.run.run_remote")
+def test_remote_workflow_with_optional_arg(mock_run_remote, mock_remote):
+    @task()
+    def example_task(x: Optional[str]) -> str:
+        if x is None:
+            return ""
+        return f"{x}"
+
+    @workflow
+    def example_workflow(x: Optional[str]) -> str:
+        return example_task(x=x)
+
+    mock_remote_instance = mock.MagicMock()
+    mock_remote.return_value = mock_remote_instance
+    mock_remote_instance.fetch_workflow.return_value = example_workflow
+
+    runner = CliRunner()
+    result = runner.invoke(
+        pyflyte.main,
+        ["run", "remote-workflow", "some_module.example_workflow"],
+        catch_exceptions=False,
+    )
+
+    assert result.exit_code == 0
+    mock_remote_instance.fetch_workflow.assert_called_once()
+    mock_run_remote.assert_called_once()

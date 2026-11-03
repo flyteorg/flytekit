@@ -12,7 +12,7 @@ from flytekit.core.base_task import PythonTask
 from flytekit.core.interface import Interface
 from flytekit.core.python_customized_container_task import PythonCustomizedContainerTask
 from flytekit.core.shim_task import ShimTaskExecutor
-from flytekit.extend.backend.base_agent import AsyncAgentExecutorMixin
+from flytekit.extend.backend.base_connector import AsyncConnectorExecutorMixin
 from flytekit.models.security import Secret
 from flytekit.models.task import TaskTemplate
 from flytekit.types.file import JSONLFile
@@ -26,7 +26,7 @@ class BatchResult(DataClassJSONMixin):
     error_file: Optional[JSONLFile] = None
 
 
-class BatchEndpointTask(AsyncAgentExecutorMixin, PythonTask):
+class BatchEndpointTask(AsyncConnectorExecutorMixin, PythonTask):
     _TASK_TYPE = "openai-batch"
 
     def __init__(
@@ -64,6 +64,8 @@ class OpenAIFileDefaultImages(DefaultImages):
         PythonVersion.PYTHON_3_10: "cr.flyte.org/flyteorg/flytekit:py3.10-openai-batch-",
         PythonVersion.PYTHON_3_11: "cr.flyte.org/flyteorg/flytekit:py3.11-openai-batch-",
         PythonVersion.PYTHON_3_12: "cr.flyte.org/flyteorg/flytekit:py3.12-openai-batch-",
+        PythonVersion.PYTHON_3_13: "cr.flyte.org/flyteorg/flytekit:py3.13-openai-batch-",
+        PythonVersion.PYTHON_3_14: "cr.flyte.org/flyteorg/flytekit:py3.14-openai-batch-",
     }
 
 

@@ -22,8 +22,8 @@ mkdir -p /opt/spark/work-dir
 touch /opt/spark/RELEASE
 
 # Fetch Spark Distribution
-wget https://archive.apache.org/dist/spark/spark-3.2.1/spark-3.2.1-bin-hadoop3.2.tgz -O spark-dist.tgz
-echo '224e058cb0c6fb68b39896427a3ccd11ae2246e9bf465b5e29e4fb192d39a59c spark-dist.tgz' | sha256sum --check
+wget https://archive.apache.org/dist/spark/spark-3.4.0/spark-3.4.0-bin-hadoop3.tgz -O spark-dist.tgz
+echo '67bc912e9192ef2159540cb480820e5466dfd91e907c97c5a4787587e3020be042b76c40c51854f2a5dbeb8c3775fe12d9021c1200c4704463ec644132243a69  spark-dist.tgz' > spark-dist.tgz.sha512 && sha512sum --check spark-dist.tgz.sha512
 mkdir -p spark-dist
 tar -xvf spark-dist.tgz -C spark-dist --strip-components 1
 
@@ -43,5 +43,5 @@ rm -rf spark-dist
 
 # Hadoop dist (via Apache) has older AWS SDK version. Fetch required AWS jars from maven directly (not-ideal) to support IAM role
 # https://docs.aws.amazon.com/eks/latest/userguide/iam-roles-for-service-accounts-minimum-sdk.html
-wget https://repo1.maven.org/maven2/org/apache/hadoop/hadoop-aws/3.3.1/hadoop-aws-3.3.1.jar -P /opt/spark/jars
-wget https://repo1.maven.org/maven2/com/amazonaws/aws-java-sdk-bundle/1.11.901/aws-java-sdk-bundle-1.11.901.jar -P /opt/spark/jars
+wget https://repo1.maven.org/maven2/org/apache/hadoop/hadoop-aws/3.4.0/hadoop-aws-3.4.0.jar -P /opt/spark/jars
+wget https://repo1.maven.org/maven2/com/amazonaws/aws-java-sdk-bundle/1.12.262/aws-java-sdk-bundle-1.12.262.jar -P /opt/spark/jars

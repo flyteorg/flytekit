@@ -27,9 +27,9 @@ jobs:
       - name: Set Python versions for run
         run: |
           if [[ ${{ github.event_name }} == "schedule" ]]; then
-            echo "python_versions=[\"3.9\",\"3.10\",\"3.11\",\"3.12\"]" >> $GITHUB_ENV
+            echo "python_versions=[\"3.10\",\"3.11\",\"3.12\"]" >> $GITHUB_ENV
           else
-            echo "python_versions=[\"3.9\", \"3.12\"]" >> $GITHUB_ENV
+            echo "python_versions=[\"3.12\"]" >> $GITHUB_ENV
           fi
 
   build:
@@ -39,7 +39,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        os:
+          - ubuntu-24.04-arm
+          - ubuntu-latest
+          - windows-latest
+          - macos-latest
         python-version: ${{fromJson(needs.detect-python-versions.outputs.python-versions)}}
     steps:
       - uses: actions/checkout@v4
@@ -50,7 +54,7 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
       - name: Cache pip
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           # This path is specific to Ubuntu
           path: ~/.cache/pip
@@ -78,7 +82,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        os:
+          - ubuntu-24.04-arm
+          - ubuntu-latest
+          - windows-latest
+          - macos-latest
         python-version: ${{fromJson(needs.detect-python-versions.outputs.python-versions)}}
     steps:
       - uses: actions/checkout@v4
@@ -89,7 +97,7 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
       - name: Cache pip
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           # This path is specific to Ubuntu
           path: ~/.cache/pip
@@ -129,8 +137,8 @@ jobs:
             pandas: "pandas<2.0.0"
           - numpy: "numpy<2.0.0"
             pandas: "pandas>=2.0.0"
-          - numpy: "numpy>=2.0.0"
-            python-version: "3.8"
+          - pandas: "pandas<2.0.0"
+            python-version: "3.12"
 
     steps:
       - uses: actions/checkout@v4
@@ -141,7 +149,7 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
       - name: Cache pip
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           # This path is specific to Ubuntu
           path: ~/.cache/pip
@@ -178,7 +186,7 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
       - name: Cache pip
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           # This path is specific to Ubuntu
           path: ~/.cache/pip
@@ -222,7 +230,7 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
       - name: Cache pip
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           # This path is specific to Ubuntu
           path: ~/.cache/pip
@@ -234,10 +242,10 @@ jobs:
           make setup-global-uv
           uv pip freeze
       - name: Install FlyteCTL
-        uses: unionai-oss/flytectl-setup-action@master
+        uses: unionai-oss/flytectl-setup-action@v0.0.4
       - name: Setup Flyte Sandbox
         run: |
-          flytectl demo start
+          flytectl demo start --disable-agent
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
         with:
@@ -260,7 +268,7 @@ jobs:
         env:
           FLYTEKIT_IMAGE: localhost:30000/flytekit:dev
           FLYTEKIT_CI: 1
-          PYTEST_OPTS: -n2
+          PYTEST_OPTS: -n1
           AWS_ENDPOINT_URL: 'http://localhost:30002'
           AWS_ACCESS_KEY_ID: minio
           AWS_SECRET_ACCESS_KEY: miniostorage
@@ -286,6 +294,7 @@ jobs:
           - flytekit-async-fsspec
           - flytekit-aws-athena
           - flytekit-aws-batch
+          - flytekit-aws-emr-serverless
           - flytekit-aws-sagemaker
           - flytekit-bigquery
           - flytekit-comet-ml
@@ -293,16 +302,19 @@ jobs:
           - flytekit-data-fsspec
           - flytekit-dbt
           - flytekit-deck-standard
+          - flytekit-dgxc-lepton
           # TODO: remove dolt plugin - https://github.com/flyteorg/flyte/issues/5350
           # flytekit-dolt
           - flytekit-duckdb
           - flytekit-envd
           - flytekit-flyteinteractive
+          - flytekit-geopandas
           - flytekit-greatexpectations
           - flytekit-hive
           - flytekit-huggingface
           - flytekit-identity-aware-proxy
           - flytekit-inference
+          - flytekit-k8sdataservice
           - flytekit-k8s-pod
           - flytekit-kf-mpi
           - flytekit-kf-pytorch
@@ -324,14 +336,15 @@ jobs:
           - flytekit-papermill
           - flytekit-polars
           - flytekit-ray
+          - flytekit-slurm
           - flytekit-snowflake
           - flytekit-spark
           - flytekit-sqlalchemy
           - flytekit-vaex
           - flytekit-whylogs
+          # Below is a list of community plugins. Please keep in alphabetical order.
+          - community/flytekit-xarray-zarr
         exclude:
-          - python-version: 3.9
-            plugin-names: "flytekit-aws-sagemaker"
           # flytekit-modin depends on ray which does not have a 3.11 wheel yet.
           # Issue tracked in https://github.com/ray-project/ray/issues/27881
           - python-version: 3.11
@@ -345,7 +358,7 @@ jobs:
             plugin-names: "flytekit-greatexpectations"
           # onnxruntime does not support python 3.10 yet
           # https://github.com/microsoft/onnxruntime/issues/9782
-          - python-version: 3.11
+          - python-version: 3.12
             plugin-names: "flytekit-onnx-pytorch"
           - python-version: 3.11
             plugin-names: "flytekit-onnx-scikitlearn"
@@ -385,26 +398,32 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
       - name: Cache pip
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           # This path is specific to Ubuntu
           path: ~/.cache/pip
           # Look to see if there is a cache hit for the corresponding requirements files
-          key: ${{ format('{0}-pip-{1}', runner.os, hashFiles('dev-requirements.txt', format('plugins/{0}/requirements.txt', matrix.plugin-names ))) }}
+          key: ${{ format('{0}-pip-{1}', runner.os, hashFiles('dev-requirements.in', format('plugins/{0}/requirements.txt', matrix.plugin-names ))) }}
       - name: Install dependencies
         run: |
           pip install uv
           # TODO: double-check if checking out all tags solves the issue
-          export SETUPTOOLS_SCM_PRETEND_VERSION="3.0.0"
+          export SETUPTOOLS_SCM_PRETEND_VERSION="1.999.999"
           make setup-global-uv
           cd plugins/${{ matrix.plugin-names }}
           uv pip install --system .
           if [ -f dev-requirements.in ]; then uv pip install --system -r dev-requirements.in; fi
-          # TODO: move to protobuf>=5. Github issue: https://github.com/flyteorg/flyte/issues/5448
-          uv pip install --system -U $GITHUB_WORKSPACE "protobuf<5" "git+https://github.com/flyteorg/flyte.git@master#subdirectory=flyteidl"
+          echo "Workspace: $GITHUB_WORKSPACE"
+          uv pip install --system -U $GITHUB_WORKSPACE "git+https://github.com/flyteorg/flyte.git@master#subdirectory=flyteidl"
           # TODO: remove this when numpy v2 in onnx has been resolved
           if [[ ${{ matrix.plugin-names }} == *"onnx"* || ${{ matrix.plugin-names }} == "flytekit-sqlalchemy" || ${{ matrix.plugin-names }} == "flytekit-pandera" ]]; then
             uv pip install --system "numpy<2.0.0"
+          fi
+          # The -U step above re-resolves aiohttp (a flytekit dependency) back to the latest,
+          # which aioresponses (spark test dep) cannot build a mocked ClientResponse against on
+          # 3.14. Re-pin it after the upgrade. See https://github.com/flyteorg/flyte/issues/7604.
+          if [[ ${{ matrix.plugin-names }} == "flytekit-spark" ]]; then
+            uv pip install --system "aiohttp<3.14"
           fi
           uv pip freeze
       - name: Test with coverage
@@ -430,7 +449,7 @@ jobs:
         uses: actions/setup-python@v4
         with:
           python-version: 3.12
-      - uses: actions/cache@v3
+      - uses: actions/cache@v4
         with:
           path: ~/.cache/pip
           key: ${{ runner.os }}-pip-${{ hashFiles('**/dev-requirements.in') }}

@@ -3,10 +3,10 @@ from typing import Any, Dict, Optional
 from flytekit.configuration import SerializationSettings
 from flytekit.core.base_task import PythonTask
 from flytekit.core.interface import Interface
-from flytekit.extend.backend.base_agent import SyncAgentExecutorMixin
+from flytekit.extend.backend.base_connector import SyncConnectorExecutorMixin
 
 
-class ChatGPTTask(SyncAgentExecutorMixin, PythonTask):
+class ChatGPTTask(SyncConnectorExecutorMixin, PythonTask):
     """
     This is the simplest form of a ChatGPT Task, you can define the model and the input you want.
     """

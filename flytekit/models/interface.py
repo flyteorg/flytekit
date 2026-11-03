@@ -158,13 +158,25 @@ class TypedInterface(_common.FlyteIdlEntity):
             outputs={k: Variable.from_flyte_idl(v) for k, v in proto.outputs.variables.items()},
         )
 
-    def transform_interface_to_list(self) -> "TypedInterface":
+    def transform_interface_to_list(
+        self,
+        bound_inputs: typing.Set[str],
+        excluded_inputs: typing.Set[str],
+    ) -> "TypedInterface":
         """
         Takes a single task interface and interpolates it to an array interface - to allow performing distributed
         python map like functions
+        :param bound_inputs: fixed inputs that should not be updated to a list and will be maintained as is
+        :param excluded_inputs: inputs that should be excluded from the new interface
         """
         list_interface = _interface_pb2.TypedInterface(
-            inputs=_interface_pb2.VariableMap(variables={k: v.to_flyte_idl_list() for k, v in self.inputs.items()}),
+            inputs=_interface_pb2.VariableMap(
+                variables={
+                    k: (v.to_flyte_idl_list() if k not in bound_inputs else v.to_flyte_idl())
+                    for k, v in self.inputs.items()
+                    if k not in excluded_inputs
+                }
+            ),
             outputs=_interface_pb2.VariableMap(variables={k: v.to_flyte_idl_list() for k, v in self.outputs.items()}),
         )
         return self.from_flyte_idl(list_interface)

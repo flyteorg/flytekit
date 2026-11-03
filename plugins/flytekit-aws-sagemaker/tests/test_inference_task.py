@@ -117,7 +117,7 @@ from flytekit.configuration import Image, ImageConfig, SerializationSettings
             "sagemaker_invoke_endpoint",
             {
                 "EndpointName": "{inputs.endpoint_name}",
-                "InputLocation": "s3://sagemaker-agent-xgboost/inference_input",
+                "InputLocation": "s3://sagemaker-connector-xgboost/inference_input",
             },
             "sagemaker-runtime",
             "invoke_endpoint_async",
@@ -132,7 +132,7 @@ from flytekit.configuration import Image, ImageConfig, SerializationSettings
             "sagemaker_invoke_endpoint_with_region_at_runtime",
             {
                 "EndpointName": "{inputs.endpoint_name}",
-                "InputLocation": "s3://sagemaker-agent-xgboost/inference_input",
+                "InputLocation": "s3://sagemaker-connector-xgboost/inference_input",
             },
             "sagemaker-runtime",
             "invoke_endpoint_async",

@@ -120,7 +120,7 @@ def test_auth_role_empty():
 def test_short_string_raw_output_data_config():
     obj = _common.RawOutputDataConfig("s3://bucket")
     assert "Flyte Serialized object (RawOutputDataConfig):" in obj.short_string()
-    assert "Flyte Serialized object (RawOutputDataConfig):" in repr(obj)
+    assert 'output_location_prefix: "s3://bucket"' in repr(obj)
 
 
 def test_html_repr_data_config():
@@ -148,7 +148,7 @@ def test_short_string_entities_ExecutionClosure():
         created_at=None,
         updated_at=test_datetime,
     )
-    expected_result = textwrap.dedent("""\
+    short_string_expected = textwrap.dedent("""\
     Flyte Serialized object (ExecutionClosure):
       outputs:
         uri: http://foo/
@@ -160,18 +160,36 @@ def test_short_string_entities_ExecutionClosure():
       updated_at:
         seconds: 1640995200""")
 
-    assert repr(obj) == expected_result
-    assert obj.short_string() == expected_result
+    repr_expected = textwrap.dedent("""\
+    outputs {
+      uri: "http://foo/"
+    }
+    phase: SUCCEEDED
+    started_at {
+      seconds: 1640995200
+    }
+    duration {
+      seconds: 10
+    }
+    updated_at {
+      seconds: 1640995200
+    }
+    """)
+
+    assert repr(obj) == repr_expected
+    assert obj.short_string() == short_string_expected
 
 
 def test_short_string_entities_Primitive():
     obj = Primitive(integer=1)
-    expected_result = textwrap.dedent("""\
+    short_string_expected = textwrap.dedent("""\
     Flyte Serialized object (Primitive):
       integer: 1""")
 
-    assert repr(obj) == expected_result
-    assert obj.short_string() == expected_result
+    repr_expected = "integer: 1\n"
+
+    assert repr(obj) == repr_expected
+    assert obj.short_string() == short_string_expected
 
 
 def test_short_string_entities_TaskMetadata():
@@ -188,7 +206,7 @@ def test_short_string_entities_TaskMetadata():
         (),
     )
 
-    expected_result = textwrap.dedent("""\
+    short_string_expected = textwrap.dedent("""\
     Flyte Serialized object (TaskMetadata):
       discoverable: True
       runtime:
@@ -204,17 +222,44 @@ def test_short_string_entities_TaskMetadata():
       interruptible: True
       cache_serializable: True
       pod_template_name: A""")
-    assert repr(obj) == expected_result
-    assert obj.short_string() == expected_result
+
+    repr_expected = ('discoverable: true\n'
+                     'runtime {\n'
+                     '  type: FLYTE_SDK\n'
+                     '  version: "1.0.0"\n'
+                     '  flavor: "python"\n'
+                     '}\n'
+                     'timeout {\n'
+                     '  seconds: 86400\n'
+                     '}\n'
+                     'retries {\n'
+                     '  retries: 3\n'
+                     '}\n'
+                     'discovery_version: "0.1.1b0"\n'
+                     'deprecated_error_message: "This is deprecated!"\n'
+                     'interruptible: true\n'
+                     'cache_serializable: true\n'
+                     'pod_template_name: "A"\n'
+                     'generates_deck {\n'
+                     '}\n')
+
+    assert repr(obj) == repr_expected
+    assert obj.short_string() == short_string_expected
 
 
 def test_short_string_entities_Project():
     obj = Project("project_id", "project_name", "project_description")
-    expected_result = textwrap.dedent("""\
+    short_string_expected = textwrap.dedent("""\
     Flyte Serialized object (Project):
       id: project_id
       name: project_name
       description: project_description""")
 
-    assert repr(obj) == expected_result
-    assert obj.short_string() == expected_result
+    repr_expected = textwrap.dedent("""\
+    id: "project_id"
+    name: "project_name"
+    description: "project_description"
+    """)
+
+    assert repr(obj) == repr_expected
+    assert obj.short_string() == short_string_expected

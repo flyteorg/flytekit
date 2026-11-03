@@ -7,7 +7,7 @@ from google.protobuf.struct_pb2 import Struct
 from flytekit import lazy_module
 from flytekit.configuration import SerializationSettings
 from flytekit.extend import SQLTask
-from flytekit.extend.backend.base_agent import AsyncAgentExecutorMixin
+from flytekit.extend.backend.base_connector import AsyncConnectorExecutorMixin
 from flytekit.models import task as _task_model
 from flytekit.types.structured import StructuredDataset
 
@@ -25,7 +25,7 @@ class BigQueryConfig(object):
     QueryJobConfig: Optional[bigquery.QueryJobConfig] = None
 
 
-class BigQueryTask(AsyncAgentExecutorMixin, SQLTask[BigQueryConfig]):
+class BigQueryTask(AsyncConnectorExecutorMixin, SQLTask[BigQueryConfig]):
     """
     This is the simplest form of a BigQuery Task, that can be used even for tasks that do not produce any output.
     """
@@ -73,6 +73,7 @@ class BigQueryTask(AsyncAgentExecutorMixin, SQLTask[BigQueryConfig]):
         config = {
             "Location": self.task_config.Location,
             "ProjectID": self.task_config.ProjectID,
+            "Domain": settings.domain,
         }
         if self.task_config.QueryJobConfig is not None:
             config.update(self.task_config.QueryJobConfig.to_api_repr()["query"])

@@ -1,9 +1,15 @@
+from flytekit.models.admin import common
+
+DEFAULT_SORT_ASC = common.Sort(key="created_at", direction=common.Sort.Direction.ASCENDING)
+
+
 def iterate_node_executions(
     client,
     workflow_execution_identifier=None,
     task_execution_identifier=None,
     limit=None,
     filters=None,
+    sort_by=DEFAULT_SORT_ASC,
     unique_parent_id=None,
 ):
     """
@@ -13,6 +19,7 @@ def iterate_node_executions(
     :param flytekit.models.core.identifier.TaskExecutionIdentifier task_execution_identifier:
     :param int limit: The maximum number of elements to retrieve
     :param list[flytekit.models.filters.Filter] filters:
+    :param flytekit.models.admin.common.Sort sort_by: [Optional] Defaults to created_at field in ASC order.
     :rtype: Iterator[flytekit.models.node_execution.NodeExecution]
     """
     token = ""
@@ -27,6 +34,7 @@ def iterate_node_executions(
                 limit=num_to_fetch,
                 token=token,
                 filters=filters,
+                sort_by=sort_by,
                 unique_parent_id=unique_parent_id,
             )
         else:
@@ -35,6 +43,7 @@ def iterate_node_executions(
                 limit=num_to_fetch,
                 token=token,
                 filters=filters,
+                sort_by=sort_by,
             )
         for n in node_execs:
             counter += 1
@@ -46,13 +55,14 @@ def iterate_node_executions(
         token = next_token
 
 
-def iterate_task_executions(client, node_execution_identifier, limit=None, filters=None):
+def iterate_task_executions(client, node_execution_identifier, limit=None, filters=None, sort_by=DEFAULT_SORT_ASC):
     """
     This returns a generator for task executions, given a node execution identifier
     :param flytekit.clients.friendly.SynchronousFlyteClient client:
     :param flytekit.models.core.identifier.NodeExecutionIdentifier node_execution_identifier:
     :param int limit: The maximum number of elements to retrieve
     :param list[flytekit.models.filters.Filter] filters:
+    :param flytekit.models.admin.common.Sort sort_by: [Optional] Defaults to created_at field in ASC order.
     :rtype: Iterator[flytekit.models.admin.task_execution.TaskExecution]
     """
     token = ""
@@ -66,6 +76,7 @@ def iterate_task_executions(client, node_execution_identifier, limit=None, filte
             limit=num_to_fetch,
             token=token,
             filters=filters,
+            sort_by=sort_by,
         )
         for t in task_execs:
             counter += 1

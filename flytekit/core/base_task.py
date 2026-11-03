@@ -1,20 +1,24 @@
 """
-==============================
-:mod:`flytekit.core.base_task`
-==============================
+# flytekit.core.base_task
 
-.. currentmodule:: flytekit.core.base_task
+This module provides the core task-related functionality in Flytekit.
 
-.. autosummary::
-   :nosignatures:
-   :template: custom.rst
-   :toctree: generated/
+## Core Components
 
-   kwtypes
-   PythonTask
-   Task
-   TaskResolverMixin
-   IgnoreOutputs
+### kwtypes
+Utility for creating keyword type annotations for tasks.
+
+### PythonTask
+Base class for Python-based task implementations.
+
+### Task
+The base class for all Flyte tasks.
+
+### TaskResolverMixin
+Mixin class that helps resolve a task implementation.
+
+### IgnoreOutputs
+Exception that can be raised to ignore task outputs.
 
 """
 
@@ -97,9 +101,9 @@ def kwtypes(**kwargs) -> OrderedDict[str, Type]:
     """
     This is a small helper function to convert the keyword arguments to an OrderedDict of types.
 
-    .. code-block:: python
-
-        kwtypes(a=int, b=str)
+    ```python
+    kwtypes(a=int, b=str)
+    ```
     """
     d = collections.OrderedDict()
     for k, v in kwargs.items():
@@ -115,21 +119,20 @@ class TaskMetadata(object):
 
     See the :std:ref:`IDL <idl:protos/docs/core/core:taskmetadata>` for the protobuf definition.
 
-    Args:
-        cache (bool): Indicates if caching should be enabled. See :std:ref:`Caching <cookbook:caching>`
-        cache_serialize (bool): Indicates if identical (ie. same inputs) instances of this task should be executed in serial when caching is enabled. See :std:ref:`Caching <cookbook:caching>`
-        cache_version (str): Version to be used for the cached value
-        cache_ignore_input_vars (Tuple[str, ...]): Input variables that should not be included when calculating hash for cache
-        interruptible (Optional[bool]): Indicates that this task can be interrupted and/or scheduled on nodes with
-            lower QoS guarantees that can include pre-emption. This can reduce the monetary cost executions incur at the
-            cost of performance penalties due to potential interruptions
-        deprecated (str): Can be used to provide a warning message for deprecated task. Absence or empty str indicates
-            that the task is active and not deprecated
+    Attributes:
+        cache (bool): Indicates if caching should be enabled. See :std:ref:`Caching <cookbook:caching>`.
+        cache_serialize (bool): Indicates if identical (i.e. same inputs) instances of this task should be executed in serial when caching is enabled. See :std:ref:`Caching <cookbook:caching>`.
+        cache_version (str): Version to be used for the cached value.
+        cache_ignore_input_vars (Tuple[str, ...]): Input variables that should not be included when calculating hash for cache.
+        interruptible (Optional[bool]): Indicates that this task can be interrupted and/or scheduled on nodes with lower QoS guarantees that can include pre-emption.
+        deprecated (str): Can be used to provide a warning message for a deprecated task. An absence or empty string indicates that the task is active and not deprecated.
         retries (int): for retries=n; n > 0, on failures of this task, the task will be retried at-least n number of times.
-        timeout (Optional[Union[datetime.timedelta, int]]): the max amount of time for which one execution of this task
-            should be executed for. The execution will be terminated if the runtime exceeds the given timeout
-            (approximately)
-        pod_template_name (Optional[str]): the name of existing PodTemplate resource in the cluster which will be used in this task.
+        timeout (Optional[Union[datetime.timedelta, int]]): The maximum duration for which one execution of this task should run. The execution will be terminated if the runtime exceeds this timeout.
+        pod_template_name (Optional[str]): The name of an existing PodTemplate resource in the cluster which will be used for this task.
+        generates_deck (bool): Indicates whether the task will generate a Deck URI.
+        is_eager (bool): Indicates whether the task should be treated as eager.
+        labels (Optional[dict[str, str]]): Labels to be applied to the task resource.
+        annotations (Optional[dict[str, str]]): Annotations to be applied to the task resource.
     """
 
     cache: bool = False
@@ -141,7 +144,10 @@ class TaskMetadata(object):
     retries: int = 0
     timeout: Optional[Union[datetime.timedelta, int]] = None
     pod_template_name: Optional[str] = None
+    generates_deck: bool = False
     is_eager: bool = False
+    labels: Optional[dict[str, str]] = None
+    annotations: Optional[dict[str, str]] = None
 
     def __post_init__(self):
         if self.timeout:
@@ -179,9 +185,14 @@ class TaskMetadata(object):
             discovery_version=self.cache_version,
             deprecated_error_message=self.deprecated,
             cache_serializable=self.cache_serialize,
+            generates_deck=self.generates_deck,
             pod_template_name=self.pod_template_name,
             cache_ignore_input_vars=self.cache_ignore_input_vars,
             is_eager=self.is_eager,
+            k8s_object_metadata=_task_model.K8sObjectMetadata(
+                labels=self.labels,
+                annotations=self.annotations,
+            ),
         )
 
 
@@ -456,7 +467,7 @@ T = TypeVar("T")
 class PythonTask(TrackedInstance, Task, Generic[T]):
     """
     Base Class for all Tasks with a Python native ``Interface``. This should be directly used for task types, that do
-    not have a python function to be executed. Otherwise refer to :py:class:`flytekit.PythonFunctionTask`.
+    not have a python function to be executed. Otherwise refer to {{< py_class_ref flytekit.PythonFunctionTask >}}.
     """
 
     def __init__(
@@ -522,7 +533,7 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
         else:
             self._disable_deck = True
 
-        self._deck_fields = list(deck_fields) if (deck_fields is not None and self.disable_deck is False) else []
+        self._deck_fields = list(deck_fields) if (deck_fields is not None and self.enable_deck) else []
 
         deck_members = set([_field for _field in DeckField])
         # enumerate additional decks, check if any of them are invalid
@@ -720,10 +731,14 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
           may be none
         * ``DynamicJobSpec`` is returned when a dynamic workflow is executed
         """
-        if DeckField.TIMELINE.value in self.deck_fields and ctx.user_space_params is not None:
-            ctx.user_space_params.decks.append(ctx.user_space_params.timeline_deck)
+
         # Invoked before the task is executed
         new_user_params = self.pre_execute(ctx.user_space_params)
+
+        if self.enable_deck and ctx.user_space_params is not None:
+            if DeckField.TIMELINE.value in self.deck_fields:
+                ctx.user_space_params.decks.append(ctx.user_space_params.timeline_deck)
+            new_user_params = ctx.user_space_params.with_enable_deck(enable_deck=True).build()
 
         # Create another execution context with the new user params, but let's keep the same working dir
         with FlyteContextManager.with_context(
@@ -827,7 +842,18 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
         """
         If true, this task will not output deck html file
         """
+        warnings.warn(
+            "`disable_deck` is deprecated and will be removed in the future.\n" "Please use `enable_deck` instead.",
+            DeprecationWarning,
+        )
         return self._disable_deck
+
+    @property
+    def enable_deck(self) -> bool:
+        """
+        If true, this task will output deck html file
+        """
+        return not self._disable_deck
 
     @property
     def deck_fields(self) -> List[DeckField]:

@@ -1,3 +1,14 @@
+> [!IMPORTANT]
+> ## Looking for Flyte 2?
+>
+> - **⭐️ Flyte 2 is now generally available!** Read more in the announcement [here](https://www.union.ai/blog-post/flyte-2-is-generally-available-the-durable-open-source-ai-runtime).
+> - **Want to try Flyte 2 locally?** Run the **[Devbox](https://www.union.ai/docs/v2/flyte/user-guide/get-started/run-modes/running-devbox/)** with the new Python SDK for Flyte 2.
+> - **Want to contribute to the Flyte 2 distributed backend?** See the **[`main` branch](https://github.com/flyteorg/flyte/tree/main)** of this repo.
+>
+> **The README below is for Flyte 1.x.**
+
+---
+
 <p align="center">
     <img src="https://raw.githubusercontent.com/flyteorg/static-resources/main/common/flyte_circle_gradient_1_4x4.png" alt="Flyte Logo" width="100">
 </p>

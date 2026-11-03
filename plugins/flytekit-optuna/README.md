@@ -1,24 +1,61 @@
-# Fully Parallelized Flyte Orchestrated Optimizer
+# Fully Parallelized Wrapper Around Optuna Using Flyte
 
-WIP Flyte integration with Optuna to parallelize optimization objective function runtime.
+## Overview
+
+This documentation provides a guide to a fully parallelized Flyte plugin for Optuna. This wrapper leverages Flyte's scalable and distributed workflow orchestration capabilities to parallelize Optuna's hyperparameter optimization across multiple trials efficiently.
+
+![Timeline](timeline.png)
+
+
+## Features
+
+- **Ease of Use**: This plugin requires no external data storage or experiment tracking.
+- **Parallelized Trial Execution**: Enables concurrent execution of Optuna trials, dramatically speeding up optimization tasks.
+- **Scalability**: Leverages Flyte’s ability to scale horizontally to handle large-scale hyperparameter tuning jobs.
+- **Flexible Integration**: Compatible with various machine learning frameworks and training pipelines.
+
+## Installation
+
+- Install `flytekit`
+- Install `flytekitplugins.optuna`
+
+## Getting Started
+
+### Prerequisites
+
+- A Flyte deployment configured and running.
+- Python 3.9 or later.
+- Familiarity with Flyte and asynchronous programming.
+
+### Define the Objective Function
+
+The objective function defines the problem to be optimized. It should include the hyperparameters to be tuned and return a value to minimize or maximize.
 
 ```python
 import math
 
 import flytekit as fl
 
-from optimizer import Optimizer, suggest
-
-image = fl.ImageSpec(builder="union", packages=["flytekit==1.15.0b0", "optuna>=4.0.0"])
+image = fl.ImageSpec(packages=["flytekitplugins.optuna"])
 
 @fl.task(container_image=image)
 async def objective(x: float, y: int, z: int, power: int) -> float:
     return math.log((((x - 5) ** 2) + (y + 4) ** 4 + (3 * z - 3) ** 2)) ** power
 
+```
+
+### Configure the Flyte Workflow
+
+The Flyte workflow orchestrates the parallel execution of Optuna trials. Below is an example:
+
+```python
+import flytekit as fl
+from flytekitplugins.optuna import Optimizer, suggest
 
 @fl.eager(container_image=image)
-async def train(concurrency: int, n_trials: int):
-    optimizer = Optimizer(objective, concurrency, n_trials)
+async def train(concurrency: int, n_trials: int) -> float:
+
+    optimizer = Optimizer(objective=objective, concurrency=concurrency, n_trials=n_trials)
 
     await optimizer(
         x=suggest.float(low=-10, high=10),
@@ -26,20 +63,126 @@ async def train(concurrency: int, n_trials: int):
         z=suggest.category([-5, 0, 3, 6, 9]),
         power=2,
     )
+
+    print(optimizer.study.best_value)
+
 ```
 
-This integration allows one to define fully parallelized HPO experiments via `@eager` in as little as 20 lines of code. The objective task is optimized via Optuna under the hood, such that one may extract the `optuna.Study` at any time for the purposes of serialization, storage, visualization, or interpretation.
+### Register and Execute the Workflow
 
-This plugin provides full feature parity to Optuna, including:
+Submit the workflow to Flyte for execution:
 
-- fixed arguments
-- multiple suggestion types (`Integer`, `Float`, `Category`)
-- multi-objective, with arbitrary objective directions (minimize, maximize)
-- pruners
-- samplers
+```bash
+pyflyte register files .
+pyflyte run --name train
+```
 
-# Improvements
+### Monitor Progress
 
-- This would synergize really well with Union Actors.
-- This should also support workflows, but it currently does not.
-- Add unit tests, of course.
+You can monitor the progress of the trials via the Flyte Console. Each trial runs as a separate task, and the results are aggregated by the Optuna wrapper.
+
+You may access the `optuna.Study` like so: `optimizer.study`.
+
+Therefore, with `plotly` installed, you may create create Flyte Decks of the study like so:
+
+```python
+import plotly
+
+fig = optuna.visualization.plot_timeline(optimizer.study)
+fl.Deck(name, plotly.io.to_html(fig))
+```
+
+## Advanced Configuration
+
+### Custom Dictionary Inputs
+
+Suggestions may be defined in recursive dictionaries:
+
+```python
+import flytekit as fl
+from flytekitplugins.optuna import Optimizer, suggest
+
+image = fl.ImageSpec(packages=["flytekitplugins.optuna"])
+
+
+@fl.task(container_image=image)
+async def objective(params: dict[str, int | float | str]) -> float:
+    ...
+
+
+@fl.eager(container_image=image)
+async def train(concurrency: int, n_trials: int):
+
+    study = optuna.create_study(direction="maximize")
+
+    optimizer = Optimizer(objective=objective, concurrency=concurrency, n_trials=n_trials, study=study)
+
+    params = {
+        "lambda": suggest.float(1e-8, 1.0, log=True),
+        "alpha": suggest.float(1e-8, 1.0, log=True),
+        "subsample": suggest.float(0.2, 1.0),
+        "colsample_bytree": suggest.float(0.2, 1.0),
+        "max_depth": suggest.integer(3, 9, step=2),
+        "objective": "binary:logistic",
+        "tree_method": "exact",
+        "booster": "dart",
+    }
+
+    await optimizer(params=params)
+```
+
+### Custom Callbacks
+
+In some cases, you may need to define the suggestions programmatically. This may be done
+
+```python
+import flytekit as fl
+import optuna
+from flytekitplugins.optuna import optimize
+
+image = fl.ImageSpec(packages=["flytekitplugins.optuna"])
+
+@fl.task(container_image=image)
+async def objective(params: dict[str, int | float | str]) -> float:
+    ...
+
+@optimize
+def optimizer(trial: optuna.Trial, verbosity: int, tree_method: str):
+
+    params = {
+        "verbosity:": verbosity,
+        "tree_method": tree_method,
+        "objective": "binary:logistic",
+        # defines booster, gblinear for linear functions.
+        "booster": trial.suggest_categorical("booster", ["gbtree", "gblinear", "dart"]),
+        # sampling according to each tree.
+        "colsample_bytree": trial.suggest_float("colsample_bytree", 0.2, 1.0),
+    }
+
+    if params["booster"] in ["gbtree", "dart"]:
+        # maximum depth of the tree, signifies complexity of the tree.
+        params["max_depth"] = trial.suggest_int("max_depth", 3, 9, step=2)
+
+    if params["booster"] == "dart":
+        params["sample_type"] = trial.suggest_categorical("sample_type", ["uniform", "weighted"])
+        params["normalize_type"] = trial.suggest_categorical("normalize_type", ["tree", "forest"])
+
+    return objective(params)
+
+
+@fl.eager(container_image=image)
+async def train(concurrency: int, n_trials: int):
+
+    optimizer.concurrency = concurrency
+    optimizer.n_trials = n_trials
+
+    study = optuna.create_study(direction="maximize")
+
+    await optimizer(verbosity=0, tree_method="exact")
+```
+
+## Troubleshooting
+
+Resource Constraints: Ensure sufficient compute resources are allocated for the number of parallel jobs specified.
+
+Flyte Errors: Refer to the Flyte logs and documentation to debug workflow execution issues.

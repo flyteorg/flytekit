@@ -18,6 +18,7 @@ from mock import ANY, MagicMock, patch
 
 import flytekit.configuration
 from flytekit import CronSchedule, ImageSpec, LaunchPlan, WorkflowFailurePolicy, task, workflow, reference_task, map_task, dynamic, eager
+from flytekit.clients.grpc_utils.deadline_interceptor import scoped_grpc_deadline
 from flytekit.configuration import Config, DefaultImages, Image, ImageConfig, SerializationSettings
 from flytekit.core.base_task import PythonTask
 from flytekit.core.context_manager import FlyteContextManager
@@ -33,7 +34,7 @@ from flytekit.models.core.compiler import CompiledWorkflowClosure
 from flytekit.models.core.identifier import Identifier, ResourceType, WorkflowExecutionIdentifier
 from flytekit.models.execution import Execution
 from flytekit.models.task import Task
-from flytekit.remote import FlyteTask, FlyteWorkflow
+from flytekit.remote import FlyteTask, FlyteWorkflow, FlyteWorkflowExecution
 from flytekit.remote.lazy_entity import LazyEntity
 from flytekit.remote.remote import FlyteRemote, _get_git_repo_url, _get_pickled_target_dict
 from flytekit.tools.translator import Options, get_serializable, get_serializable_launch_plan
@@ -120,9 +121,39 @@ def test_remote_fetch_execution(remote):
     )
     mock_client = MagicMock()
     mock_client.get_execution.return_value = admin_workflow_execution
+    mock_client.get_workflow.return_value.closure.compiled_workflow.primary.template.failure_node = None
     remote._client = mock_client
     flyte_workflow_execution = remote.fetch_execution(name="n1")
     assert flyte_workflow_execution.id == admin_workflow_execution.id
+
+
+def test_sync_execution_sets_default_rpc_deadline(remote):
+    execution = MagicMock()
+    with patch.object(remote, "_sync_execution", return_value=execution) as mock_sync:
+        with patch("flytekit.remote.remote.scoped_grpc_deadline") as mock_deadline:
+            assert remote.sync_execution(execution) is execution
+
+    mock_deadline.assert_called_once_with(60.0)
+    mock_sync.assert_called_once_with(execution, sync_nodes=False)
+
+
+def test_sync_execution_accepts_rpc_deadline_override(remote):
+    execution = MagicMock()
+    with patch.object(remote, "_sync_execution", return_value=execution):
+        with patch("flytekit.remote.remote.scoped_grpc_deadline") as mock_deadline:
+            assert remote.sync_execution(execution, rpc_timeout=5) is execution
+
+    mock_deadline.assert_called_once_with(5.0)
+
+
+def test_sync_execution_does_not_override_active_rpc_deadline(remote):
+    execution = MagicMock()
+    with patch.object(remote, "_sync_execution", return_value=execution):
+        with patch("flytekit.remote.remote.scoped_grpc_deadline") as mock_deadline:
+            with scoped_grpc_deadline(5):
+                assert remote.sync_execution(execution, rpc_timeout=30) is execution
+
+    mock_deadline.assert_not_called()
 
 
 @pytest.fixture
@@ -209,7 +240,7 @@ def test_underscore_execute_fall_back_remote_attributes(remote, mock_wf_exec):
     )
 
 
-def test_execute_with_wrong_input_key(remote, mock_wf_exec):
+def test_execute_with_wrong_input_key(remote: FlyteRemote, mock_wf_exec):
     # mock_url.get.return_value = "localhost"
     # mock_insecure.get.return_value = True
     mock_wf_exec.return_value = True
@@ -226,6 +257,16 @@ def test_execute_with_wrong_input_key(remote, mock_wf_exec):
             project="proj",
             domain="dev",
         )
+
+
+def test_execute_with_no_inputs(remote: FlyteRemote, mock_wf_exec):
+    mock_wf_exec.return_value = True
+    mock_client = MagicMock()
+    remote._client = mock_client
+
+    mock_entity = MagicMock()
+    out = remote._execute(mock_entity, project="proj", domain="dev")
+    assert isinstance(out, FlyteWorkflowExecution)
 
 
 def test_form_config():
@@ -380,12 +421,15 @@ def get_compiled_workflow_closure():
 def test_fetch_lazy(remote):
     mock_client = remote._client
     mock_client.get_task.return_value = Task(
-        id=Identifier(ResourceType.TASK, "p", "d", "n", "v"), closure=LIST_OF_TASK_CLOSURES[0]
+        id=Identifier(ResourceType.TASK, "p", "d", "n", "v"),
+        closure=LIST_OF_TASK_CLOSURES[0],
+        short_description="task description",
     )
 
     mock_client.get_workflow.return_value = Workflow(
         id=Identifier(ResourceType.TASK, "p", "d", "n", "v"),
         closure=WorkflowClosure(compiled_workflow=get_compiled_workflow_closure()),
+        short_description="workflow description",
     )
 
     lw = remote.fetch_workflow_lazy(name="wn", version="v")
@@ -443,8 +487,9 @@ def test_launch_backfill(remote):
     mock_client.get_workflow.return_value = Workflow(
         id=Identifier(ResourceType.WORKFLOW, "p", "d", "daily2", "v"),
         closure=WorkflowClosure(
-            compiled_workflow=CompiledWorkflowClosure(primary=ser_wf, sub_workflows=[], tasks=tasks)
+            compiled_workflow=CompiledWorkflowClosure(primary=ser_wf, sub_workflows=[], tasks=tasks),
         ),
+        short_description="workflow description",
     )
 
     wf = remote.launch_backfill(
@@ -468,6 +513,7 @@ def test_fetch_workflow_with_branch(mock_promote, mock_workflow, remote):
     mock_client.get_workflow.return_value = Workflow(
         id=Identifier(ResourceType.TASK, "p", "d", "n", "v"),
         closure=WorkflowClosure(compiled_workflow=MagicMock()),
+        short_description="workflow description",
     )
 
     admin_launch_plan = MagicMock()
@@ -486,6 +532,7 @@ def test_fetch_workflow_with_nested_branch(mock_promote, mock_workflow, remote):
     mock_client.get_workflow.return_value = Workflow(
         id=Identifier(ResourceType.TASK, "p", "d", "n", "v"),
         closure=WorkflowClosure(compiled_workflow=MagicMock()),
+        short_description="workflow description",
     )
     admin_launch_plan = MagicMock()
     admin_launch_plan.spec = {"workflow_id": 123}
@@ -547,14 +594,22 @@ def test_get_image_names(
     flyte_remote.register_script(wf1)
 
 
-@mock.patch("flytekit.remote.remote.FlyteRemote.client")
-def test_local_server(mock_client):
+@pytest.fixture()
+def mock_flyte_remote_client():
+    with patch("flytekit.remote.remote.FlyteRemote.client") as mock_flyte_remote_client:
+        mock_flyte_remote_client.get_task.return_value.closure.compiled_task.template.sql = None
+        mock_flyte_remote_client.get_task.return_value.closure.compiled_task.template.k8s_pod = None
+        mock_flyte_remote_client.get_workflow.return_value.closure.compiled_workflow.primary.template.failure_node = None
+        yield mock_flyte_remote_client
+
+
+def test_local_server(mock_flyte_remote_client):
     ctx = FlyteContextManager.current_context()
     lt = TypeEngine.to_literal_type(typing.Dict[str, int])
     lm = TypeEngine.to_literal(ctx, {"hello": 55}, typing.Dict[str, int], lt)
     lm = lm.map.to_flyte_idl()
 
-    mock_client.get_data.return_value = dataproxy_pb2.GetDataResponse(literal_map=lm)
+    mock_flyte_remote_client.get_data.return_value = dataproxy_pb2.GetDataResponse(literal_map=lm)
 
     rr = FlyteRemote(
         Config.for_sandbox(),
@@ -566,8 +621,7 @@ def test_local_server(mock_client):
 
 
 @mock.patch("flytekit.remote.remote.uuid")
-@mock.patch("flytekit.remote.remote.FlyteRemote.client")
-def test_execution_name(mock_client, mock_uuid):
+def test_execution_name(mock_uuid, mock_flyte_remote_client):
     test_uuid = uuid.UUID("16fd2706-8baf-433b-82eb-8c7fada847da")
     mock_uuid.uuid4.return_value = test_uuid
     remote = FlyteRemote(config=Config.auto(), default_project="project", default_domain="domain")
@@ -597,7 +651,7 @@ def test_execution_name(mock_client, mock_uuid):
         entity=ft,
         inputs={"t": datetime.now(), "v": 0},
     )
-    mock_client.create_execution.assert_has_calls(
+    mock_flyte_remote_client.create_execution.assert_has_calls(
         [
             mock.call(ANY, ANY, "execution-test", ANY, ANY),
             mock.call(ANY, ANY, "execution-test-" + test_uuid.hex[:19], ANY, ANY),
@@ -688,9 +742,8 @@ def test_register_wf_script_mode(compress_scripts_mock, upload_file_mock, regist
     )
 
 
-@mock.patch("flytekit.remote.remote.FlyteRemote.client")
-def test_fetch_active_launchplan_not_found(mock_client, remote):
-    mock_client.get_active_launch_plan.side_effect = FlyteEntityNotExistException("not found")
+def test_fetch_active_launchplan_not_found(mock_flyte_remote_client, remote):
+    mock_flyte_remote_client.get_active_launch_plan.side_effect = FlyteEntityNotExistException("not found")
     assert remote.fetch_active_launchplan(name="basic.list_float_wf.fake_wf") is None
 
 
@@ -785,8 +838,7 @@ def test_get_pickled_target_dict_with_eager():
         _get_pickled_target_dict(eager_wf)
 
 
-@mock.patch("flytekit.remote.remote.FlyteRemote.client")
-def test_launchplan_auto_activate(mock_client):
+def test_launchplan_auto_activate(mock_flyte_remote_client):
     @workflow
     def wf() -> int:
         return 1
@@ -804,15 +856,14 @@ def test_launchplan_auto_activate(mock_client):
 
     # The first one should not update the launchplan
     rr.register_launch_plan(lp1, version="1", serialization_settings=ss)
-    mock_client.update_launch_plan.assert_not_called()
+    mock_flyte_remote_client.update_launch_plan.assert_not_called()
 
     # the second one should
     rr.register_launch_plan(lp2, version="1", serialization_settings=ss)
-    mock_client.update_launch_plan.assert_called()
+    mock_flyte_remote_client.update_launch_plan.assert_called()
 
 
-@mock.patch("flytekit.remote.remote.FlyteRemote.client")
-def test_register_task_with_node_dependency_hints(mock_client):
+def test_register_task_with_node_dependency_hints(mock_flyte_remote_client):
     @task
     def task0():
         return None
@@ -852,3 +903,98 @@ def test_register_task_with_node_dependency_hints(mock_client):
     registered_workflow = rr.register_workflow(workflow1, ss)
     assert isinstance(registered_workflow, FlyteWorkflow)
     assert registered_workflow.id == Identifier(ResourceType.WORKFLOW, "flytesnacks", "development", "tests.flytekit.unit.remote.test_remote.workflow1", "dummy_version")
+
+@mock.patch("flytekit.remote.remote.get_serializable")
+@mock.patch("flytekit.remote.remote.FlyteRemote.fetch_launch_plan")
+@mock.patch("flytekit.remote.remote.FlyteRemote.raw_register")
+@mock.patch("flytekit.remote.remote.FlyteRemote._serialize_and_register")
+def test_register_launch_plan(mock_serialize_and_register, mock_raw_register,mock_fetch_launch_plan, mock_get_serializable, mock_flyte_remote_client):
+    serialization_settings = SerializationSettings(
+        image_config=ImageConfig.auto_default_image(),
+        version="dummy_version",
+    )
+
+    rr = FlyteRemote(
+        Config.for_sandbox(),
+        default_project="flytesnacks",
+        default_domain="development",
+    )
+
+    @task
+    def say_hello() -> str:
+        return "Hello, World!"
+
+    @workflow
+    def hello_world_wf() -> str:
+        res = say_hello()
+        return res
+
+    lp = LaunchPlan.get_or_create(workflow=hello_world_wf, name="additional_lp_for_hello_world", default_inputs={})
+
+    mock_get_serializable.return_value = MagicMock()
+    mock_flyte_remote_client.get_workflow.return_value = MagicMock()
+
+    mock_remote_lp = MagicMock()
+    mock_fetch_launch_plan.return_value = mock_remote_lp
+
+    remote_lp = rr.register_launch_plan(lp, version="dummy_version", project="flytesnacks", domain="development", serialization_settings=serialization_settings)
+    assert remote_lp is mock_remote_lp
+    assert not mock_serialize_and_register.called
+    assert mock_raw_register.called
+
+
+@mock.patch("flytekit.remote.remote.translate_inputs_to_literals")
+@mock.patch("flytekit.remote.remote.get_serializable")
+@mock.patch("flytekit.remote.remote.FlyteRemote.fetch_launch_plan")
+@mock.patch("flytekit.remote.remote.FlyteRemote.raw_register")
+@mock.patch("flytekit.remote.remote.FlyteRemote._serialize_and_register")
+def test_register_launch_plan_retranslates_fixed_inputs_with_remote_context(
+    mock_serialize_and_register, mock_raw_register, mock_fetch_launch_plan,
+    mock_get_serializable, mock_translate, mock_flyte_remote_client
+):
+    from flytekit.types.file import FlyteFile
+
+    @task
+    def t_with_file(f: FlyteFile) -> str:
+        return str(f)
+
+    @workflow
+    def wf_with_file(f: FlyteFile) -> str:
+        return t_with_file(f=f)
+
+    tmp = tempfile.NamedTemporaryFile(delete=False)
+    try:
+        ff = FlyteFile(path=tmp.name)
+        lp = LaunchPlan.get_or_create(
+            workflow=wf_with_file,
+            name="lp_with_flytefile_fixed",
+            fixed_inputs={"f": ff},
+        )
+    finally:
+        tmp.close()
+
+    try:
+        assert lp.raw_fixed_inputs == {"f": ff}
+
+        rr = FlyteRemote(
+            Config.for_sandbox(),
+            default_project="flytesnacks",
+            default_domain="development",
+        )
+
+        mock_translate.return_value = {"f": MagicMock()}
+        mock_get_serializable.return_value = MagicMock()
+        mock_flyte_remote_client.get_workflow.return_value = MagicMock()
+        mock_fetch_launch_plan.return_value = MagicMock()
+
+        ss = SerializationSettings(image_config=ImageConfig.auto_default_image(), version="v1")
+        rr.register_launch_plan(lp, version="v1", serialization_settings=ss)
+
+        mock_translate.assert_called_once_with(
+            rr.context,
+            incoming_values={"f": ff},
+            flyte_interface_types=wf_with_file.interface.inputs,
+            native_types=wf_with_file.python_interface.inputs,
+        )
+    finally:
+        os.unlink(tmp.name)

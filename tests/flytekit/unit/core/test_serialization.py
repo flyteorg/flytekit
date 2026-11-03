@@ -1,4 +1,4 @@
-import re
+import dataclasses
 import os
 import typing
 from collections import OrderedDict
@@ -7,16 +7,20 @@ import mock
 import pytest
 
 import flytekit.configuration
-from flytekit import ContainerTask, ImageSpec, kwtypes
+from flytekit import ContainerTask, ImageSpec, LaunchPlan, kwtypes
 from flytekit.configuration import Image, ImageConfig, SerializationSettings
+from flytekit.core.array_node_map_task import map_task
 from flytekit.core.condition import conditional
+from flytekit.core.dynamic_workflow_task import dynamic
+from flytekit.core.options import Options
 from flytekit.core.python_auto_container import get_registerable_container_image
-from flytekit.core.task import task
+from flytekit.core.resources import Resources, ResourceSpec
+from flytekit.core.task import eager, task
 from flytekit.core.workflow import workflow
 from flytekit.exceptions.user import FlyteAssertion, FlyteMissingTypeException
 from flytekit.image_spec.image_spec import ImageBuildEngine
+from flytekit.models import task as task_models
 from flytekit.models.admin.workflow import WorkflowSpec
-from flytekit.models.annotation import TypeAnnotation
 from flytekit.models.literals import (
     BindingData,
     BindingDataCollection,
@@ -27,6 +31,7 @@ from flytekit.models.literals import (
     Union,
     Void,
 )
+from flytekit.models.security import Identity, Secret, SecurityContext
 from flytekit.models.types import LiteralType, SimpleType, TypeStructure, UnionType
 from flytekit.tools.translator import get_serializable
 from flytekit.types.error.error import FlyteError
@@ -549,6 +554,19 @@ def test_default_args_task_int_type():
     assert wf_with_sub_wf() == (default_val, input_val)
 
 
+def test_failure_node_naming():
+    @task
+    def t1(a: int) -> int:
+        return a
+
+    @workflow
+    def wf(a: int) -> int:
+        return t1(a=a).with_overrides(node_name="efn")
+
+    with pytest.raises(ValueError):
+        get_serializable(OrderedDict(), serialization_settings, wf)
+
+
 def test_default_args_task_str_type():
     default_val = ""
     input_val = "foo"
@@ -1024,6 +1042,87 @@ def test_positional_args_workflow():
     assert wf_pure_positional_args() == ret
     assert wf_mixed_positional_and_keyword_args() == ret
 
+def test_positional_args_workflow_with_default_value():
+    arg1 = 5
+    arg2 = 6
+    default_arg1 = 1
+    default_arg2 = 2
+    ret = 17
+    ret_arg2_default = 9
+
+    @task
+    def t1(x: int, y: int) -> int:
+        return x + y * 2
+
+    @workflow
+    def sub_wf(x: int = default_arg1, y: int = default_arg2) -> int:
+        return t1(x=x, y=y)
+
+    @workflow
+    def wf_pure_positional_args() -> int:
+        return sub_wf(arg1, arg2)
+
+    @workflow
+    def wf_mixed_positional_and_keyword_args() -> int:
+        return sub_wf(arg1, y=arg2)
+
+    @workflow
+    def wf_mixed_positional_and_default_value() -> int:
+        return sub_wf(arg1)
+
+    wf_pure_positional_args_spec = get_serializable(OrderedDict(), serialization_settings, wf_pure_positional_args)
+    wf_mixed_positional_and_keyword_args_spec = get_serializable(OrderedDict(), serialization_settings, wf_mixed_positional_and_keyword_args)
+    wf_mixed_positional_and_default_value_spec = get_serializable(OrderedDict(), serialization_settings, wf_mixed_positional_and_default_value)
+
+    arg1_binding = Scalar(primitive=Primitive(integer=arg1))
+    arg2_binding = Scalar(primitive=Primitive(integer=arg2))
+    default_arg2_binding = Scalar(primitive=Primitive(integer=default_arg2))
+    output_type = LiteralType(simple=SimpleType.INTEGER)
+
+    assert wf_pure_positional_args_spec.template.nodes[0].inputs[0].binding.value == arg1_binding
+    assert wf_pure_positional_args_spec.template.nodes[0].inputs[1].binding.value == arg2_binding
+    assert wf_pure_positional_args_spec.template.interface.outputs["o0"].type == output_type
+
+    assert wf_mixed_positional_and_keyword_args_spec.template.nodes[0].inputs[0].binding.value == arg1_binding
+    assert wf_mixed_positional_and_keyword_args_spec.template.nodes[0].inputs[1].binding.value == arg2_binding
+    assert wf_mixed_positional_and_keyword_args_spec.template.interface.outputs["o0"].type == output_type
+
+    assert wf_mixed_positional_and_default_value_spec.template.nodes[0].inputs[0].binding.value == arg1_binding
+    assert wf_mixed_positional_and_default_value_spec.template.nodes[0].inputs[1].binding.value == default_arg2_binding
+    assert wf_mixed_positional_and_default_value_spec.template.interface.outputs["o0"].type == output_type
+
+    assert wf_pure_positional_args() == ret
+    assert wf_mixed_positional_and_keyword_args() == ret
+    assert wf_mixed_positional_and_default_value() == ret_arg2_default
+
+
+def test_positional_args_workflow_extra_args_or_kwargs():
+    arg1 = 5
+    arg2 = 6
+    ret = 17
+
+    @task
+    def t1(x: int, y: int) -> int:
+        return x + y * 2
+
+    @workflow
+    def sub_wf(x: int, y: int) -> int:
+        return t1(x=x, y=y)
+
+    @workflow
+    def wf_pure_args_extra_args() -> int:
+        return sub_wf(arg1, arg2, arg2)
+
+    @workflow
+    def wf_mixed_positional_and_keyword_args_extra_args() -> int:
+        return sub_wf(arg1, arg2, y=arg2)
+
+    with pytest.raises(AssertionError, match="Received more arguments than expected in function 'tests.flytekit.unit.core.test_serialization.sub_wf'. Expected 2 but got 3"):
+        wf_pure_args_extra_args()
+
+    with pytest.raises(AssertionError, match="Got multiple values for argument 'y' in function 'tests.flytekit.unit.core.test_serialization.sub_wf'"):
+        wf_mixed_positional_and_keyword_args_extra_args()
+
 def test_positional_args_chained_tasks():
     @task
     def t1(x: int, y: int) -> int:
@@ -1071,3 +1170,133 @@ def test_both_positional_and_keyword_args_task_raises_error():
 
     with pytest.raises(AssertionError, match="Got multiple values for argument"):
         t1(1, a=2)
+
+
+def test_default_resources_override_resourceless_tasks():
+    """Tests that default resources specified in serialization settings affect tasks where no resources are specified."""
+
+    cpu = "2"
+    mem = "4Gi"
+
+    _settings = dataclasses.replace(
+        serialization_settings,
+        default_resources=ResourceSpec(requests=Resources(cpu=cpu, mem=mem), limits=Resources(cpu=cpu, mem=mem))
+    )
+
+    expected_default_resources = task_models.Resources(
+        requests=[
+            task_models.Resources.ResourceEntry(name=task_models.Resources.ResourceName.CPU, value=cpu),
+            task_models.Resources.ResourceEntry(name=task_models.Resources.ResourceName.MEMORY, value=mem),
+        ],
+        limits=[
+            task_models.Resources.ResourceEntry(name=task_models.Resources.ResourceName.CPU, value=cpu),
+            task_models.Resources.ResourceEntry(name=task_models.Resources.ResourceName.MEMORY, value=mem),
+        ],
+    )
+
+
+    # We test against the 4 fundamental constructs of tasks: @task, @dynamic, @eager, and map_task
+
+    @task
+    def t1(a: int) -> int:
+        return a
+    t1_spec = get_serializable(OrderedDict(), _settings, t1)
+    assert t1_spec.template.container.resources == expected_default_resources
+
+    @dynamic
+    def t1_dynamic(a: int) -> int:
+        return a
+    t1_dynamic_spec = get_serializable(OrderedDict(), _settings, t1_dynamic)
+    assert t1_dynamic_spec.template.container.resources == expected_default_resources
+
+    @eager
+    async def t1_eager(a: int) -> int:
+        return a
+
+    t1_eager_spec = get_serializable(OrderedDict(), _settings, t1_eager)
+    assert t1_eager_spec.template.container.resources == expected_default_resources
+
+    t1_map_task = map_task(t1)
+    t1_map_task_spec = get_serializable(OrderedDict(), _settings, t1_map_task)
+    assert t1_map_task_spec.template.container.resources == expected_default_resources
+
+
+def test_default_resources_do_not_overriden_tasks_with_explicit_resources():
+    """Tests that default resources specified in serialization settings do not override resources specified in task decorators."""
+
+    _settings = dataclasses.replace(
+        serialization_settings,
+        default_resources=ResourceSpec(requests=Resources(cpu="2", mem="4Gi"), limits=Resources(cpu="2", mem="4Gi"))
+    )
+
+    # These cpu/mem values are static i.e. used in task decorators - should not be overridden by
+    # resources from serialization settings
+    cpu_static = "1"
+    mem_static = "2Gi"
+
+    @task(requests=Resources(cpu=cpu_static, mem=mem_static))
+    def t1(a: int) -> int:
+        return a
+
+    t1_spec = get_serializable(OrderedDict(), _settings, t1)
+    assert t1_spec.template.container.resources == task_models.Resources(
+        requests=[
+            task_models.Resources.ResourceEntry(name=task_models.Resources.ResourceName.CPU, value=cpu_static),
+            task_models.Resources.ResourceEntry(name=task_models.Resources.ResourceName.MEMORY, value=mem_static),
+        ],
+        limits=[]
+    )
+
+    @dynamic(limits=Resources(cpu=cpu_static, mem=mem_static))
+    def t1_dynamic(a: int) -> int:
+        return a
+
+    t1_dynamic_spec = get_serializable(OrderedDict(), _settings, t1_dynamic)
+    assert t1_dynamic_spec.template.container.resources == task_models.Resources(
+        requests=[],
+        limits=[
+            task_models.Resources.ResourceEntry(name=task_models.Resources.ResourceName.CPU, value=cpu_static),
+            task_models.Resources.ResourceEntry(name=task_models.Resources.ResourceName.MEMORY, value=mem_static),
+        ]
+    )
+
+    @eager(requests=Resources(cpu=cpu_static, mem=mem_static))
+    async def t1_eager(a: int) -> int:
+        return a
+
+    t1_eager_spec = get_serializable(OrderedDict(), _settings, t1_eager)
+    assert t1_eager_spec.template.container.resources == task_models.Resources(
+        requests=[
+            task_models.Resources.ResourceEntry(name=task_models.Resources.ResourceName.CPU, value=cpu_static),
+            task_models.Resources.ResourceEntry(name=task_models.Resources.ResourceName.MEMORY, value=mem_static),
+        ],
+        limits=[]
+    )
+
+
+def test_launch_plan_security_context_merge():
+    """Registration options override the authored launch plan per field.
+
+    Registering with only a service account must not drop secrets/tokens that were
+    authored on the launch plan.
+    """
+
+    @task
+    def t_sc() -> int:
+        return 1
+
+    @workflow
+    def wf_sc() -> int:
+        return t_sc()
+
+    lp = LaunchPlan.get_or_create(
+        workflow=wf_sc,
+        name="lp_sc_merge",
+        security_context=SecurityContext(secrets=[Secret(group="g", key="k")]),
+    )
+    opts = Options(security_context=SecurityContext(run_as=Identity(k8s_service_account="my-sa")))
+
+    serialized = get_serializable(OrderedDict(), serialization_settings, lp, options=opts)
+    sc = serialized.spec.security_context
+    assert sc.run_as.k8s_service_account == "my-sa"
+    assert [(s.group, s.key) for s in sc.secrets] == [("g", "k")]

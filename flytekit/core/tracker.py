@@ -24,7 +24,7 @@ def import_module_from_file(module_name, file):
 
 class InstanceTrackingMeta(type):
     """
-    Please see the original class :py:class`flytekit.common.mixins.registerable._InstanceTracker` also and also look
+    Please see the original class :flytekit.common.mixins.registerable._InstanceTracker` also and also look
     at the tests in the ``tests/flytekit/unit/core/tracker/test_tracking/`` folder to see how it's used.
 
     Basically, this will make instances of classes that use this metaclass aware of the module (the .py file) that
@@ -92,8 +92,8 @@ class TrackedInstance(metaclass=InstanceTrackingMeta):
 
     This functionality has two use-cases currently,
     * Keep track of naming for non-function ``PythonAutoContainerTasks``.  That is, things like the
-      :py:class:`flytekit.extras.sqlite3.task.SQLite3Task` task.
-    * Task resolvers, because task resolvers are instances of :py:class:`flytekit.core.python_auto_container.TaskResolverMixin`
+      {{< py_class_ref flytekit.extras.sqlite3.task.SQLite3Task >}} task.
+    * Task resolvers, because task resolvers are instances of {{< py_class_ref flytekit.core.python_auto_container.TaskResolverMixin >}}
       classes, not the classes themselves, which means we need to look on the left hand side of them to see how to
       find them at task execution time.
     """
@@ -178,12 +178,12 @@ def isnested(func: Callable) -> bool:
 
     This would essentially be any function with a `.<local>.` (defined within a function) e.g.
 
-    .. code:: python
-
-        def foo():
-            def foo_inner():
-                pass
+    ```python
+    def foo():
+        def foo_inner():
             pass
+        pass
+    ```
 
     In the above example `foo_inner` is the local function or a nested function.
     """
@@ -194,33 +194,33 @@ def isnested(func: Callable) -> bool:
 def is_functools_wrapped_module_level(func: Callable) -> bool:
     """Returns true if the function is a functools.wraps-updated function that is defined in the module-level scope.
 
-    .. code:: python
+    ```python
+    import functools
 
-        import functools
+    def decorator(fn):
+        @functools.wraps(fn)
+        def wrapper(*args, **kwargs):
+            return fn(*arks, **kwargs)
 
-        def decorator(fn):
-            @functools.wraps(fn)
-            def wrapper(*args, **kwargs):
-                return fn(*arks, **kwargs)
+        return wrapper
 
-            return wrapper
+    @decorator
+    def foo():
+        ...
+
+    def define_inner_wrapped_fn():
 
         @decorator
-        def foo():
-            ...
+        def foo_inner(*args, **kwargs):
+            return fn(*arks, **kwargs)
 
-        def define_inner_wrapped_fn():
+        return foo_inner
 
-            @decorator
-            def foo_inner(*args, **kwargs):
-                return fn(*arks, **kwargs)
+    bar = define_inner_wrapped_fn()
 
-            return foo_inner
-
-        bar = define_inner_wrapped_fn()
-
-        is_functools_wrapped_module_level(foo)  # True
-        is_functools_wrapped_module_level(bar)  # False
+    is_functools_wrapped_module_level(foo)  # True
+    is_functools_wrapped_module_level(bar)  # False
+    ```
 
     In this case, applying this function to ``foo`` returns true because ``foo`` was defined in the module-level scope.
     Applying this function to ``bar`` returns false because it's being assigned to ``foo_inner``, which is a

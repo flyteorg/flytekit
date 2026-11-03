@@ -1,6 +1,6 @@
 """
 This Plugin adds the capability of running distributed MPI training to Flyte using backend plugins, natively on
-Kubernetes. It leverages `MPI Job <https://github.com/kubeflow/mpi-operator>`_ Plugin from kubeflow.
+Kubernetes. It leverages [`MPI Job`](https://github.com/kubeflow/mpi-operator) Plugin from kubeflow.
 """
 
 from dataclasses import dataclass, field
@@ -91,7 +91,7 @@ class Launcher:
 @dataclass
 class MPIJob(object):
     """
-    Configuration for an executable `MPI Job <https://github.com/kubeflow/mpi-operator>`_. Use this
+    Configuration for an executable [`MPI Job`](https://github.com/kubeflow/mpi-operator). Use this
     to run distributed training on k8s with MPI
 
     Args:
@@ -222,8 +222,8 @@ class MPIFunctionTask(PythonFunctionTask[MPIJob]):
 @dataclass
 class HorovodJob(object):
     """
-    Configuration for an executable `Horovod Job using MPI operator<https://github.com/kubeflow/mpi-operator>`_. Use this
-    to run distributed training on k8s with MPI. For more info, check out Running Horovod<https://horovod.readthedocs.io/en/stable/summary_include.html#running-horovod>`_.
+    Configuration for an executable [`Horovod Job using MPI operator`](https://github.com/kubeflow/mpi-operator). Use this
+    to run distributed training on k8s with MPI. For more info, check out [`Running Horovod`](https://horovod.readthedocs.io/en/stable/summary_include.html#running-horovod).
 
     Args:
         worker: Worker configuration for the job.

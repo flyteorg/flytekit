@@ -93,7 +93,6 @@ class GCPIdentityAwareProxyAuthenticator(Authenticator):
                 return
             except AccessTokenNotFoundError:
                 logging.warning("Failed to refresh token. Kicking off a full authorization flow.")
-                KeyringStore.delete(self._endpoint)
 
         self._creds = self._auth_client.get_creds_from_remote()
         KeyringStore.store(self._creds)

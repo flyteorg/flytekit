@@ -50,6 +50,10 @@ def test_chatgpt_task():
     assert chatgpt_task_spec.template.interface.inputs["message"].type.simple == SimpleType.STRING
     assert chatgpt_task_spec.template.interface.outputs["o0"].type.simple == SimpleType.STRING
 
+    mocked_token = "mocked_openai_api_key"
+    mocked_context = mock.patch("flytekit.current_context", autospec=True).start()
+    mocked_context.return_value.secrets.get.return_value = mocked_token
+
     with mock.patch("openai.resources.chat.completions.AsyncCompletions.create", new=mock_acreate):
         chatgpt_task = ChatGPTTask(
             name="chatgpt",

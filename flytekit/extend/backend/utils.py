@@ -17,12 +17,14 @@ def mirror_async_methods(func: Callable, **kwargs) -> Coroutine:
 
 def convert_to_flyte_phase(state: str) -> TaskExecution.Phase:
     """
-    Convert the state from the agent to the phase in flyte.
+    Convert the state from the connector to the phase in flyte.
     """
     state = state.lower()
-    if state in ["failed", "timeout", "timedout", "canceled", "skipped", "internal_error"]:
+    if state in ["failed", "timeout", "timedout", "canceled", "cancelled", "skipped"]:
         return TaskExecution.FAILED
-    elif state in ["done", "succeeded", "success"]:
+    if state in ["internal_error"]:
+        return TaskExecution.RETRYABLE_FAILED
+    elif state in ["done", "succeeded", "success", "completed"]:
         return TaskExecution.SUCCEEDED
     elif state in ["running", "terminating"]:
         return TaskExecution.RUNNING
@@ -35,10 +37,15 @@ def is_terminal_phase(phase: TaskExecution.Phase) -> bool:
     """
     Return true if the phase is terminal.
     """
-    return phase in [TaskExecution.SUCCEEDED, TaskExecution.ABORTED, TaskExecution.FAILED]
+    return phase in [
+        TaskExecution.SUCCEEDED,
+        TaskExecution.ABORTED,
+        TaskExecution.FAILED,
+        TaskExecution.RETRYABLE_FAILED,
+    ]
 
 
-def get_agent_secret(secret_key: str) -> str:
+def get_connector_secret(secret_key: str) -> str:
     return flytekit.current_context().secrets.get(key=secret_key)
 
 
@@ -51,3 +58,6 @@ def render_task_template(tt: TaskTemplate, file_prefix: str) -> TaskTemplate:
         tt.container.args[i] = args[i].replace("{{.checkpointOutputPrefix}}", f"{file_prefix}/checkpoint_output")
         tt.container.args[i] = args[i].replace("{{.prevCheckpointPrefix}}", f"{file_prefix}/prev_checkpoint")
     return tt
+
+
+get_agent_secret = get_connector_secret

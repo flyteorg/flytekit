@@ -1,16 +1,17 @@
 import collections
+import datetime
 import inspect
 import typing
 from abc import abstractmethod
 from dataclasses import asdict, dataclass
-from typing import Any, Dict, Optional, TypeVar
+from typing import Any, Dict, Optional, TypeVar, Union
 
 from typing_extensions import Protocol, get_type_hints, runtime_checkable
 
 from flytekit.configuration import SerializationSettings
-from flytekit.core.base_task import PythonTask
+from flytekit.core.base_task import PythonTask, TaskMetadata
 from flytekit.core.interface import Interface
-from flytekit.extend.backend.base_agent import AsyncAgentExecutorMixin, ResourceMeta
+from flytekit.extend.backend.base_connector import AsyncConnectorExecutorMixin, ResourceMeta
 
 
 @runtime_checkable
@@ -40,16 +41,17 @@ class SensorMetadata(ResourceMeta):
 T = TypeVar("T", bound=SensorConfig)
 
 
-class BaseSensor(AsyncAgentExecutorMixin, PythonTask):
+class BaseSensor(AsyncConnectorExecutorMixin, PythonTask):
     """
     Base class for all sensors. Sensors are tasks that are designed to run forever and periodically check for some
     condition to be met. When the condition is met, the sensor will complete. Sensors are designed to be run by the
-    sensor agent, and not by the Flyte engine.
+    connector and not by the Flyte engine.
     """
 
     def __init__(
         self,
         name: str,
+        timeout: Optional[Union[datetime.timedelta, int]] = None,
         sensor_config: Optional[T] = None,
         task_type: str = "sensor",
         **kwargs,
@@ -61,11 +63,22 @@ class BaseSensor(AsyncAgentExecutorMixin, PythonTask):
             annotation = type_hints.get(k, None)
             inputs[k] = annotation
 
+        # Handle metadata and timeout logic
+        metadata = kwargs.pop("metadata", None)
+        if metadata is not None and timeout is not None:
+            if metadata.timeout is not None:
+                raise ValueError("You cannot set both timeout and metadata parameters at the same time in the sensor")
+            else:
+                metadata.timeout = timeout
+        else:
+            metadata = TaskMetadata(timeout=timeout) if timeout else TaskMetadata()
+
         super().__init__(
             task_type=task_type,
             name=name,
             task_config=None,
             interface=Interface(inputs=inputs),
+            metadata=metadata,
             **kwargs,
         )
         self._sensor_config = sensor_config

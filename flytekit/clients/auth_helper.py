@@ -1,6 +1,8 @@
 import logging
 import ssl
+import typing
 from http import HTTPStatus
+from importlib.metadata import entry_points
 
 import grpc
 import requests
@@ -17,9 +19,32 @@ from flytekit.clients.auth.authenticator import (
     PKCEAuthenticator,
 )
 from flytekit.clients.grpc_utils.auth_interceptor import AuthUnaryInterceptor
+from flytekit.clients.grpc_utils.deadline_interceptor import ScopedGrpcDeadlineInterceptor
 from flytekit.clients.grpc_utils.default_metadata_interceptor import DefaultMetadataInterceptor
 from flytekit.clients.grpc_utils.wrap_exception_interceptor import RetryExceptionWrapperInterceptor
 from flytekit.configuration import AuthType, PlatformConfig
+
+AUTH_ENTRY_POINT_GROUP = "flytekit.auth"
+
+_authenticator_registry: dict[str, typing.Callable[["PlatformConfig", ClientConfigStore], Authenticator]] = {}
+
+
+def register_authenticator_plugin(
+    name: str,
+    factory: typing.Callable[["PlatformConfig", ClientConfigStore], Authenticator],
+) -> None:
+    """Register an authenticator factory by name.
+
+    This is the primary registration mechanism and works in every environment
+    (pip, Bazel, mono-repo vendoring, etc.).  Entry-point discovery is attempted
+    as a fallback when no explicit registration exists.
+
+    Example::
+
+        from flytekit.clients.auth_helper import register_authenticator_plugin
+        register_authenticator_plugin("gcp_id_token", GcpIdTokenAuthenticator)
+    """
+    _authenticator_registry[name.lower()] = factory
 
 
 class RemoteClientConfigStore(ClientConfigStore):
@@ -49,17 +74,62 @@ class RemoteClientConfigStore(ClientConfigStore):
         )
 
 
+def _load_authenticator_plugin(
+    auth_type_name: str, cfg: "PlatformConfig", cfg_store: ClientConfigStore
+) -> typing.Optional[Authenticator]:
+    """Load an authenticator by name (case-insensitive).
+
+    Resolution order:
+
+    1. Explicit registry (populated via :func:`register_authenticator_plugin`).
+    2. ``importlib.metadata`` entry-point group ``flytekit.auth``.
+
+    Names are compared in lowercase so that ``GCP_ID_TOKEN``,
+    ``gcp_id_token``, and ``Gcp_Id_Token`` all resolve to the same plugin.
+
+    The loaded object must be a callable (class or factory function) with the
+    signature ``(PlatformConfig, ClientConfigStore) -> Authenticator``.
+    """
+    name_lower = auth_type_name.lower()
+
+    factory = _authenticator_registry.get(name_lower)
+    if factory is not None:
+        logging.info(f"Using registered auth plugin '{name_lower}'")
+        return factory(cfg, cfg_store)
+
+    eps = entry_points(group=AUTH_ENTRY_POINT_GROUP)
+    matching = [ep for ep in eps if ep.name.lower() == name_lower]
+    if not matching:
+        return None
+    factory = matching[0].load()
+    logging.info(f"Loaded auth plugin '{name_lower}' from entry point {matching[0]}")
+    return factory(cfg, cfg_store)
+
+
 def get_authenticator(cfg: PlatformConfig, cfg_store: ClientConfigStore) -> Authenticator:
     """
     Returns a new authenticator based on the platform config.
+
+    Built-in auth types (PKCE, ClientSecret, ExternalCommand, DeviceFlow) are
+    tried first.  If ``auth_mode`` is a string that does not match any built-in
+    type, the function falls back to entry-point discovery: any installed
+    package can register an authenticator factory under the
+    ``flytekit.auth`` entry point group and it will be loaded automatically.
     """
     cfg_auth = cfg.auth_mode
     if type(cfg_auth) is str:
         try:
             cfg_auth = AuthType[cfg_auth.upper()]
         except KeyError:
-            logging.warning(f"Authentication type {cfg_auth} does not exist, defaulting to standard")
-            cfg_auth = AuthType.STANDARD
+            authenticator = _load_authenticator_plugin(cfg_auth, cfg, cfg_store)
+            if authenticator is not None:
+                return authenticator
+            raise ValueError(
+                f"Unknown authentication type '{cfg_auth}'. "
+                f"Install a flytekit auth plugin that registers under the "
+                f"'{AUTH_ENTRY_POINT_GROUP}' entry point group with name '{cfg_auth}', "
+                f"or use a built-in type: {', '.join(t.value for t in AuthType)}"
+            )
 
     verify = None
     if cfg.insecure_skip_verify:
@@ -118,13 +188,17 @@ def upgrade_channel_to_proxy_authenticated(cfg: PlatformConfig, in_channel: grpc
     """
     If activated in the platform config, given a grpc.Channel, preferably a secure channel, it returns a composed
     channel that uses Interceptor to perform authentication with a proxy in front of Flyte
+
     :param cfg: PlatformConfig
     :param in_channel: grpc.Channel Precreated channel
     :return: grpc.Channel. New composite channel
     """
+
+    def authenticator_factory():
+        return get_proxy_authenticator(cfg)
+
     if cfg.proxy_command:
-        proxy_authenticator = get_proxy_authenticator(cfg)
-        return grpc.intercept_channel(in_channel, AuthUnaryInterceptor(proxy_authenticator))
+        return grpc.intercept_channel(in_channel, AuthUnaryInterceptor(authenticator_factory))
     else:
         return in_channel
 
@@ -137,8 +211,11 @@ def upgrade_channel_to_authenticated(cfg: PlatformConfig, in_channel: grpc.Chann
     :param in_channel: grpc.Channel Precreated channel
     :return: grpc.Channel. New composite channel
     """
-    authenticator = get_authenticator(cfg, RemoteClientConfigStore(in_channel))
-    return grpc.intercept_channel(in_channel, AuthUnaryInterceptor(authenticator))
+
+    def authenticator_factory():
+        return get_authenticator(cfg, RemoteClientConfigStore(in_channel))
+
+    return grpc.intercept_channel(in_channel, AuthUnaryInterceptor(authenticator_factory))
 
 
 def get_authenticated_channel(cfg: PlatformConfig) -> grpc.Channel:
@@ -173,19 +250,24 @@ def get_channel(cfg: PlatformConfig, **kwargs) -> grpc.Channel:
     Creates a new grpc.Channel given a platformConfig.
     It is possible to pass additional options to the underlying channel. Examples for various options are as below
 
-    .. code-block:: python
+    ```python
+    get_channel(cfg=PlatformConfig(...))
+    ```
 
-        get_channel(cfg=PlatformConfig(...))
+    > [!NOTE]
+    > Additional options to insecure / secure channel. Example `options` and `compression` refer to grpc guide
 
-    .. code-block:: python
-       :caption: Additional options to insecure / secure channel. Example `options` and `compression` refer to grpc guide
+    ```python
+    get_channel(cfg=PlatformConfig(...), options=..., compression=...)
+    ```
 
-        get_channel(cfg=PlatformConfig(...), options=..., compression=...)
 
-    .. code-block:: python
-       :caption: Create secure channel with custom `grpc.ssl_channel_credentials`
+    > [!NOTE]
+    > Create secure channel with custom `grpc.ssl_channel_credentials`
 
-        get_channel(cfg=PlatformConfig(insecure=False,...), credentials=...)
+     ```python
+    get_channel(cfg=PlatformConfig(insecure=False,...), credentials=...)
+    ```
 
 
     :param cfg: PlatformConfig
@@ -227,13 +309,15 @@ def wrap_exceptions_channel(cfg: PlatformConfig, in_channel: grpc.Channel) -> gr
     Wraps the input channel with RetryExceptionWrapperInterceptor. This wrapper will cover all
     exceptions and raise Exception from the Family flytekit.exceptions
 
-    .. note:: This channel should be usually the outermost channel. This channel will raise a FlyteException
+    > [!NOTE]
+    > This channel should be usually the outermost channel. This channel will raise a FlyteException
 
     :param cfg: PlatformConfig
     :param in_channel: grpc.Channel
     :return: grpc.Channel
     """
-    return grpc.intercept_channel(in_channel, RetryExceptionWrapperInterceptor(max_retries=cfg.rpc_retries))
+    deadline_channel = grpc.intercept_channel(in_channel, ScopedGrpcDeadlineInterceptor())
+    return grpc.intercept_channel(deadline_channel, RetryExceptionWrapperInterceptor(max_retries=cfg.rpc_retries))
 
 
 class AuthenticationHTTPAdapter(requests.adapters.HTTPAdapter):

@@ -58,3 +58,4 @@ def test_serialization():
     se_spec = get_serializable(OrderedDict(), serialization_settings, simple_eager_workflow)
     assert se_spec.template.metadata.is_eager
     assert len(se_spec.template.container.env) == 2
+    assert se_spec.template.metadata.generates_deck

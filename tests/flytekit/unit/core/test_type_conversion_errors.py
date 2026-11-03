@@ -1,5 +1,6 @@
 """Unit tests for type conversion errors."""
 
+import re
 from datetime import timedelta
 from string import ascii_lowercase
 from typing import Tuple
@@ -9,6 +10,7 @@ from hypothesis import given, settings
 from hypothesis import strategies as st
 
 from flytekit import task, workflow
+from flytekit.core.type_engine import TypeTransformerFailedError
 
 
 @task
@@ -67,11 +69,12 @@ def test_task_input_error(incorrect_input):
 @settings(deadline=timedelta(seconds=2))
 def test_task_output_error(correct_input):
     with pytest.raises(
-        TypeError,
+        TypeTransformerFailedError,
         match=(
-            r"Failed to convert outputs of task '{}' at position 0:\n"
-            r"  Expected value of type \<class 'int'\> but got .+ of type .+"
-        ).format(task_incorrect_output.name),
+            r"Failed to convert outputs of task '{}' at position 0\.\n"
+            r"Failed to convert type .+ to type .+\.\n"
+            r"Error Message: Expected value of type \<class 'int'\> but got .+ of type .+"
+        ).format(re.escape(task_incorrect_output.name)),
     ):
         task_incorrect_output(a=correct_input)
 
@@ -80,12 +83,12 @@ def test_task_output_error(correct_input):
 @settings(deadline=timedelta(seconds=2))
 def test_workflow_with_task_error(correct_input):
     with pytest.raises(
-        TypeError,
+        TypeTransformerFailedError,
         match=(
-            r"Error encountered while executing 'wf_with_task_error':\n"
-            r"  Failed to convert outputs of task '.+' at position 0:\n"
-            r"  Expected value of type \<class 'int'\> but got .+ of type .+"
-        ).format(),
+            r"Failed to convert outputs of task '.+' at position 0\.\n"
+            r"Failed to convert type .+ to type .+\.\n"
+            r"Error Message: Expected value of type \<class 'int'\> but got .+ of type .+"
+        ),
     ):
         wf_with_task_error(a=correct_input)
 
@@ -105,7 +108,7 @@ def test_workflow_with_input_error(incorrect_input):
 def test_workflow_with_output_error(correct_input):
     with pytest.raises(
         TypeError,
-        match=(r"Failed to convert output in position 0 of value .+, expected type \<class 'int'\>"),
+        match=r"Failed to convert output in position 0 of value [\s\S]+, expected type \<class 'int'\>",
     ):
         wf_with_output_error(a=correct_input)
 
@@ -122,6 +125,6 @@ def test_workflow_with_output_error(correct_input):
 def test_workflow_with_multioutput_error(workflow, position, correct_input):
     with pytest.raises(
         TypeError,
-        match=(r"Failed to convert output in position {} of value .+, expected type \<class 'int'\>").format(position),
+        match=(r"Failed to convert output in position {} of value [\s\S]+, expected type \<class 'int'\>").format(position),
     ):
         workflow(a=correct_input, b=correct_input)

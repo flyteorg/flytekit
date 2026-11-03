@@ -13,7 +13,7 @@ from flytekit.core.interface import Interface
 from flytekit.core.python_auto_container import PythonAutoContainerTask
 from flytekit.core.tracker import TrackedInstance
 from flytekit.core.utils import timeit
-from flytekit.extend.backend.base_agent import AsyncAgentExecutorMixin
+from flytekit.extend.backend.base_connector import AsyncConnectorExecutorMixin
 
 airflow = lazy_module("airflow")
 airflow_models = lazy_module("airflow.models")
@@ -85,7 +85,7 @@ class AirflowContainerTask(PythonAutoContainerTask[AirflowObj]):
     The airflow task module, name and parameters are stored in the task config.
 
     Some of the Airflow operators are not deferrable, For example, BeamRunJavaPipelineOperator, BeamRunPythonPipelineOperator.
-    These tasks don't have an async method to get the job status, so cannot be used in the Flyte agent. We run these tasks in a container.
+    These tasks don't have an async method to get the job status, so cannot be used in the Flyte connector. We run these tasks in a container.
     """
 
     def __init__(
@@ -108,10 +108,12 @@ class AirflowContainerTask(PythonAutoContainerTask[AirflowObj]):
         _get_airflow_instance(self.task_config).execute(context=airflow_context.Context())
 
 
-class AirflowTask(AsyncAgentExecutorMixin, PythonTask[AirflowObj]):
+class AirflowTask(AsyncConnectorExecutorMixin, PythonTask[AirflowObj]):
     """
-    This python task is used to wrap an Airflow task. It is used to run an Airflow task in Flyte agent.
-    The airflow task module, name and parameters are stored in the task config. We run the Airflow task in the agent.
+    This python task is used to wrap an Airflow task.
+    It is used to run an Airflow task in Flyte connector.
+    The airflow task module, name and parameters are stored in the task config.
+    We run the Airflow task in the connector.
     """
 
     _TASK_TYPE = "airflow"
@@ -159,7 +161,7 @@ def _get_airflow_instance(
 def _is_deferrable(cls: Type) -> bool:
     """
     This function is used to check if the Airflow operator is deferrable.
-    If the operator is not deferrable, we run it in a container instead of the agent.
+    If the operator is not deferrable, we run it in a container instead of the connector.
     """
     # Only Airflow operators are deferrable.
     if not issubclass(cls, airflow_models.BaseOperator):
@@ -186,7 +188,7 @@ def _flyte_operator(*args, **kwargs):
     cls = args[0]
     try:
         if FlyteContextManager.current_context().user_space_params.get_original_task:
-            # Return an original task when running in the agent.
+            # Return an original task when running in the connector.
             return object.__new__(cls)
     except AssertionError:
         # This happens when the task is created in the dynamic workflow.

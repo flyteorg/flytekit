@@ -159,7 +159,7 @@ def poll_token_endpoint(
     token_endpoint: str,
     client_id: str,
     audience: typing.Optional[str] = None,
-    scopes: typing.Optional[str] = None,
+    scopes: typing.Optional[typing.List[str]] = None,
     http_proxy_url: typing.Optional[str] = None,
     verify: typing.Optional[typing.Union[bool, str]] = None,
 ) -> typing.Tuple[str, str, int]:

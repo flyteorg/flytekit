@@ -153,3 +153,35 @@ def test_schedule_with_lp():
     assert lp.schedule == _schedule_models.Schedule(
         "kickoff_input", rate=_schedule_models.Schedule.FixedRate(12, _schedule_models.Schedule.FixedRateUnit.HOUR)
     )
+
+
+@pytest.mark.parametrize(
+    "invalid_schedule",
+    [
+        "0 0 31 2 *",    # February 31st (does not exist)
+        "0 0 30 2 *",    # February 30th (does not exist)
+        "0 0 31 4 *",    # April 31st (does not exist)
+        "0 0 31 6 *",    # June 31st (does not exist)
+    ],
+)
+def test_cron_invalid_date_combinations(invalid_schedule):
+    """Test that CronSchedule rejects invalid date combinations like 31st of February."""
+    with pytest.raises(ValueError, match="Schedule is invalid."):
+        CronSchedule(schedule=invalid_schedule)
+
+
+@pytest.mark.parametrize(
+    "valid_schedule",
+    [
+        "0 0 28 2 *",    # February 28th (always valid)
+        "0 0 29 2 *",    # February 29th (valid in leap years - handled by croniter)
+        "0 0 30 4 *",    # April 30th (valid)
+        "0 0 31 1 *",    # January 31st (valid)
+        "0 0 31 3 *",    # March 31st (valid)
+    ],
+)
+def test_cron_valid_date_combinations(valid_schedule):
+    """Test that CronSchedule accepts valid date combinations."""
+    # These should not raise any exceptions
+    obj = CronSchedule(schedule=valid_schedule)
+    assert obj.cron_schedule.schedule == valid_schedule

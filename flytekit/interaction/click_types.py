@@ -8,18 +8,23 @@ import logging
 import os
 import pathlib
 import sys
+import types
 import typing
 import typing as t
 from typing import cast, get_args
 
 import rich_click as click
 import yaml
+from click import Parameter
+from click import __version__ as click_version
 from dataclasses_json import DataClassJsonMixin, dataclass_json
+from packaging.version import Version
 from pytimeparse import parse
 
 from flytekit import BlobType, FlyteContext, Literal, LiteralType, StructuredDataset
 from flytekit.core.artifact import ArtifactQuery
 from flytekit.core.data_persistence import FileAccessProvider
+from flytekit.core.resources import Resources
 from flytekit.core.type_engine import TypeEngine
 from flytekit.models.types import SimpleType
 from flytekit.remote.remote_fs import FlytePathResolver
@@ -81,6 +86,33 @@ def labels_callback(_: typing.Any, param: str, values: typing.List[str]) -> typi
     return result
 
 
+def resource_callback(_: typing.Any, param: str, value: typing.Optional[str]) -> typing.Optional[Resources]:
+    """
+    Click callback to parse resource strings like 'cpu=1,mem=2Gi' into a Resources object
+    """
+    if not value:
+        return None
+
+    items = value.split(",")
+    _allowed_keys = Resources.__annotations__.keys()
+    result = {}
+    for item in items:
+        kv_split = item.split("=")
+        if len(kv_split) != 2:
+            raise click.BadParameter(
+                f"Expected comma separated key-value pairs of the form 'key1=value1,key2=value2,...', got '{item}'"
+            )
+        k = kv_split[0].strip()
+        v = kv_split[1].strip()
+        if k not in _allowed_keys:
+            raise click.BadParameter(f"Expected key to be one of {list(_allowed_keys)}, but got '{k}'")
+        if k in result:
+            raise click.BadParameter(f"Expected unique keys {list(_allowed_keys)}, but got '{k}' multiple times")
+        result[k] = v
+
+    return Resources(**result)
+
+
 class DirParamType(click.ParamType):
     name = "directory path"
 
@@ -125,8 +157,9 @@ class FileParamType(click.ParamType):
     def convert(
         self, value: typing.Any, param: typing.Optional[click.Parameter], ctx: typing.Optional[click.Context]
     ) -> typing.Any:
-        if isinstance(value, ArtifactQuery):
+        if isinstance(value, (ArtifactQuery, FlyteFile)):
             return value
+
         # set remote_directory to false if running pyflyte run locally. This makes sure that the original
         # file is used and not a random one.
         remote_path = None if getattr(ctx.obj, "is_remote", False) else False
@@ -140,8 +173,17 @@ class FileParamType(click.ParamType):
 class PickleParamType(click.ParamType):
     name = "pickle"
 
-    def get_metavar(self, param: "Parameter") -> t.Optional[str]:
-        return "Python Object <Module>:<Object>"
+    # click add args "ctx" to get_metavar in version 8.2.0
+    if Version(click_version) >= Version("8.2.0"):
+        from click.core import Context
+
+        def get_metavar(self, param: Parameter, ctx: Context) -> t.Optional[str]:
+            return "Python Object <Module>:<Object>"
+
+    else:
+
+        def get_metavar(self, param: Parameter, *args) -> t.Optional[str]:
+            return "Python Object <Module>:<Object>"
 
     def convert(
         self, value: typing.Any, param: typing.Optional[click.Parameter], ctx: typing.Optional[click.Context]
@@ -520,18 +562,25 @@ class FlyteLiteralConverter(object):
             return value
         try:
             # If the expected Python type is datetime.date, adjust the value to date
-            if self._python_type is datetime.date:
+            is_union = typing.get_origin(self._python_type) in (
+                typing.Union,
+                types.UnionType,
+            )
+            args = typing.get_args(self._python_type)
+            is_date_type = (is_union and datetime.date in args) or self._python_type is datetime.date
+
+            if is_date_type and isinstance(value, datetime.datetime):
                 # Click produces datetime, so converting to date to avoid type mismatch error
                 value = value.date()
             # If the input matches the default value in the launch plan, serialization can be skipped.
             if param and value == param.default:
                 return None
-            lit = TypeEngine.to_literal(self._flyte_ctx, value, self._python_type, self._literal_type)
 
+            # If this is used for remote execution then we need to convert it back to a python native type
             if not self._is_remote:
-                # If this is used for remote execution then we need to convert it back to a python native type
-                # for FlyteRemote to use it. This maybe a double conversion penalty!
-                return TypeEngine.to_python_value(self._flyte_ctx, lit, self._python_type)
+                return value
+
+            lit = TypeEngine.to_literal(self._flyte_ctx, value, self._python_type, self._literal_type)
             return lit
         except click.BadParameter:
             raise

@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import asyncio
 import collections
 import datetime
 import typing
@@ -16,6 +15,7 @@ from flytekit.core import constants as _common_constants
 from flytekit.core import context_manager as _flyte_context
 from flytekit.core import interface as flyte_interface
 from flytekit.core import type_engine
+from flytekit.core.cache import Cache
 from flytekit.core.context_manager import (
     BranchEvalMode,
     ExecutionParameters,
@@ -84,7 +84,7 @@ async def _translate_inputs_to_literals(
 
     :param ctx: Context needed in case a non-primitive literal needs to be translated to a Flyte literal (like a file)
     :param incoming_values: This is a map of your task's input or wf's output kwargs basically
-    :param flyte_interface_types: One side of an :py:class:`flytekit.models.interface.TypedInterface` basically.
+    :param flyte_interface_types: One side of an {{< py_class_ref flytekit.models.interface.TypedInterface >}} basically.
     :param native_types: Map to native Python type.
     """
     if incoming_values is None:
@@ -587,16 +587,14 @@ class Promise(object):
         aliases: Optional[Dict[str, str]] = None,
         requests: Optional[Resources] = None,
         limits: Optional[Resources] = None,
-        timeout: Optional[Union[int, datetime.timedelta]] = None,
+        timeout: Optional[Union[int, datetime.timedelta, object]] = Node.TIMEOUT_OVERRIDE_SENTINEL,
         retries: Optional[int] = None,
         interruptible: Optional[bool] = None,
         name: Optional[str] = None,
         task_config: Optional[Any] = None,
         container_image: Optional[str] = None,
         accelerator: Optional[BaseAccelerator] = None,
-        cache: Optional[bool] = None,
-        cache_version: Optional[str] = None,
-        cache_serialize: Optional[bool] = None,
+        cache: Optional[Union[bool, Cache]] = None,
         *args,
         **kwargs,
     ):
@@ -615,8 +613,6 @@ class Promise(object):
                 container_image=container_image,
                 accelerator=accelerator,
                 cache=cache,
-                cache_version=cache_version,
-                cache_serialize=cache_serialize,
                 *args,
                 **kwargs,
             )
@@ -889,16 +885,22 @@ async def binding_data_from_python_std(
         # akin to what the Type Engine does when it finds a Union type (see the UnionTransformer), but we can't rely on
         # that in this case, because of the mix and match of realized values, and Promises.
         for i in range(len(expected_literal_type.union_type.variants)):
+            lt_type = expected_literal_type.union_type.variants[i]
+            python_type = get_args(t_value_type)[i] if t_value_type else None
             try:
-                lt_type = expected_literal_type.union_type.variants[i]
-                python_type = get_args(t_value_type)[i] if t_value_type else None
                 return await binding_data_from_python_std(ctx, lt_type, t_value, python_type, nodes)
-            except Exception:
+            except Exception as e:
                 logger.debug(
-                    f"failed to bind data {t_value} with literal type {expected_literal_type.union_type.variants[i]}."
+                    f"Failed to bind data {t_value} "
+                    f"using variant[{i}] literal type={repr(lt_type)} (expected overall {expected_literal_type}) "
+                    f"and python type={python_type} (expected overall {t_value_type}). "
+                    f"Error: {e}"
                 )
         raise AssertionError(
-            f"Failed to bind data {t_value} with literal type {expected_literal_type.union_type.variants}."
+            f"Failed to bind data {t_value} "
+            f"to any of the expected union variants.\n"
+            f"Value python type: {type(t_value).__name__}, declared python types: {t_value_type}\n"
+            f"Expected literal type: {repr(expected_literal_type)}"
         )
 
     elif (
@@ -948,7 +950,7 @@ async def binding_data_from_python_std(
             if transformer_override and hasattr(transformer_override, "extract_types_or_metadata"):
                 _, v_type = transformer_override.extract_types_or_metadata(t_value_type)  # type: ignore
             else:
-                _, v_type = DictTransformer.extract_types_or_metadata(t_value_type)  # type: ignore
+                _, v_type = DictTransformer.extract_types(cast(typing.Type[dict], t_value_type))
             m = _literals_models.BindingDataMap(
                 bindings={
                     k: await binding_data_from_python_std(
@@ -1436,9 +1438,7 @@ async def async_flyte_entity_call_handler(
         # for both nested eager, async, and sync tasks, submit to the informer.
         if not ctx.worker_queue:
             raise AssertionError("Worker queue missing, must be set when trying to execute tasks in an eager workflow")
-        loop = asyncio.get_running_loop()
-        fut = ctx.worker_queue.add(loop, entity, input_kwargs=kwargs)
-        result = await fut
+        result = await ctx.worker_queue.add(entity, input_kwargs=kwargs)
         return result
 
     # eager local execution, and all other call patterns are handled by the sync version
@@ -1485,7 +1485,7 @@ def flyte_entity_call_handler(
         # call the blocking version of the async call handler
         # This is a recursive call, the async handler also calls this function, so this conditional must match
         # the one in the async function perfectly, otherwise you'll get infinite recursion.
-        loop_manager.run_sync(async_flyte_entity_call_handler, entity, **kwargs)
+        return loop_manager.run_sync(async_flyte_entity_call_handler, entity, **kwargs)
 
     if ctx.execution_state and (
         ctx.execution_state.mode == ExecutionState.Mode.TASK_EXECUTION
@@ -1542,7 +1542,7 @@ def flyte_entity_call_handler(
             else:
                 raise ValueError(f"Received an output when workflow local execution expected None. Received: {result}")
 
-        if ctx.execution_state and ctx.execution_state.mode == ExecutionState.Mode.DYNAMIC_TASK_EXECUTION:
+        if ctx.execution_state and ctx.execution_state.mode == ExecutionState.Mode.LOCAL_DYNAMIC_TASK_EXECUTION:
             return result
 
         if (1 < expected_outputs == len(cast(Tuple[Promise], result))) or (

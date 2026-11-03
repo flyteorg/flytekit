@@ -9,11 +9,13 @@ plugin_requires = ["flytekit>=1.12.0,<2.0.0", "perian>=0.2.7"]
 __version__ = "0.0.0+develop"
 
 setup(
+    title="Perian Job Platform",
+    title_expanded="Flytekit Perian Job Platform Plugin",
     name=microlib_name,
     version=__version__,
     author="Omar Tarabai",
     author_email="otarabai@perian.io",
-    description="Flyte agent for Perian Job Platform (perian.io)",
+    description="Flyte connector for Perian Job Platform (perian.io)",
     long_description=open("README.md").read(),
     long_description_content_type="text/markdown",
     namespace_packages=["flytekitplugins"],

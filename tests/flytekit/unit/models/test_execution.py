@@ -166,6 +166,7 @@ def test_execution_spec(literal_value_pair):
         ),
         raw_output_data_config=_common_models.RawOutputDataConfig(output_location_prefix="raw_output"),
         max_parallelism=100,
+        interruptible=True
     )
     assert obj.launch_plan.resource_type == _identifier.ResourceType.LAUNCH_PLAN
     assert obj.launch_plan.domain == "domain"
@@ -183,6 +184,7 @@ def test_execution_spec(literal_value_pair):
     ]
     assert obj.disable_all is None
     assert obj.max_parallelism == 100
+    assert obj.interruptible == True
     assert obj.raw_output_data_config.output_location_prefix == "raw_output"
 
     obj2 = _execution.ExecutionSpec.from_flyte_idl(obj.to_flyte_idl())
@@ -203,6 +205,7 @@ def test_execution_spec(literal_value_pair):
     ]
     assert obj2.disable_all is None
     assert obj2.max_parallelism == 100
+    assert obj2.interruptible == True
     assert obj2.raw_output_data_config.output_location_prefix == "raw_output"
 
     obj = _execution.ExecutionSpec(
@@ -220,6 +223,7 @@ def test_execution_spec(literal_value_pair):
     assert obj.metadata.principal == "tester"
     assert obj.notifications is None
     assert obj.disable_all is True
+    assert obj.interruptible is None
 
     obj2 = _execution.ExecutionSpec.from_flyte_idl(obj.to_flyte_idl())
     assert obj == obj2
@@ -233,6 +237,7 @@ def test_execution_spec(literal_value_pair):
     assert obj2.metadata.principal == "tester"
     assert obj2.notifications is None
     assert obj2.disable_all is True
+    assert obj2.interruptible is None
 
 
 def test_workflow_execution_data_response():

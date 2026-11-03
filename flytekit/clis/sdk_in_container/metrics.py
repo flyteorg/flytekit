@@ -1,12 +1,8 @@
-from datetime import datetime
-
 import rich_click as click
-import yaml
-from flyteidl.admin.execution_pb2 import WorkflowExecutionGetMetricsRequest
-from flyteidl.core.identifier_pb2 import WorkflowExecutionIdentifier
 
 from flytekit.clis.sdk_in_container.constants import CTX_DOMAIN, CTX_PROJECT
 from flytekit.clis.sdk_in_container.helpers import get_and_save_remote_with_click_context
+from flytekit.interfaces import cli_identifiers
 
 CTX_DEPTH = "depth"
 
@@ -70,80 +66,12 @@ def metrics_dump(
 
     # retrieve remote
     remote = get_and_save_remote_with_click_context(ctx, project, domain)
-    sync_client = remote.client
-
     # retrieve workflow execution metrics
-    workflow_execution_id = WorkflowExecutionIdentifier(project=project, domain=domain, name=execution_id)
-
-    request = WorkflowExecutionGetMetricsRequest(id=workflow_execution_id, depth=depth)
-    response = sync_client.get_execution_metrics(request)
-
-    # aggregate spans and print
-    id, info = aggregate_reference_span(response.span)
-    yaml.emitter.Emitter.process_tag = lambda self, *args, **kw: None
-    print(yaml.dump({id: info}, indent=2))
-
-
-def aggregate_reference_span(span):
-    id = ""
-    id_type = span.WhichOneof("id")
-    if id_type == "workflow_id":
-        id = span.workflow_id.name
-    elif id_type == "node_id":
-        id = span.node_id.node_id
-    elif id_type == "task_id":
-        id = span.task_id.retry_attempt
-
-    spans = aggregate_spans(span.spans)
-    return id, spans
-
-
-def aggregate_spans(spans):
-    breakdown = {}
-
-    tasks = {}
-    nodes = {}
-    workflows = {}
-
-    for span in spans:
-        id_type = span.WhichOneof("id")
-        if id_type == "operation_id":
-            operation_id = span.operation_id
-
-            start_time = datetime.fromtimestamp(span.start_time.seconds + span.start_time.nanos / 1e9)
-            end_time = datetime.fromtimestamp(span.end_time.seconds + span.end_time.nanos / 1e9)
-            total_time = (end_time - start_time).total_seconds()
-
-            if operation_id in breakdown:
-                breakdown[operation_id] += total_time
-            else:
-                breakdown[operation_id] = total_time
-        else:
-            id, underlying_span = aggregate_reference_span(span)
-
-            if id_type == "workflow_id":
-                workflows[id] = underlying_span
-            elif id_type == "node_id":
-                nodes[id] = underlying_span
-            elif id_type == "task_id":
-                tasks[id] = underlying_span
-
-            for operation_id, total_time in underlying_span["breakdown"].items():
-                if operation_id in breakdown:
-                    breakdown[operation_id] += total_time
-                else:
-                    breakdown[operation_id] = total_time
-
-    span = {"breakdown": breakdown}
-
-    if len(tasks) > 0:
-        span["task_attempts"] = tasks
-    if len(nodes) > 0:
-        span["nodes"] = nodes
-    if len(workflows) > 0:
-        span["workflows"] = workflows
-
-    return span
+    workflow_execution_id = cli_identifiers.WorkflowExecutionIdentifier(
+        project=project, domain=domain, name=execution_id
+    )
+    execution_metrics = remote.get_execution_metrics(id=workflow_execution_id, depth=depth)
+    execution_metrics.dump()
 
 
 @click.command("explain", help=_explain_help)
@@ -159,59 +87,12 @@ def metrics_explain(
 
     # retrieve remote
     remote = get_and_save_remote_with_click_context(ctx, project, domain)
-    sync_client = remote.client
-
     # retrieve workflow execution metrics
-    workflow_execution_id = WorkflowExecutionIdentifier(project=project, domain=domain, name=execution_id)
-
-    request = WorkflowExecutionGetMetricsRequest(id=workflow_execution_id, depth=depth)
-    response = sync_client.get_execution_metrics(request)
-
-    # print execution spans
-    print(
-        "{:25s}{:25s}{:25s} {:>8s}    {:s}".format(
-            "operation", "start_timestamp", "end_timestamp", "duration", "entity"
-        )
+    workflow_execution_id = cli_identifiers.WorkflowExecutionIdentifier(
+        project=project, domain=domain, name=execution_id
     )
-    print("-" * 140)
-
-    print_span(response.span, -1, "")
-
-
-def print_span(span, indent, identifier):
-    start_time = datetime.fromtimestamp(span.start_time.seconds + span.start_time.nanos / 1e9)
-    end_time = datetime.fromtimestamp(span.end_time.seconds + span.end_time.nanos / 1e9)
-
-    id_type = span.WhichOneof("id")
-    span_identifier = ""
-
-    if id_type == "operation_id":
-        indent_str = ""
-        for i in range(indent):
-            indent_str += "  "
-
-        print(
-            "{:25s}{:25s}{:25s} {:7.2f}s    {:s}{:s}".format(
-                span.operation_id,
-                start_time.strftime("%m-%d %H:%M:%S.%f"),
-                end_time.strftime("%m-%d %H:%M:%S.%f"),
-                (end_time - start_time).total_seconds(),
-                indent_str,
-                identifier,
-            )
-        )
-
-        span_identifier = identifier + "/" + span.operation_id
-    else:
-        if id_type == "workflow_id":
-            span_identifier = "workflow/" + span.workflow_id.name
-        elif id_type == "node_id":
-            span_identifier = "node/" + span.node_id.node_id
-        elif id_type == "task_id":
-            span_identifier = "task/" + str(span.task_id.retry_attempt)
-
-    for under_span in span.spans:
-        print_span(under_span, indent + 1, span_identifier)
+    execution_metrics = remote.get_execution_metrics(id=workflow_execution_id, depth=depth)
+    execution_metrics.explain()
 
 
 metrics.add_command(metrics_dump)

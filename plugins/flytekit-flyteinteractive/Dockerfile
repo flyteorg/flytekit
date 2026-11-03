@@ -22,7 +22,8 @@ RUN apt-get update \
     && tar -xzf /tmp/code-server/code-server-4.19.0-linux-${TARGETARCH}.tar.gz -C /tmp/code-server/ \
     && wget --no-check-certificate https://open-vsx.org/api/ms-python/python/2023.20.0/file/ms-python.python-2023.20.0.vsix -P /tmp/code-server \
     && wget --no-check-certificate https://open-vsx.org/api/ms-toolsai/jupyter/2023.9.100/file/ms-toolsai.jupyter-2023.9.100.vsix -P /tmp/code-server \
-    && pip install --no-cache-dir -U flytekitplugins-flyteinteractive==$VERSION flytekit==$VERSION \
+    && pip install --no-cache-dir uv \
+    && uv pip install --system --no-cache-dir -U flytekitplugins-flyteinteractive==$VERSION flytekit==$VERSION \
     && apt-get clean autoclean \
     && apt-get autoremove --yes \
     && rm -rf /var/lib/{apt,dpkg,cache,log}/ \
@@ -34,7 +35,8 @@ RUN apt-get update \
 
 # Set the environment variable for code-server
 ENV PATH="/tmp/code-server/code-server-4.19.0-linux-${TARGETARCH}/bin:${PATH}"
-
+# Set the idle timeout to 10 hours and instead of relying on the hear beat file check , codeserver itself terminates gracefully https://github.com/coder/code-server/issues/1636
+ENV CODE_SERVER_IDLE_TIMEOUT_SECONDS=36000
 USER flytekit
 
 # Install extensions using code-server

@@ -16,7 +16,7 @@ def neptune_init_run(
     host: str = "https://app.neptune.ai",
     **init_run_kwargs: dict,
 ):
-    """Neptune plugin.
+    """Neptune 2.x plugin. Use Neptune Scale instead (`neptune_scale_run`).
 
     Args:
         project (str): Name of the project where the run should go, in the form `workspace-name/project_name`.

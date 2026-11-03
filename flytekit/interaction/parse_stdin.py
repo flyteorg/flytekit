@@ -28,8 +28,6 @@ def parse_stdin_to_literal(
     )
     user_input = click.prompt(message, type=literal_converter.click_type)
     try:
-        option = click.Option(["--input"], type=literal_converter.click_type)
-        v = literal_converter.click_type.convert(user_input, option, click.Context(command=click.Command("")))
-        return TypeEngine.to_literal(FlyteContext.current_context(), v, t, lt)
+        return TypeEngine.to_literal(FlyteContext.current_context(), user_input, t, lt)
     except Exception as e:
         raise click.ClickException(f"Failed to parse input: {e}")

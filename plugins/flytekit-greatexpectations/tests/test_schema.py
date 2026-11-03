@@ -5,6 +5,8 @@ import typing
 
 import pandas as pd
 import pytest
+
+from flytekit.core.type_engine import TypeTransformerFailedError
 from flytekitplugins.great_expectations import BatchRequestConfig, GreatExpectationsFlyteConfig, GreatExpectationsType
 from great_expectations.exceptions import InvalidBatchRequestError, ValidationError
 
@@ -58,7 +60,7 @@ def test_ge_schema_task():
     valid_result = valid_wf()
     assert valid_result == 9999
 
-    with pytest.raises(ValidationError):
+    with pytest.raises(TypeTransformerFailedError):
         invalid_wf()
 
 
@@ -144,7 +146,7 @@ def test_invalid_ge_schema_batchrequest_pandas_config():
         my_task(directory="my_assets")
 
     # Capture IndexError
-    with pytest.raises(InvalidBatchRequestError):
+    with pytest.raises(TypeTransformerFailedError):
         my_wf()
 
 
@@ -291,7 +293,7 @@ def test_ge_schema_remote_flytefile():
         return my_task(dataset=dataset)
 
     result = my_wf(
-        dataset="https://raw.githubusercontent.com/superconductive/ge_tutorials/main/data/yellow_tripdata_sample_2019-01.csv"
+        dataset="https://raw.githubusercontent.com/flyteorg/flytekit/master/plugins/flytekit-greatexpectations/tests/data/yellow_tripdata_sample_2019-01.csv"
     )
     assert result == 10000
 
@@ -311,7 +313,7 @@ def test_ge_schema_remote_flytefile_literal():
     @workflow
     def my_wf() -> int:
         return my_task(
-            dataset="https://raw.githubusercontent.com/superconductive/ge_tutorials/main/data/yellow_tripdata_sample_2019-01.csv"
+            dataset="https://raw.githubusercontent.com/flyteorg/flytekit/master/plugins/flytekit-greatexpectations/tests/data/yellow_tripdata_sample_2019-01.csv"
         )
 
     result = my_wf()

@@ -3,7 +3,7 @@ from __future__ import annotations
 import typing
 
 import grpc
-from flyteidl.admin.project_pb2 import ProjectListRequest
+from flyteidl.admin.project_pb2 import GetDomainRequest, ProjectListRequest
 from flyteidl.admin.signal_pb2 import SignalList, SignalListRequest, SignalSetRequest, SignalSetResponse
 from flyteidl.service import admin_pb2_grpc as _admin_service
 from flyteidl.service import dataproxy_pb2 as _dataproxy_pb2
@@ -28,11 +28,11 @@ class RawSynchronousFlyteClient(object):
     This client should be usable regardless of environment in which this is used. In other words, configurations should
     be explicit as opposed to inferred from the environment or a configuration file. To create a client,
 
-    .. code-block:: python
-
-        from flytekit.configuration import PlatformConfig
-        RawSynchronousFlyteClient(PlatformConfig(endpoint="a.b.com", insecure=True))  # or
-        SynchronousFlyteClient(PlatformConfig(endpoint="a.b.com", insecure=True))
+    ```python
+    from flytekit.configuration import PlatformConfig
+    RawSynchronousFlyteClient(PlatformConfig(endpoint="a.b.com", insecure=True))  # or
+    SynchronousFlyteClient(PlatformConfig(endpoint="a.b.com", insecure=True))
+    ```
     """
 
     _dataproxy_stub: DataProxyServiceStub
@@ -49,12 +49,22 @@ class RawSynchronousFlyteClient(object):
         # StreamRemoved exception.
         # https://github.com/flyteorg/flyte/blob/e8588f3a04995a420559327e78c3f95fbf64dc01/flyteadmin/pkg/common/constants.go#L14
         # 32KB for error messages, 20MB for actual messages.
-        options = (("grpc.max_metadata_size", 32 * 1024), ("grpc.max_receive_message_length", 20 * 1024 * 1024))
+        # Keepalive options let gRPC detect dead connections (idle TCP drops by
+        # load balancers / NAT) and reconnect transparently, instead of leaving
+        # subsequent RPCs blocked indefinitely on a black-hole socket.
+        options = [
+            ("grpc.max_metadata_size", 32 * 1024),
+            ("grpc.max_receive_message_length", 20 * 1024 * 1024),
+            ("grpc.keepalive_time_ms", 30000),
+            ("grpc.keepalive_timeout_ms", 10000),
+            ("grpc.keepalive_permit_without_calls", 1),
+            ("grpc.http2.max_pings_without_data", 0),
+        ] + kwargs.pop("options", [])
         self._cfg = cfg
         self._channel = wrap_exceptions_channel(
             cfg,
             upgrade_channel_to_authenticated(
-                cfg, upgrade_channel_to_proxy_authenticated(cfg, get_channel(cfg, options=options))
+                cfg, upgrade_channel_to_proxy_authenticated(cfg, get_channel(cfg, options=options, **kwargs))
             ),
         )
         self._stub = _admin_service.AdminServiceStub(self._channel)
@@ -89,9 +99,8 @@ class RawSynchronousFlyteClient(object):
         This will create a task definition in the Admin database. Once successful, the task object can be
         retrieved via the client or viewed via the UI or command-line interfaces.
 
-        .. note ::
-
-            Overwrites are not supported so any request for a given project, domain, name, and version that exists in
+        > [!NOTE]
+        > Overwrites are not supported so any request for a given project, domain, name, and version that exists in
             the database must match the existing definition exactly. This also means that as long as the request
             remains identical, calling this method multiple times will result in success.
 
@@ -109,18 +118,15 @@ class RawSynchronousFlyteClient(object):
         This returns a page of identifiers for the tasks for a given project and domain. Filters can also be
         specified.
 
-        .. note ::
+        > [!NOTE]
+        > The name field in the TaskListRequest is ignored.
 
-            The name field in the TaskListRequest is ignored.
-
-        .. note ::
-
-            This is a paginated API.  Use the token field in the request to specify a page offset token.
+        > [!NOTE]
+        > This is a paginated API.  Use the token field in the request to specify a page offset token.
             The user of the API is responsible for providing this token.
 
-        .. note ::
-
-            If entries are added to the database between requests for different pages, it is possible to receive
+        > [!NOTE]
+        > If entries are added to the database between requests for different pages, it is possible to receive
             entries on the second page that also appeared on the first.
 
         :param: flyteidl.admin.common_pb2.NamedEntityIdentifierListRequest identifier_list_request:
@@ -134,14 +140,12 @@ class RawSynchronousFlyteClient(object):
         This returns a page of task metadata for tasks in a given project and domain.  Optionally,
         specifying a name will limit the results to only tasks with that name in the given project and domain.
 
-        .. note ::
-
-            This is a paginated API.  Use the token field in the request to specify a page offset token.
+        > [!NOTE]
+        > This is a paginated API.  Use the token field in the request to specify a page offset token.
             The user of the API is responsible for providing this token.
 
-        .. note ::
-
-            If entries are added to the database between requests for different pages, it is possible to receive
+        > [!NOTE]
+        > If entries are added to the database between requests for different pages, it is possible to receive
             entries on the second page that also appeared on the first.
 
         :param: flyteidl.admin.common_pb2.ResourceListRequest resource_list_request:
@@ -183,9 +187,8 @@ class RawSynchronousFlyteClient(object):
         This will create a workflow definition in the Admin database.  Once successful, the workflow object can be
         retrieved via the client or viewed via the UI or command-line interfaces.
 
-        .. note ::
-
-            Overwrites are not supported so any request for a given project, domain, name, and version that exists in
+        > [!NOTE]
+        > Overwrites are not supported so any request for a given project, domain, name, and version that exists in
             the database must match the existing definition exactly.  This also means that as long as the request
             remains identical, calling this method multiple times will result in success.
 
@@ -203,18 +206,15 @@ class RawSynchronousFlyteClient(object):
         This returns a page of identifiers for the workflows for a given project and domain. Filters can also be
         specified.
 
-        .. note ::
+        > [!NOTE]
+        > The name field in the WorkflowListRequest is ignored.
 
-            The name field in the WorkflowListRequest is ignored.
-
-        .. note ::
-
-            This is a paginated API.  Use the token field in the request to specify a page offset token.
+        > [!NOTE]
+        > This is a paginated API.  Use the token field in the request to specify a page offset token.
             The user of the API is responsible for providing this token.
 
-        .. note ::
-
-            If entries are added to the database between requests for different pages, it is possible to receive
+        > [!NOTE]
+        > If entries are added to the database between requests for different pages, it is possible to receive
             entries on the second page that also appeared on the first.
 
         :param: flyteidl.admin.common_pb2.NamedEntityIdentifierListRequest identifier_list_request:
@@ -228,14 +228,12 @@ class RawSynchronousFlyteClient(object):
         This returns a page of workflow meta-information for workflows in a given project and domain.  Optionally,
         specifying a name will limit the results to only workflows with that name in the given project and domain.
 
-        .. note ::
-
-            This is a paginated API.  Use the token field in the request to specify a page offset token.
+        > [!NOTE]
+        > This is a paginated API.  Use the token field in the request to specify a page offset token.
             The user of the API is responsible for providing this token.
 
-        .. note ::
-
-            If entries are added to the database between requests for different pages, it is possible to receive
+        > [!NOTE]
+        > If entries are added to the database between requests for different pages, it is possible to receive
             entries on the second page that also appeared on the first.
 
         :param: flyteidl.admin.common_pb2.ResourceListRequest resource_list_request:
@@ -265,9 +263,8 @@ class RawSynchronousFlyteClient(object):
         This will create a launch plan definition in the Admin database.  Once successful, the launch plan object can be
         retrieved via the client or viewed via the UI or command-line interfaces.
 
-        .. note ::
-
-            Overwrites are not supported so any request for a given project, domain, name, and version that exists in
+        > [!NOTE]
+        > Overwrites are not supported so any request for a given project, domain, name, and version that exists in
             the database must match the existing definition exactly.  This also means that as long as the request
             remains identical, calling this method multiple times will result in success.
 
@@ -519,6 +516,21 @@ class RawSynchronousFlyteClient(object):
         :rtype: flyteidl.admin.project_pb2.ProjectUpdateResponse
         """
         return self._stub.UpdateProject(project, metadata=self._metadata)
+
+    ####################################################################################################################
+    #
+    #  Domain Endpoints
+    #
+    ####################################################################################################################
+
+    def get_domains(self):
+        """
+        This will return a list of domains registered with the Flyte Admin Service
+        :param flyteidl.admin.project_pb2.GetDomainRequest get_domain_request:
+        :rtype: flyteidl.admin.project_pb2.GetDomainsResponse
+        """
+        get_domain_request = GetDomainRequest()
+        return self._stub.GetDomains(get_domain_request, metadata=self._metadata)
 
     ####################################################################################################################
     #

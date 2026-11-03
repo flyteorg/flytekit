@@ -5,19 +5,19 @@
    :template: custom.rst
    :toctree: generated/
 
-   BatchEndpointAgent
+   BatchEndpointConnector
    BatchEndpointTask
    BatchResult
    DownloadJSONFilesTask
    UploadJSONLFileTask
    OpenAIFileConfig
    create_batch
-   ChatGPTAgent
+   ChatGPTConnector
    ChatGPTTask
 """
 
-from .batch.agent import BatchEndpointAgent
+from .batch.connector import BatchEndpointConnector
 from .batch.task import BatchEndpointTask, BatchResult, DownloadJSONFilesTask, OpenAIFileConfig, UploadJSONLFileTask
 from .batch.workflow import create_batch
-from .chatgpt.agent import ChatGPTAgent
+from .chatgpt.connector import ChatGPTConnector
 from .chatgpt.task import ChatGPTTask

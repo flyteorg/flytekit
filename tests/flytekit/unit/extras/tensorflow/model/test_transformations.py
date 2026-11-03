@@ -39,7 +39,7 @@ def get_tf_model() -> tf.keras.Model:
 )
 def test_get_literal_type(transformer, python_type, format):
     lt = transformer.get_literal_type(python_type)
-    assert lt == LiteralType(blob=BlobType(format=format, dimensionality=BlobType.BlobDimensionality.MULTIPART))
+    assert lt == LiteralType(blob=BlobType(format=format, dimensionality=BlobType.BlobDimensionality.SINGLE))
 
 
 @pytest.mark.parametrize(
@@ -58,7 +58,7 @@ def test_to_python_value_and_literal(transformer, python_type, format, python_va
     assert lv.scalar.blob.metadata == BlobMetadata(
         type=BlobType(
             format=format,
-            dimensionality=BlobType.BlobDimensionality.MULTIPART,
+            dimensionality=BlobType.BlobDimensionality.SINGLE,
         )
     )
     assert lv.scalar.blob.uri is not None

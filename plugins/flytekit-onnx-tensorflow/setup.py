@@ -9,6 +9,8 @@ plugin_requires = ["flytekit>=1.3.0b2,<2.0.0", "tf2onnx>=1.9.3", "tensorflow>=2.
 __version__ = "0.0.0+develop"
 
 setup(
+    title="ONNX TensorFlow",
+    title_expanded="Flytekit ONNX TensorFlow Plugin",
     name=f"flytekitplugins-{PLUGIN_NAME}",
     version=__version__,
     author="flyteorg",

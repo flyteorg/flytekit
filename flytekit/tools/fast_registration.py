@@ -17,6 +17,12 @@ from typing import List, Optional, Union
 
 import click
 from rich import print as rich_print
+from rich.progress import (
+    BarColumn,
+    Progress,
+    TextColumn,
+    TimeElapsedColumn,
+)
 from rich.tree import Tree
 
 from flytekit.constants import CopyFileDetection
@@ -24,7 +30,7 @@ from flytekit.core.context_manager import FlyteContextManager
 from flytekit.core.python_auto_container import PICKLE_FILE_PATH
 from flytekit.core.utils import timeit
 from flytekit.exceptions.user import FlyteDataNotFoundException
-from flytekit.loggers import logger
+from flytekit.loggers import is_display_progress_enabled, logger
 from flytekit.tools.ignore import DockerIgnore, FlyteIgnore, GitIgnore, Ignore, IgnoreGroup, StandardIgnore
 from flytekit.tools.script_mode import _filehash_update, _pathhash_update, ls_files, tar_strip_file_attributes
 
@@ -120,6 +126,18 @@ def fast_package(
     if options and (
         options.copy_style == CopyFileDetection.LOADED_MODULES or options.copy_style == CopyFileDetection.ALL
     ):
+        create_tarball_progress = Progress(
+            TimeElapsedColumn(),
+            TextColumn("[progress.description]{task.description}."),
+            BarColumn(),
+            TextColumn("{task.fields[files_added_progress]}"),
+        )
+
+        compress_tarball_progress = Progress(
+            TimeElapsedColumn(),
+            TextColumn("[progress.description]{task.description}"),
+        )
+
         ls, ls_digest = ls_files(str(source), options.copy_style, deref_symlinks, ignore)
         logger.debug(f"Hash digest: {ls_digest}")
 
@@ -130,13 +148,30 @@ def fast_package(
         archive_fname = f"{FAST_PREFIX}{ls_digest}{FAST_FILEENDING}"
         if output_dir is None:
             output_dir = tempfile.mkdtemp()
-            click.secho(f"No output path provided, using a temporary directory at {output_dir} instead", fg="yellow")
+            click.secho(
+                f"No output path provided, using a temporary directory at {output_dir} instead",
+                fg="yellow",
+            )
         archive_fname = os.path.join(output_dir, archive_fname)
 
+        # add the tarfile task to progress and start it
+        total_files = len(ls)
+        files_processed = 0
+        tar_task = create_tarball_progress.add_task(
+            f"Creating tarball with [{total_files}] files...",
+            total=total_files,
+            files_added_progress=f"{files_processed}/{total_files} files",
+        )
+
+        if is_display_progress_enabled():
+            create_tarball_progress.start()
+
+        create_tarball_progress.start_task(tar_task)
         with tempfile.TemporaryDirectory() as tmp_dir:
             tar_path = os.path.join(tmp_dir, "tmp.tar")
             with tarfile.open(tar_path, "w", dereference=deref_symlinks) as tar:
                 for ws_file in ls:
+                    files_processed = files_processed + 1
                     rel_path = os.path.relpath(ws_file, start=source)
                     tar.add(
                         os.path.join(source, ws_file),
@@ -145,7 +180,34 @@ def fast_package(
                         filter=lambda x: tar_strip_file_attributes(x),
                     )
 
+                    create_tarball_progress.update(
+                        tar_task,
+                        advance=1,
+                        description=f"Added file {rel_path}",
+                        refresh=True,
+                        files_added_progress=f"{files_processed}/{total_files} files",
+                    )
+
+            create_tarball_progress.stop_task(tar_task)
+            if is_display_progress_enabled():
+                create_tarball_progress.stop()
+                compress_tarball_progress.start()
+
+            tpath = pathlib.Path(tar_path)
+            size_mbs = tpath.stat().st_size / 1024 / 1024
+            compress_task = compress_tarball_progress.add_task(f"Compressing tarball size {size_mbs:.2f}MB...", total=1)
+            compress_tarball_progress.start_task(compress_task)
             compress_tarball(tar_path, archive_fname)
+            arpath = pathlib.Path(archive_fname)
+            asize_mbs = arpath.stat().st_size / 1024 / 1024
+            compress_tarball_progress.update(
+                compress_task,
+                advance=1,
+                description=f"Tarball {size_mbs:.2f}MB compressed to {asize_mbs:.2f}MB",
+            )
+            compress_tarball_progress.stop_task(compress_task)
+            if is_display_progress_enabled():
+                compress_tarball_progress.stop()
 
     # Original tar command - This condition to be removed in the future after serialize is removed.
     else:

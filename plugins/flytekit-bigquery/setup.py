@@ -9,11 +9,14 @@ plugin_requires = [
     "google-cloud-bigquery>=3.21.0",
     "google-cloud-bigquery-storage>=2.25.0",
     "flyteidl>1.10.7",
+    "numpy<2",
 ]
 
 __version__ = "0.0.0+develop"
 
 setup(
+    title="Bigquery",
+    title_expanded="Flytekit BigQuery Plugin",
     name=microlib_name,
     version=__version__,
     author="flyteorg",

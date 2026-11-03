@@ -1,3 +1,4 @@
+import inspect
 import pathlib
 from typing import Type, TypeVar
 
@@ -13,6 +14,9 @@ T = TypeVar("T")
 
 
 class PyTorchTypeTransformer(TypeTransformer[T]):
+    # Extra kwargs forwarded to torch.load. Tensors load fine with torch's safe default.
+    TORCH_LOAD_KWARGS: dict = {}
+
     def get_literal_type(self, t: Type[T]) -> LiteralType:
         return LiteralType(
             blob=_core_types.BlobType(
@@ -63,7 +67,7 @@ class PyTorchTypeTransformer(TypeTransformer[T]):
             map_location = torch.device("cpu")
 
         # load pytorch tensor/module from a file
-        return torch.load(local_path, map_location=map_location)
+        return torch.load(local_path, map_location=map_location, **self.TORCH_LOAD_KWARGS)
 
 
 class PyTorchTensorTransformer(PyTorchTypeTransformer[torch.Tensor]):
@@ -85,6 +89,9 @@ class PyTorchTensorTransformer(PyTorchTypeTransformer[torch.Tensor]):
 
 class PyTorchModuleTransformer(PyTorchTypeTransformer[torch.nn.Module]):
     PYTORCH_FORMAT = "PyTorchModule"
+    # A whole nn.Module is pickled, so it cannot be loaded with weights_only=True (the torch>=2.6 default).
+    # torch<1.13 has no weights_only kwarg at all, so only pass it when it exists.
+    TORCH_LOAD_KWARGS = {"weights_only": False} if "weights_only" in inspect.signature(torch.load).parameters else {}
 
     def __init__(self):
         super().__init__(name="PyTorch Module", t=torch.nn.Module)

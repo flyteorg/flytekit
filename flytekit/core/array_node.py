@@ -9,7 +9,7 @@ from flytekit.core.interface import (
     transform_interface_to_list_interface,
     transform_interface_to_typed_interface,
 )
-from flytekit.core.launch_plan import LaunchPlan
+from flytekit.core.launch_plan import LaunchPlan, ReferenceLaunchPlan
 from flytekit.core.node import Node
 from flytekit.core.promise import (
     Promise,
@@ -41,6 +41,7 @@ class ArrayNode:
         min_successes: Optional[int] = None,
         min_success_ratio: Optional[float] = None,
         metadata: Optional[_workflow_model.NodeMetadata] = None,
+        run_all_sub_nodes: bool = False,
     ):
         """
         :param target: The target Flyte entity to map over
@@ -52,11 +53,13 @@ class ArrayNode:
             min_success_ratio
         :param min_success_ratio: The minimum ratio of successful executions.
         :param metadata: The metadata for the underlying node
+        :param run_all_sub_nodes: If True, all sub-nodes will run to completion even after the failure threshold is met
         """
         from flytekit.remote import FlyteLaunchPlan
 
         self.target = target
         self._concurrency = concurrency
+        self._run_all_sub_nodes = run_all_sub_nodes
         self.id = target.name
         self._bindings = bindings or []
         self.metadata = metadata
@@ -79,16 +82,22 @@ class ArrayNode:
 
         # TODO - bound inputs are not supported at the moment
         self._bound_inputs: Set[str] = set()
+        self._excluded_inputs: Set[str] = set()
+        # rely on user defined workflow interface since we don't fetch reference launch plans from admin
+        if isinstance(target, (LaunchPlan, FlyteLaunchPlan)) and not isinstance(target, ReferenceLaunchPlan):
+            self._excluded_inputs = set(target.fixed_inputs.literals)
 
         output_as_list_of_optionals = min_success_ratio is not None and min_success_ratio != 1 and n_outputs == 1
 
         self._remote_interface = None
         if self.target.python_interface:
             self._python_interface = transform_interface_to_list_interface(
-                self.target.python_interface, self._bound_inputs, output_as_list_of_optionals
+                self.target.python_interface, self._bound_inputs, self._excluded_inputs, output_as_list_of_optionals
             )
         elif self.target.interface:
-            self._remote_interface = self.target.interface.transform_interface_to_list()
+            self._remote_interface = self.target.interface.transform_interface_to_list(
+                self._bound_inputs, self._excluded_inputs
+            )
         else:
             raise ValueError("No interface found for the target entity.")
 
@@ -221,12 +230,20 @@ class ArrayNode:
         return self._concurrency
 
     @property
+    def run_all_sub_nodes(self) -> bool:
+        return self._run_all_sub_nodes
+
+    @property
     def execution_mode(self) -> _core_workflow.ArrayNode.ExecutionMode:
         return self._execution_mode
 
     @property
     def is_original_sub_node_interface(self) -> bool:
         return True
+
+    @property
+    def bound_inputs(self) -> Set[str]:
+        return set()
 
     def __call__(self, *args, **kwargs):
         if not self._bindings:
@@ -265,6 +282,7 @@ def array_node(
     concurrency: Optional[int] = None,
     min_success_ratio: Optional[float] = None,
     min_successes: Optional[int] = None,
+    run_all_sub_nodes: bool = False,
 ):
     """
     ArrayNode implementation that maps over tasks and other Flyte entities
@@ -277,6 +295,7 @@ def array_node(
     :param min_successes: The minimum number of successful executions. If set, this takes precedence over
         min_success_ratio
     :param min_success_ratio: The minimum ratio of successful executions
+    :param run_all_sub_nodes: If True, all sub-nodes will run to completion even after the failure threshold is met
     :return: A callable function that takes in keyword arguments and returns a Promise created by
         flyte_entity_call_handler
     """
@@ -290,6 +309,7 @@ def array_node(
         concurrency=concurrency,
         min_successes=min_successes,
         min_success_ratio=min_success_ratio,
+        run_all_sub_nodes=run_all_sub_nodes,
     )
 
     return node

@@ -41,6 +41,8 @@ class ArrayNodeMapTask(PythonTask):
         min_successes: Optional[int] = None,
         min_success_ratio: Optional[float] = None,
         bound_inputs: Optional[Set[str]] = None,
+        bound_inputs_values: Optional[Dict[str, Any]] = None,
+        run_all_sub_nodes: bool = False,
         **kwargs,
     ):
         """
@@ -49,14 +51,12 @@ class ArrayNodeMapTask(PythonTask):
         :param min_successes: The minimum number of successful executions
         :param min_success_ratio: The minimum ratio of successful executions
         :param bound_inputs: The set of inputs that should be bound to the map task
+        :param bound_inputs_values: Inputs that are bound to the array node and will not be mapped over
+        :param run_all_sub_nodes: If True, all sub-nodes will run to completion even after the failure threshold is met
         :param kwargs: Additional keyword arguments to pass to the base class
         """
         self._partial = None
         if isinstance(python_function_task, functools.partial):
-            # TODO: We should be able to support partial tasks with lists as inputs
-            for arg in python_function_task.keywords.values():
-                if isinstance(arg, list):
-                    raise ValueError("Cannot use a partial task with lists as inputs")
             self._partial = python_function_task
             actual_task = self._partial.func
         else:
@@ -78,14 +78,25 @@ class ArrayNodeMapTask(PythonTask):
         if n_outputs > 1:
             raise ValueError("Only tasks with a single output are supported in map tasks.")
 
+        # Note, bound_inputs are passed in during run time when executing the task
+        # so both values shouldn't be set at the same time
+        if bound_inputs and bound_inputs_values:
+            if bound_inputs != set(bound_inputs_values):
+                raise ValueError("bound_inputs and bound_inputs_values should have the same keys if both set")
+
         self._bound_inputs: Set[str] = bound_inputs or set(bound_inputs) if bound_inputs else set()
         if self._partial:
             self._bound_inputs.update(self._partial.keywords.keys())
 
+        self._bound_inputs_values: Dict[str, Any] = bound_inputs_values or {}
+        if self._bound_inputs_values:
+            # bounded input values override any collisions w/ partials
+            self._bound_inputs.update(set(self._bound_inputs_values))
+
         # Transform the interface to List[Optional[T]] in case `min_success_ratio` is set
         output_as_list_of_optionals = min_success_ratio is not None and min_success_ratio != 1 and n_outputs == 1
         collection_interface = transform_interface_to_list_interface(
-            actual_task.python_interface, self._bound_inputs, output_as_list_of_optionals
+            actual_task.python_interface, self._bound_inputs, set(), output_as_list_of_optionals
         )
 
         self._run_task: Union[PythonFunctionTask, PythonInstanceTask] = actual_task  # type: ignore
@@ -104,6 +115,7 @@ class ArrayNodeMapTask(PythonTask):
         self._concurrency: Optional[int] = concurrency
         self._min_successes: Optional[int] = min_successes
         self._min_success_ratio: Optional[float] = min_success_ratio
+        self._run_all_sub_nodes: bool = run_all_sub_nodes
         self._collection_interface = collection_interface
 
         self._execution_mode: _core_workflow.ArrayNode.ExecutionMode = _core_workflow.ArrayNode.FULL_STATE
@@ -128,6 +140,9 @@ class ArrayNodeMapTask(PythonTask):
             **kwargs,
         )
 
+        self.sub_node_metadata: NodeMetadata = super().construct_node_metadata()
+        self.sub_node_metadata._name = self.name
+
     @property
     def name(self) -> str:
         return self._name
@@ -137,15 +152,12 @@ class ArrayNodeMapTask(PythonTask):
         return self._collection_interface
 
     def construct_node_metadata(self) -> NodeMetadata:
-        # TODO: add support for other Flyte entities
+        """
+        This returns metadata for the parent ArrayNode, not the sub-node getting mapped over
+        """
         return NodeMetadata(
             name=self.name,
         )
-
-    def construct_sub_node_metadata(self) -> NodeMetadata:
-        nm = super().construct_node_metadata()
-        nm._name = self.name
-        return nm
 
     @property
     def min_success_ratio(self) -> Optional[float]:
@@ -158,6 +170,10 @@ class ArrayNodeMapTask(PythonTask):
     @property
     def concurrency(self) -> Optional[int]:
         return self._concurrency
+
+    @property
+    def run_all_sub_nodes(self) -> bool:
+        return self._run_all_sub_nodes
 
     @property
     def python_function_task(self) -> Union[PythonFunctionTask, PythonInstanceTask]:
@@ -247,6 +263,8 @@ class ArrayNodeMapTask(PythonTask):
         if self._partial:
             """If partial exists, then mix-in all partial values"""
             kwargs = {**self._partial.keywords, **kwargs}
+        # bounded input values override any collisions w/ partials
+        kwargs.update(self._bound_inputs_values)
         return super().__call__(*args, **kwargs)
 
     def _literal_map_to_python_input(
@@ -374,6 +392,7 @@ def map_task(
     concurrency: Optional[int] = None,
     min_successes: Optional[int] = None,
     min_success_ratio: float = 1.0,
+    run_all_sub_nodes: bool = False,
     **kwargs,
 ):
     """
@@ -387,6 +406,7 @@ def map_task(
         array node will inherit parallelism from the workflow
     :param min_successes: The minimum number of successful executions
     :param min_success_ratio: The minimum ratio of successful executions
+    :param run_all_sub_nodes: If True, all sub-nodes will run to completion even after the failure threshold is met
     """
     from flytekit.remote import FlyteLaunchPlan
 
@@ -396,12 +416,14 @@ def map_task(
             concurrency=concurrency,
             min_successes=min_successes,
             min_success_ratio=min_success_ratio,
+            run_all_sub_nodes=run_all_sub_nodes,
         )
     return array_node_map_task(
         task_function=target,
         concurrency=concurrency,
         min_successes=min_successes,
         min_success_ratio=min_success_ratio,
+        run_all_sub_nodes=run_all_sub_nodes,
         **kwargs,
     )
 
@@ -411,13 +433,14 @@ def array_node_map_task(
     concurrency: Optional[int] = None,
     # TODO why no min_successes?
     min_success_ratio: float = 1.0,
+    run_all_sub_nodes: bool = False,
     **kwargs,
 ):
     """Map task that uses the ``ArrayNode`` construct..
 
-    .. important::
+    > [!IMPORTANT]
 
-       This is an experimental drop-in replacement for :py:func:`~flytekit.map_task`.
+    > This is an experimental drop-in replacement for `flytekit.map_task`.
 
     :param task_function: This argument is implicitly passed and represents the repeatable function
     :param concurrency: If specified, this limits the number of mapped tasks than can run in parallel to the given batch
@@ -426,8 +449,15 @@ def array_node_map_task(
         array node will inherit parallelism from the workflow
     :param min_success_ratio: If specified, this determines the minimum fraction of total jobs which can complete
         successfully before terminating this task and marking it successful.
+    :param run_all_sub_nodes: If True, all sub-nodes will run to completion even after the failure threshold is met.
     """
-    return ArrayNodeMapTask(task_function, concurrency=concurrency, min_success_ratio=min_success_ratio, **kwargs)
+    return ArrayNodeMapTask(
+        task_function,
+        concurrency=concurrency,
+        min_success_ratio=min_success_ratio,
+        run_all_sub_nodes=run_all_sub_nodes,
+        **kwargs,
+    )
 
 
 class ArrayNodeMapTaskResolver(tracker.TrackedInstance, TaskResolverMixin):
@@ -443,14 +473,14 @@ class ArrayNodeMapTaskResolver(tracker.TrackedInstance, TaskResolverMixin):
     But in cases in which `j` is bound to a fixed value by using `functools.partial` we need a way to ensure that
     the interface is not simply interpolated, but only the unbound inputs are interpolated.
 
-        .. code-block:: python
+    ```python
+    def foo((i: int, j: str) -> str:
+        ...
 
-            def foo((i: int, j: str) -> str:
-                ...
+    mt = map_task(functools.partial(foo, j=10))
 
-            mt = map_task(functools.partial(foo, j=10))
-
-            print(mt.interface)
+    print(mt.interface)
+        ```
 
     output:
 

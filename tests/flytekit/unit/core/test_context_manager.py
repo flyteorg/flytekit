@@ -19,6 +19,7 @@ from flytekit.configuration import (
 )
 from flytekit.core import mock_stats, context_manager
 from flytekit.core.context_manager import ExecutionParameters, FlyteContext, FlyteContextManager, SecretsManager
+from flytekit.core.resources import ResourceSpec, Resources
 from flytekit.models.core import identifier as id_models
 
 
@@ -174,6 +175,19 @@ def test_secret_manager_no_group(monkeypatch):
     assert sec.get_secrets_file(key="ABC") == str(expected_path)
 
 
+def test_secret_no_group_required_with_group(monkeypatch, tmp_path):
+    plugin_mock = Mock()
+    plugin_mock.secret_requires_group.return_value = False
+    mock_global_plugin = {"plugin": plugin_mock}
+    monkeypatch.setattr(flytekit.configuration.plugin, "_GLOBAL_CONFIG", mock_global_plugin)
+
+    cfg = SecretsConfig.auto()
+    sec = SecretsManager(secrets_cfg=cfg)
+    monkeypatch.setenv(f"{cfg.env_prefix}MY-GROUP_V1_ABC", "my-super-secret")
+
+    assert sec.get(key="ABC", group="my-group", group_version="v1") == "my-super-secret"
+
+
 def test_secrets_manager_get_file():
     sec = SecretsManager()
     cfg = SecretsConfig.auto()
@@ -288,6 +302,7 @@ def test_serialization_settings_transport():
         domain="domain",
         version="version",
         env={"hello": "blah"},
+        default_resources=ResourceSpec(requests=Resources(cpu="1", mem="2Gi"), limits=Resources(cpu="1", mem="2Gi")),
         image_config=ImageConfig(
             default_image=default_img,
             images=[default_img],
@@ -309,7 +324,7 @@ def test_serialization_settings_transport():
     ss = SerializationSettings.from_transport(tp)
     assert ss is not None
     assert ss == serialization_settings
-    assert len(tp) == 408
+    assert len(tp) == 480
 
 
 def test_exec_params():
@@ -325,3 +340,5 @@ def test_exec_params():
     )
 
     assert ep.task_id.name == "local"
+    ep_str = str(ep)
+    assert ep_str.startswith("ExecutionParameters(")

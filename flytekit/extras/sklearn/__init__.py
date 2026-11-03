@@ -1,11 +1,5 @@
 """
-.. currentmodule:: flytekit.extras.sklearn
-
-.. autosummary::
-   :template: custom.rst
-   :toctree: generated/
-
-   SklearnEstimatorTransformer
+This module provides functionality related to Scikit-learn
 """
 
 from flytekit.loggers import logger

@@ -8,7 +8,7 @@ from flytekit.models import common as _common
 
 class WorkflowExecutionPhase(object):
     """
-    This class holds enum values used for setting notifications. See :py:class:`flytekit.Email`
+    This class holds enum values used for setting notifications. See {{< py_class_ref flytekit.Email >}}
     for sample usage.
     """
 

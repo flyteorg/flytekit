@@ -136,3 +136,29 @@ def test_task_shared_memory(
 
             assert no_shm_volume_condition
             assert no_shm_volume_mount_condition
+
+
+def test_native_task_arg():
+    """Test that no shared memory volume mount is added if it is configured via the task decorator itself."""
+
+    @task(
+        # Has precedence ...
+        shared_memory=True,
+        # ... over this
+        task_config=Elastic(nnodes=2, increase_shared_mem=True),
+    )
+    def test_task() -> None:
+        pass
+
+    assert test_task.pod_template is None
+
+    @task(
+        # Has precedence ...
+        shared_memory=True,
+        # ... over this
+        task_config=PyTorch(num_workers=3, increase_shared_mem=True),
+    )
+    def test_task_pytorch() -> None:
+        pass
+
+    assert test_task_pytorch.pod_template is None

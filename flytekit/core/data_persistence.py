@@ -1,24 +1,11 @@
 """
-======================================
-:mod:`flytekit.core.data_persistence`
-======================================
-
-.. currentmodule:: flytekit.core.data_persistence
-
 The Data persistence module is used by core flytekit and most of the core TypeTransformers to manage data fetch & store,
 between the durable backend store and the runtime environment. This is designed to be a pluggable system, with a default
 simple implementation that ships with the core.
-
-.. autosummary::
-   :toctree: generated/
-   :template: custom.rst
-   :nosignatures:
-
-   FileAccessProvider
-
 """
 
 import asyncio
+import importlib
 import io
 import os
 import pathlib
@@ -31,6 +18,8 @@ from uuid import UUID
 import fsspec
 from decorator import decorator
 from fsspec.asyn import AsyncFileSystem
+from fsspec.registry import known_implementations as fsspec_known_implementations
+from fsspec.registry import registry as fsspec_registry
 from fsspec.utils import get_protocol
 from typing_extensions import Unpack
 
@@ -52,6 +41,10 @@ _ANON = "anon"
 
 Uploadable = typing.Union[str, os.PathLike, pathlib.Path, bytes, io.BufferedReader, io.BytesIO, io.StringIO]
 
+# This is the default chunk size flytekit will use for writing to S3 and GCS. This is set to 25MB by default and is
+# configurable by the user if needed. This is used when put() is called on filesystems.
+_WRITE_SIZE_CHUNK_BYTES = int(os.environ.get("_F_P_WRITE_CHUNK_SIZE", "26214400"))  # 25 * 2**20
+
 
 def s3_setup_args(s3_cfg: configuration.S3Config, anonymous: bool = False) -> Dict[str, Any]:
     kwargs: Dict[str, Any] = {
@@ -66,6 +59,9 @@ def s3_setup_args(s3_cfg: configuration.S3Config, anonymous: bool = False) -> Di
     # S3fs takes this as a special arg
     if s3_cfg.endpoint is not None:
         kwargs["client_kwargs"] = {"endpoint_url": s3_cfg.endpoint}
+
+    if s3_cfg.adressing_style:
+        kwargs["config_kwargs"] = {"s3": {"addressing_style": "virtual"}}
 
     if anonymous:
         kwargs[_ANON] = True
@@ -106,6 +102,50 @@ def get_fsspec_storage_options(
     if protocol in ("abfs", "abfss"):
         return {**azure_setup_args(data_config.azure, anonymous=anonymous), **kwargs}
     return {}
+
+
+# Protocols whose fsspec implementation flytekit passes implementation-specific kwargs to (s3fs, gcsfs, adlfs).
+_CANONICAL_FS_PROTOCOLS = ("s3", "gs", "abfs", "abfss")
+
+
+def _canonical_fs_class(protocol: str) -> type:
+    """
+    Returns the fsspec implementation to use for the protocol. flytekit relies on the constructor and call kwargs
+    of fsspec's default implementations (e.g. s3fs.S3FileSystem for s3, and ContentType on put), so a registered
+    implementation is only used if it extends the default one, as flytekitplugins-async-fsspec does. Otherwise,
+    e.g. when another library has registered an unrelated implementation with clobber=True, the default is used.
+    """
+    impl = fsspec_known_implementations[protocol]
+    module_name, class_name = impl["class"].rsplit(".", 1)
+    try:
+        default_cls = getattr(importlib.import_module(module_name), class_name)
+    except ImportError as e:
+        raise ImportError(impl.get("err")) from e
+    registered_cls = fsspec_registry.get(protocol)
+    if registered_cls is not None and issubclass(registered_cls, default_cls):
+        return registered_cls
+    return default_cls
+
+
+def get_additional_fsspec_call_kwargs(protocol: typing.Union[str, tuple], method_name: str) -> Dict[str, Any]:
+    """
+    These are different from the setup args functions defined above. Those kwargs are applied when asking fsspec
+    to create the filesystem. These kwargs returned here are for when the filesystem's methods are invoked.
+
+    :param protocol: s3, gcs, etc.
+    :param method_name: Pass in the __name__ of the fsspec.filesystem function. _'s will be ignored.
+    """
+    kwargs = {}
+    method_name = method_name.replace("_", "")
+    if isinstance(protocol, tuple):
+        protocol = protocol[0]
+
+    # For s3fs and gcsfs, we feel the default chunksize of 50MB is too big.
+    # Re-evaluate these kwargs when we move off of s3fs to obstore.
+    if method_name == "put" and protocol in ["s3", "gs"]:
+        kwargs["chunksize"] = _WRITE_SIZE_CHUNK_BYTES
+
+    return kwargs
 
 
 @decorator
@@ -199,11 +239,11 @@ class FileAccessProvider(object):
         elif protocol == "s3":
             s3kwargs = s3_setup_args(self._data_config.s3, anonymous=anonymous)
             s3kwargs.update(kwargs)
-            return fsspec.filesystem(protocol, **s3kwargs)  # type: ignore
+            return _canonical_fs_class(protocol)(**s3kwargs)  # type: ignore
         elif protocol == "gs":
             if anonymous:
                 kwargs["token"] = _ANON
-            return fsspec.filesystem(protocol, **kwargs)  # type: ignore
+            return _canonical_fs_class(protocol)(**kwargs)  # type: ignore
         elif protocol == "ftp":
             kwargs.update(fsspec.implementations.ftp.FTPFileSystem._get_kwargs_from_urls(path))
             return fsspec.filesystem(protocol, **kwargs)
@@ -213,6 +253,8 @@ class FileAccessProvider(object):
         )
         kwargs.update(storage_options)
 
+        if protocol in _CANONICAL_FS_PROTOCOLS:
+            return _canonical_fs_class(protocol)(**kwargs)
         return fsspec.filesystem(protocol, **kwargs)
 
     async def get_async_filesystem_for_path(
@@ -353,6 +395,10 @@ class FileAccessProvider(object):
             if "metadata" not in kwargs:
                 kwargs["metadata"] = {}
             kwargs["metadata"].update(self._execution_metadata)
+
+        additional_kwargs = get_additional_fsspec_call_kwargs(file_system.protocol, file_system.put.__name__)
+        kwargs.update(additional_kwargs)
+
         if isinstance(file_system, AsyncFileSystem):
             dst = await file_system._put(from_path, to_path, recursive=recursive, **kwargs)  # pylint: disable=W0212
         else:
@@ -383,7 +429,7 @@ class FileAccessProvider(object):
         If lpath is a streamable, then it can only be a single file.
 
         Writes to:
-            <raw output prefix>/<upload_prefix>/<file_name>
+            {raw output prefix}/{upload_prefix}/{file_name}
 
         :param lpath: A file-like object or a string path
         :param upload_prefix: A prefix to add to the path, see above for usage, can be an "". If None then a random

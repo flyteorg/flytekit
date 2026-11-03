@@ -1,12 +1,5 @@
 """
-.. currentmodule:: flytekit.extras.tensorflow
-
-.. autosummary::
-   :template: custom.rst
-   :toctree: generated/
-
-   TensorFlowRecordFileTransformer
-   TensorFlowRecordsDirTransformer
+This module provides functionality related to Tensorflow
 """
 
 from flytekit.loggers import logger

@@ -5,7 +5,7 @@ from flytekit import ImageSpec, kwtypes
 from flytekit.configuration import SerializationSettings
 from flytekit.core.base_task import PythonTask
 from flytekit.core.interface import Interface
-from flytekit.extend.backend.base_agent import SyncAgentExecutorMixin
+from flytekit.extend.backend.base_connector import SyncConnectorExecutorMixin
 from flytekit.image_spec.image_spec import ImageBuildEngine
 
 
@@ -18,7 +18,7 @@ class BotoConfig(object):
     images: Optional[Dict[str, Union[str, ImageSpec]]] = None
 
 
-class BotoTask(SyncAgentExecutorMixin, PythonTask[BotoConfig]):
+class BotoTask(SyncConnectorExecutorMixin, PythonTask[BotoConfig]):
     _TASK_TYPE = "boto"
 
     def __init__(

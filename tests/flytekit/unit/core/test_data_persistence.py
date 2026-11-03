@@ -1,3 +1,4 @@
+import importlib
 import io
 import os
 import pathlib
@@ -10,9 +11,10 @@ import fsspec
 import mock
 import pytest
 from azure.identity import ClientSecretCredential, DefaultAzureCredential
+from mock import AsyncMock
 
 from flytekit.configuration import Config
-from flytekit.core.data_persistence import FileAccessProvider
+from flytekit.core.data_persistence import FileAccessProvider, get_additional_fsspec_call_kwargs
 from flytekit.core.local_fsspec import FlyteLocalFileSystem
 
 
@@ -208,6 +210,104 @@ def test_get_file_system():
 
     fp = FileAccessProvider("/tmp", "s3://my-bucket")
     fp.get_filesystem("testgetfs", test_arg="test_arg")
+
+
+@pytest.fixture
+def restore_fsspec_registry():
+    from fsspec.registry import _registry
+
+    saved = dict(_registry)
+    yield
+    _registry.clear()
+    _registry.update(saved)
+
+
+class UnrelatedFileSystem(fsspec.AbstractFileSystem):
+    pass
+
+
+@pytest.mark.parametrize(
+    "protocol, kwargs",
+    [("s3", {}), ("gs", {"token": "anon"})],
+)
+def test_get_filesystem_ignores_unrelated_registered_implementation(restore_fsspec_registry, protocol, kwargs):
+    from fsspec.registry import known_implementations
+
+    module_name, class_name = known_implementations[protocol]["class"].rsplit(".", 1)
+    default_cls = getattr(importlib.import_module(module_name), class_name)
+    fsspec.register_implementation(protocol, UnrelatedFileSystem, clobber=True)
+
+    fp = FileAccessProvider("/tmp", "s3://my-bucket")
+    assert type(fp.get_filesystem(protocol, **kwargs)) is default_cls
+
+
+def test_get_filesystem_keeps_registered_subclass_of_default(restore_fsspec_registry):
+    from s3fs import S3FileSystem
+
+    class CustomS3FileSystem(S3FileSystem):
+        pass
+
+    fsspec.register_implementation("s3", CustomS3FileSystem, clobber=True)
+
+    fp = FileAccessProvider("/tmp", "s3://my-bucket")
+    assert type(fp.get_filesystem("s3")) is CustomS3FileSystem
+
+
+@pytest.mark.parametrize(
+    "protocol, put_target, content_type_kwarg",
+    [
+        ("s3", "s3fs.S3FileSystem._put", "ContentType"),
+        ("gs", "gcsfs.GCSFileSystem._put", "content_type"),
+    ],
+)
+def test_put_data_passes_content_type_with_unrelated_implementation(
+    restore_fsspec_registry, tmp_path, protocol, put_target, content_type_kwarg
+):
+    fsspec.register_implementation(protocol, UnrelatedFileSystem, clobber=True)
+    local_path = tmp_path / "deck.html"
+    local_path.write_text("<html></html>")
+
+    # The upload itself is mocked, so skip gcsfs's credential lookup, which is slow without GCP credentials.
+    with (
+        mock.patch("gcsfs.credentials.GoogleCredentials.connect"),
+        mock.patch(put_target, new_callable=AsyncMock) as mock_put,
+    ):
+        fp = FileAccessProvider("/tmp", f"{protocol}://my-bucket")
+        fp.put_data(str(local_path), f"{protocol}://my-bucket/deck.html", **{content_type_kwarg: "text/html"})
+
+    mock_put.assert_called_once()
+    assert mock_put.call_args.kwargs[content_type_kwarg] == "text/html"
+
+
+def test_get_additional_fsspec_call_kwargs():
+    with mock.patch("flytekit.core.data_persistence._WRITE_SIZE_CHUNK_BYTES", 12345):
+        kwargs = get_additional_fsspec_call_kwargs(("s3", "s3a"), "put")
+        assert kwargs == {"chunksize": 12345}
+
+        kwargs = get_additional_fsspec_call_kwargs("s3", "_put")
+        assert kwargs == {"chunksize": 12345}
+
+        kwargs = get_additional_fsspec_call_kwargs("s3", "get")
+        assert kwargs == {}
+
+
+@pytest.mark.asyncio
+@mock.patch("flytekit.core.data_persistence.FileAccessProvider.get_async_filesystem_for_path", new_callable=AsyncMock)
+@mock.patch("flytekit.core.data_persistence.get_additional_fsspec_call_kwargs")
+async def test_chunk_size(mock_call_kwargs, mock_get_fs):
+    mock_call_kwargs.return_value = {"chunksize": 1234}
+    mock_fs = mock.MagicMock()
+    mock_get_fs.return_value = mock_fs
+
+    mock_fs.protocol = ("s3", "s3a")
+    fp = FileAccessProvider("/tmp", "s3://container/path/within/container")
+
+    def put(*args, **kwargs):
+        assert "chunksize" in kwargs
+
+    mock_fs.put = put
+    upload_location = await fp._put("/tmp/foo", "s3://bar")
+    assert upload_location == "s3://bar"
 
 
 @pytest.mark.sandbox_test

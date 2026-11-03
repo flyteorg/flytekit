@@ -55,6 +55,10 @@ class AWS(object):
         LegacyConfigEntry(SECTION, "backoff_seconds", datetime.timedelta),
         transform=lambda x: datetime.timedelta(seconds=int(x)),
     )
+    S3_ADDRESSING_STYLE = ConfigEntry(
+        LegacyConfigEntry(SECTION, "addressing_style"),
+        YamlConfigEntry("storage.connection.addressing-style"),
+    )
 
 
 class GCP(object):
@@ -75,6 +79,27 @@ class Local(object):
     SECTION = "local"
     CACHE_ENABLED = ConfigEntry(LegacyConfigEntry(SECTION, "cache_enabled", bool))
     CACHE_OVERWRITE = ConfigEntry(LegacyConfigEntry(SECTION, "cache_overwrite", bool))
+    USER_PROJECT = ConfigEntry(
+        LegacyConfigEntry(
+            SECTION,
+            "project",
+        ),
+        YamlConfigEntry("task.project"),
+    )
+    USER_DOMAIN = ConfigEntry(
+        LegacyConfigEntry(
+            SECTION,
+            "domain",
+        ),
+        YamlConfigEntry("task.domain"),
+    )
+    USER_ORG = ConfigEntry(
+        LegacyConfigEntry(
+            SECTION,
+            "org",
+        ),
+        YamlConfigEntry("task.org"),
+    )
 
 
 class Credentials(object):
@@ -134,6 +159,11 @@ class Credentials(object):
     - 'basic', 'client_credentials' or 'clientSecret': This uses symmetric key auth in which the end user enters a
             client id and a client secret and public key encryption is used to facilitate authentication.
     - None: No auth will be attempted.
+    """
+
+    AUDIENCE = ConfigEntry(LegacyConfigEntry(SECTION, "audience"), YamlConfigEntry("admin.audience"))
+    """
+    This setting can be used to manually pass in the audience into authenticator flows.
     """
 
 

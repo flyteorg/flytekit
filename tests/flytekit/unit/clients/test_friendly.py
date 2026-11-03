@@ -9,7 +9,6 @@ from flytekit.clients.friendly import SynchronousFlyteClient as _SynchronousFlyt
 from flytekit.configuration import PlatformConfig
 from flytekit.models.project import Project as _Project
 
-
 @mock.patch("flytekit.clients.friendly._RawSynchronousFlyteClient.update_project")
 def test_update_project(mock_raw_update_project):
     client = _SynchronousFlyteClient(PlatformConfig.for_endpoint("a.b.com", True))

@@ -48,7 +48,23 @@ def test_container_image_conversion(mock_image_spec_builder):
         name="other3",
         fqn="xyz.com/other3",
     )
-    cfg = ImageConfig(default_image=default_img, images=[default_img, other_img, other_img2, other_img3])
+    other_img4 = Image(
+        name="other-4",
+        fqn="other4",
+        tag="tag4"
+    )
+    other_img5 = Image(
+        name="other_5",
+        fqn="xyz.com/other5",
+        tag="tag5"
+    )
+    # Simulates _parse_image_identifier("xyz.com/other6:tag6@sha256:...") where the tag is baked into fqn
+    other_img6 = Image(
+        name="other6",
+        fqn="xyz.com/other6:tag6",
+        digest="sha256:26c68657ccce2cb0a31b330cb0be2b5e108d467f641c62e13ab40cbec258c68d",
+    )
+    cfg = ImageConfig(default_image=default_img, images=[default_img, other_img, other_img2, other_img3, other_img4, other_img5, other_img6])
     assert get_registerable_container_image(None, cfg) == "xyz.com/abc:tag1"
     assert get_registerable_container_image("", cfg) == "xyz.com/abc:tag1"
     assert get_registerable_container_image("abc", cfg) == "abc"
@@ -68,10 +84,29 @@ def test_container_image_conversion(mock_image_spec_builder):
         get_registerable_container_image("{{.image.other2.fqn}}@{{.image.other2.version}}", cfg)
         == "xyz.com/other2@sha256:26c68657ccce2cb0a31b330cb0be2b5e108d467f641c62e13ab40cbec258c68d"
     )
+    # Digest image with : separator in template should be fixed to @
+    assert (
+        get_registerable_container_image("{{.image.other2.fqn}}:{{.image.other2.version}}", cfg)
+        == "xyz.com/other2@sha256:26c68657ccce2cb0a31b330cb0be2b5e108d467f641c62e13ab40cbec258c68d"
+    )
+    # repo:tag@sha256:digest — fqn already contains the tag, digest needs @ separator
+    assert (
+        get_registerable_container_image("{{.image.other6.fqn}}:{{.image.other6.version}}", cfg)
+        == "xyz.com/other6:tag6@sha256:26c68657ccce2cb0a31b330cb0be2b5e108d467f641c62e13ab40cbec258c68d"
+    )
     assert (
         get_registerable_container_image("{{.image.other3.fqn}}:{{.image.other3.version}}", cfg)
         == "xyz.com/other3:tag1"
     )
+    assert (
+        get_registerable_container_image("{{.image.other-4.fqn}}:{{.image.other-4.version}}", cfg)
+        == "other4:tag4"
+    )
+    assert (
+        get_registerable_container_image("{{.image.other_5.fqn}}:{{.image.other_5.version}}", cfg)
+        == "xyz.com/other5:tag5"
+    )
+
     assert get_registerable_container_image("{{.image.other.fqn}}", cfg) == "xyz.com/other"
     # Works with images instead of just image
     assert get_registerable_container_image("{{.images.other.fqn}}", cfg) == "xyz.com/other"
@@ -284,3 +319,17 @@ def test_default_inputs():
         return x
 
     assert foo3.python_interface.inputs_with_defaults == {"x": (int, None), "y": (str, None)}
+
+
+def test_k8s_metadata():
+    @task(
+        labels={"lkey": "lval"},
+        annotations={"akey": "aval"},
+    )
+    def func_with_k8s_meta(i: str):
+        ...
+
+    meta = func_with_k8s_meta.metadata
+
+    assert meta.labels == {"lkey": "lval"}
+    assert meta.annotations == {"akey": "aval"}
