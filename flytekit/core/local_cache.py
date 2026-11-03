@@ -7,13 +7,15 @@ from flytekit.models.literals import Literal, LiteralCollection
 from flytekit.models.literals import LiteralMap as ModelLiteralMap
 
 if TYPE_CHECKING:
-    from diskcache import Cache
+    from diskcache_community import Cache
 
 joblib = lazy_module("joblib")
 
 # Location on the filesystem where serialized objects will be stored
 # TODO: read from config
 CACHE_LOCATION = "~/.flyte/local-cache"
+
+_PICKLED_MODEL_MODULES = ("flytekit.models.literals", "flytekit.models.types", "flytekit.models.core.types")
 
 
 def _recursive_hash_placement(literal: Literal) -> Literal:
@@ -62,11 +64,13 @@ class LocalTaskCache(object):
 
     @staticmethod
     def initialize():
-        # Import diskcache here rather than at module level, so that importing flytekit
+        # Import diskcache_community here rather than at module level, so that importing flytekit
         # does not require it unless the local cache is actually used.
-        from diskcache import Cache
+        from diskcache_community import Cache, SafeDisk
+        from google.protobuf.struct_pb2 import Struct
 
-        LocalTaskCache._cache = Cache(CACHE_LOCATION)
+        disk = SafeDisk.with_types(Struct, modules=_PICKLED_MODEL_MODULES).with_options(on_error="miss")
+        LocalTaskCache._cache = Cache(CACHE_LOCATION, disk=disk)
         LocalTaskCache._initialized = True
 
     @staticmethod

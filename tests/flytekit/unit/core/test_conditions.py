@@ -494,6 +494,93 @@ def test_nested_condition_2():
     assert res == 20
 
 
+def test_nested_condition_runs_only_selected_branch():
+    executed = []
+
+    @task
+    def inner_if(n: float) -> float:
+        executed.append("inner_if")
+        return n
+
+    @task
+    def inner_else(n: float) -> float:
+        executed.append("inner_else")
+        return -n
+
+    @task
+    def outer_else(n: float) -> float:
+        executed.append("outer_else")
+        return 0.0
+
+    @workflow
+    def wf(my_input: float) -> float:
+        return (
+            conditional("outer")
+            .if_(my_input > 0.1)
+            .then(
+                conditional("inner")
+                .if_(my_input < 0.5)
+                .then(inner_if(n=my_input))
+                .else_()
+                .then(inner_else(n=my_input))
+            )
+            .else_()
+            .then(outer_else(n=my_input))
+        )
+
+    assert wf(my_input=0.6) == -0.6
+    assert executed == ["inner_else"]
+
+    executed.clear()
+    assert wf(my_input=0.3) == 0.3
+    assert executed == ["inner_if"]
+
+    executed.clear()
+    assert wf(my_input=0.0) == 0.0
+    assert executed == ["outer_else"]
+
+
+def test_condition_in_subworkflow_called_from_branch():
+    # https://github.com/flyteorg/flyte/issues/6426
+    executed = []
+
+    @task
+    def do_test() -> bool:
+        executed.append("do_test")
+        return False
+
+    @task
+    def do_nothing1() -> bool:
+        executed.append("do_nothing1")
+        return True
+
+    @task
+    def do_nothing2() -> bool:
+        executed.append("do_nothing2")
+        return True
+
+    @task
+    def do_nothing3() -> bool:
+        executed.append("do_nothing3")
+        return True
+
+    @workflow
+    def sub_workflow() -> bool:
+        some_test = do_test()
+        return conditional("inner").if_(some_test.is_true()).then(do_nothing1()).else_().then(do_nothing2())
+
+    @workflow
+    def top_workflow(input_value: bool) -> bool:
+        return conditional("outer").if_(input_value.is_true()).then(sub_workflow()).else_().then(do_nothing3())  # type: ignore
+
+    assert top_workflow(input_value=True) is True
+    assert executed == ["do_test", "do_nothing2"]
+
+    executed.clear()
+    assert top_workflow(input_value=False) is True
+    assert executed == ["do_nothing3"]
+
+
 def test_echo_in_condition():
     echo1 = Echo(name="echo", inputs={"a": typing.Optional[float]})
 
