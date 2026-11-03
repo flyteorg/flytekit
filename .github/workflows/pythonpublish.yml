@@ -73,6 +73,48 @@ jobs:
     outputs:
       version: ${{ steps.bump.outputs.version }}
 
+  # Tell unionai/unionai-docs to regenerate the v1 API reference for this release.
+  # The docs' v1 line is generated from flytekit's docstrings and today only picks a
+  # release up through a daily poll, so a release can take ~24h to appear. This is the
+  # same signal flyteorg/flyte-sdk sends for the v2 line.
+  #
+  # Auth: the "Unionai Docsy Bot" GitHub App is installed on unionai-docs only. This
+  # repo just holds its credentials as secrets and requests a token scoped to that one
+  # repo; nothing here grants access to this repository. Without the secrets the job
+  # warns and exits 0, and the docs' daily poll still catches the release, so this can
+  # never fail a publish.
+  notify-docs:
+    needs: [deploy]
+    if: always() && needs.deploy.result == 'success'
+    runs-on: ubuntu-latest
+    env:
+      DOCSY_BOT_APP_ID: ${{ secrets.DOCSY_BOT_APP_ID }}
+    steps:
+      - name: Mint docsy-bot App token for unionai-docs
+        id: app-token
+        if: ${{ env.DOCSY_BOT_APP_ID != '' }}
+        continue-on-error: true
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.DOCSY_BOT_APP_ID }}
+          private-key: ${{ secrets.DOCSY_BOT_PRIVATE_KEY }}
+          owner: unionai
+          repositories: unionai-docs
+      - name: Send repository_dispatch to unionai/unionai-docs
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          if [ -z "${GH_TOKEN}" ]; then
+            echo "::warning title=docs regen signal skipped::docsy-bot App not configured (DOCSY_BOT_APP_ID / DOCSY_BOT_PRIVATE_KEY). The unionai-docs daily poll will pick this release up instead."
+            exit 0
+          fi
+          VERSION="${GITHUB_REF#refs/tags/v}"
+          echo "Signaling unionai/unionai-docs to regenerate v1 API docs for flytekit ${VERSION}"
+          gh api repos/unionai/unionai-docs/dispatches \
+            -f event_type=flytekit-release \
+            -f 'client_payload[version]='"${VERSION}" \
+            || echo "::warning title=docs regen signal failed::repository_dispatch to unionai-docs failed. The daily poll will pick this release up instead."
+
   build-and-push-docker-images:
     runs-on: ubuntu-latest
     needs: deploy
