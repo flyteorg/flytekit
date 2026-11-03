@@ -653,8 +653,8 @@ def test_cache_old_version_of_literal_map():
     assert hasattr(loaded_literal_map.literals['o0'], "_offloaded_metadata") is True
 
 
-def test_import_flytekit_does_not_import_diskcache():
-    # Use a fresh interpreter, since other tests in this process may already have imported diskcache.
+def test_import_flytekit_does_not_import_diskcache_community():
+    # Use a fresh interpreter, since other tests in this process may already have imported diskcache_community.
     code = textwrap.dedent(
         """
         import sys
@@ -663,20 +663,20 @@ def test_import_flytekit_does_not_import_diskcache():
         import flytekit.clis.sdk_in_container.pyflyte
         import flytekit.core.base_task
 
-        assert "diskcache" not in sys.modules, "diskcache was imported when loading flytekit"
+        assert "diskcache_community" not in sys.modules, "diskcache_community was imported when loading flytekit"
         """
     )
     subprocess.run([sys.executable, "-c", code], check=True)
 
 
-def test_import_flytekit_without_diskcache():
-    # Setting sys.modules["diskcache"] to None makes "import diskcache" raise ImportError,
-    # which simulates an environment where diskcache is not installed.
+def test_import_flytekit_without_diskcache_community():
+    # Setting sys.modules["diskcache_community"] to None makes "import diskcache_community" raise ImportError,
+    # which simulates an environment where diskcache_community is not installed.
     code = textwrap.dedent(
         """
         import sys
 
-        sys.modules["diskcache"] = None
+        sys.modules["diskcache_community"] = None
 
         import flytekit
         from flytekit.core.local_cache import LocalTaskCache
@@ -686,7 +686,7 @@ def test_import_flytekit_without_diskcache():
         except ImportError:
             pass
         else:
-            raise AssertionError("LocalTaskCache.initialize() should fail without diskcache")
+            raise AssertionError("LocalTaskCache.initialize() should fail without diskcache_community")
         """
     )
     subprocess.run([sys.executable, "-c", code], check=True)
