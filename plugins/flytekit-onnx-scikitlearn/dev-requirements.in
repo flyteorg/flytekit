@@ -3,3 +3,5 @@ onnxruntime
 # np.long. CI forces numpy<2 for onnx, so cap scipy to its last numpy<2 line to avoid the
 # import-time crash that surfaces as "sklearn is not a package". See flyteorg/flyte#7604.
 scipy<1.18
+# pandas>=3 needs numpy>=2.0.2 at import time; see the scipy note above.
+pandas<3

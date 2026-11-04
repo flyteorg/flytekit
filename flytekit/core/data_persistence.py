@@ -5,6 +5,7 @@ simple implementation that ships with the core.
 """
 
 import asyncio
+import importlib
 import io
 import os
 import pathlib
@@ -17,6 +18,8 @@ from uuid import UUID
 import fsspec
 from decorator import decorator
 from fsspec.asyn import AsyncFileSystem
+from fsspec.registry import known_implementations as fsspec_known_implementations
+from fsspec.registry import registry as fsspec_registry
 from fsspec.utils import get_protocol
 from typing_extensions import Unpack
 
@@ -99,6 +102,29 @@ def get_fsspec_storage_options(
     if protocol in ("abfs", "abfss"):
         return {**azure_setup_args(data_config.azure, anonymous=anonymous), **kwargs}
     return {}
+
+
+# Protocols whose fsspec implementation flytekit passes implementation-specific kwargs to (s3fs, gcsfs, adlfs).
+_CANONICAL_FS_PROTOCOLS = ("s3", "gs", "abfs", "abfss")
+
+
+def _canonical_fs_class(protocol: str) -> type:
+    """
+    Returns the fsspec implementation to use for the protocol. flytekit relies on the constructor and call kwargs
+    of fsspec's default implementations (e.g. s3fs.S3FileSystem for s3, and ContentType on put), so a registered
+    implementation is only used if it extends the default one, as flytekitplugins-async-fsspec does. Otherwise,
+    e.g. when another library has registered an unrelated implementation with clobber=True, the default is used.
+    """
+    impl = fsspec_known_implementations[protocol]
+    module_name, class_name = impl["class"].rsplit(".", 1)
+    try:
+        default_cls = getattr(importlib.import_module(module_name), class_name)
+    except ImportError as e:
+        raise ImportError(impl.get("err")) from e
+    registered_cls = fsspec_registry.get(protocol)
+    if registered_cls is not None and issubclass(registered_cls, default_cls):
+        return registered_cls
+    return default_cls
 
 
 def get_additional_fsspec_call_kwargs(protocol: typing.Union[str, tuple], method_name: str) -> Dict[str, Any]:
@@ -213,11 +239,11 @@ class FileAccessProvider(object):
         elif protocol == "s3":
             s3kwargs = s3_setup_args(self._data_config.s3, anonymous=anonymous)
             s3kwargs.update(kwargs)
-            return fsspec.filesystem(protocol, **s3kwargs)  # type: ignore
+            return _canonical_fs_class(protocol)(**s3kwargs)  # type: ignore
         elif protocol == "gs":
             if anonymous:
                 kwargs["token"] = _ANON
-            return fsspec.filesystem(protocol, **kwargs)  # type: ignore
+            return _canonical_fs_class(protocol)(**kwargs)  # type: ignore
         elif protocol == "ftp":
             kwargs.update(fsspec.implementations.ftp.FTPFileSystem._get_kwargs_from_urls(path))
             return fsspec.filesystem(protocol, **kwargs)
@@ -227,6 +253,8 @@ class FileAccessProvider(object):
         )
         kwargs.update(storage_options)
 
+        if protocol in _CANONICAL_FS_PROTOCOLS:
+            return _canonical_fs_class(protocol)(**kwargs)
         return fsspec.filesystem(protocol, **kwargs)
 
     async def get_async_filesystem_for_path(

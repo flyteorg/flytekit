@@ -2,7 +2,9 @@ import datetime
 import pathlib
 import pickle
 import re
+import subprocess
 import sys
+import textwrap
 import typing
 from dataclasses import dataclass
 from typing import Dict, List
@@ -649,3 +651,42 @@ def test_cache_old_version_of_literal_map():
     # Now load the same object from the cache and confirm that the `_offloaded_metadata` attribute is now present
     loaded_literal_map = LocalTaskCache.get("t.produce_dc", "1", LiteralMap(literals={}), ())
     assert hasattr(loaded_literal_map.literals['o0'], "_offloaded_metadata") is True
+
+
+def test_import_flytekit_does_not_import_diskcache():
+    # Use a fresh interpreter, since other tests in this process may already have imported diskcache.
+    code = textwrap.dedent(
+        """
+        import sys
+
+        import flytekit
+        import flytekit.clis.sdk_in_container.pyflyte
+        import flytekit.core.base_task
+
+        assert "diskcache" not in sys.modules, "diskcache was imported when loading flytekit"
+        """
+    )
+    subprocess.run([sys.executable, "-c", code], check=True)
+
+
+def test_import_flytekit_without_diskcache():
+    # Setting sys.modules["diskcache"] to None makes "import diskcache" raise ImportError,
+    # which simulates an environment where diskcache is not installed.
+    code = textwrap.dedent(
+        """
+        import sys
+
+        sys.modules["diskcache"] = None
+
+        import flytekit
+        from flytekit.core.local_cache import LocalTaskCache
+
+        try:
+            LocalTaskCache.initialize()
+        except ImportError:
+            pass
+        else:
+            raise AssertionError("LocalTaskCache.initialize() should fail without diskcache")
+        """
+    )
+    subprocess.run([sys.executable, "-c", code], check=True)
