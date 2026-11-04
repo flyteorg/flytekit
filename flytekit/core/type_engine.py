@@ -1324,6 +1324,11 @@ class TypeEngine(typing.Generic[T]):
         for t in types:
             if t in cls._REGISTRY:
                 existing = cls._REGISTRY[t]
+                # On Python 3.14 typing.Union and types.UnionType are the same object, so
+                # registering a transformer for both (as UnionTransformer does) collapses to a
+                # single key. Re-registering the identical transformer is a no-op, not a conflict.
+                if existing is transformer:
+                    continue
                 raise ValueError(
                     f"Transformer {existing.name} for type {t} is already registered."
                     f" Cannot override with {transformer.name}"
