@@ -286,12 +286,14 @@ class ComparisonExpression(object):
     and operator can be any comparison expression like <, >, <=, >=, ==, !=
     """
 
-    def __init__(self, lhs: Union["Promise", Any], op: ComparisonOps, rhs: Union["Promise", Any]):
+    def __init__(self, lhs: Union["Promise", Any], op: ComparisonOps, rhs: Union["Promise", Any]) -> None:
         self._op = op
         self._lhs = None
         self._rhs = None
 
         if isinstance(lhs, Promise):
+            if lhs.is_ready and lhs.attr_path:
+                lhs = run_sync(coro_func=resolve_attr_path_in_promise, p=lhs.deepcopy())
             self._lhs = lhs
             if lhs.is_ready:
                 if lhs.val.scalar is None or lhs.val.scalar.primitive is None:
@@ -304,6 +306,8 @@ class ComparisonExpression(object):
                     else:
                         raise ValueError("Only primitive values can be used in comparison")
         if isinstance(rhs, Promise):
+            if rhs.is_ready and rhs.attr_path:
+                rhs = run_sync(coro_func=resolve_attr_path_in_promise, p=rhs.deepcopy())
             self._rhs = rhs
             if rhs.is_ready:
                 if rhs.val.scalar is None or rhs.val.scalar.primitive is None:
