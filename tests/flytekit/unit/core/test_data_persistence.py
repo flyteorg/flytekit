@@ -1,3 +1,4 @@
+import asyncio
 import importlib
 import io
 import os
@@ -11,6 +12,7 @@ import fsspec
 import mock
 import pytest
 from azure.identity import ClientSecretCredential, DefaultAzureCredential
+from fsspec.asyn import AsyncFileSystem
 from mock import AsyncMock
 
 from flytekit.configuration import Config
@@ -239,6 +241,41 @@ def test_get_filesystem_ignores_unrelated_registered_implementation(restore_fssp
 
     fp = FileAccessProvider("/tmp", "s3://my-bucket")
     assert type(fp.get_filesystem(protocol, **kwargs)) is default_cls
+
+
+class LoopBoundAsyncFileSystem(AsyncFileSystem):
+    """Mimics gcsfs/s3fs: the client session is created lazily and bound to the loop that first uses it."""
+
+    protocol = "loopbound"
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.session_loop = None
+
+    async def _info(self, path, **kwargs):
+        if self.session_loop is None:
+            self.session_loop = asyncio.get_running_loop()
+        if self.session_loop is not asyncio.get_running_loop():
+            raise RuntimeError("attached to a different loop")
+        return {"name": path, "size": 0, "type": "file"}
+
+
+def test_get_async_filesystem_for_path_across_event_loops(restore_fsspec_registry):
+    fsspec.register_implementation("loopbound", LoopBoundAsyncFileSystem, clobber=True)
+    LoopBoundAsyncFileSystem.clear_instance_cache()
+    fp = FileAccessProvider("/tmp", "s3://my-bucket")
+
+    async def use_fs():
+        fs = await fp.get_async_filesystem_for_path("loopbound://bucket/key")
+        # within one loop, the cached instance is reused
+        assert await fp.get_async_filesystem_for_path("loopbound://bucket/key") is fs
+        await fs._info("loopbound://bucket/key")
+        return fs
+
+    # each asyncio.run() creates (and closes) a new event loop, like successive calls from sync code or tests
+    first = asyncio.run(use_fs())
+    second = asyncio.run(use_fs())
+    assert second is not first
 
 
 def test_get_filesystem_keeps_registered_subclass_of_default(restore_fsspec_registry):
