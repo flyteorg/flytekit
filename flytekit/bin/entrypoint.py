@@ -14,7 +14,8 @@ import traceback
 import uuid
 import warnings
 from sys import exit
-from typing import Callable, Dict, List, Optional
+from types import FrameType
+from typing import Callable, Dict, Iterator, List, Optional
 
 import click
 from flyteidl.core import literals_pb2 as _literals_pb2
@@ -31,7 +32,7 @@ from flytekit.core import constants as _constants
 from flytekit.core import utils
 from flytekit.core.base_task import IgnoreOutputs, PythonTask
 from flytekit.core.checkpointer import SyncCheckpoint
-from flytekit.core.constants import FLYTE_FAIL_ON_ERROR, RUNTIME_PACKAGES_ENV_NAME
+from flytekit.core.constants import FLYTE_FAIL_ON_ERROR, FLYTE_RECOVER_SHUTDOWN_CRASH, RUNTIME_PACKAGES_ENV_NAME
 from flytekit.core.context_manager import (
     ExecutionParameters,
     ExecutionState,
@@ -62,6 +63,8 @@ from flytekit.tools.fast_registration import (
 from flytekit.tools.module_loader import load_object_from_module
 from flytekit.utils.pbhash import compute_hash_string
 
+_TASK_COMPLETION_PATH: str = "_FLYTE_TASK_COMPLETION_PATH"
+
 
 def get_version_message():
     import flytekit
@@ -69,16 +72,45 @@ def get_version_message():
     return f"Welcome to Flyte! Version: {flytekit.__version__}"
 
 
-def _run_subprocess(cmd: List[str], env: Optional[dict] = None) -> int:
+def _run_subprocess(
+    cmd: list[str], env: dict[str, str] | None = None, completion_path: pathlib.Path | None = None
+) -> int:
     """Run cmd with proper SIGTERM handling."""
-    p = subprocess.Popen(cmd, env=env)
+    p = subprocess.Popen(args=cmd, env=env)
+    termination_forwarded: bool = False
 
-    def handle_sigterm(signum, frame):
+    def handle_sigterm(signum: int, frame: FrameType | None) -> None:
+        nonlocal termination_forwarded
+        termination_forwarded = True
         logger.info(f"passing signum {signum} [frame={frame}] to subprocess")
         p.send_signal(signum)
 
-    signal.signal(signal.SIGTERM, handle_sigterm)
-    return p.wait()
+    previous_handler: int | Callable[[int, FrameType | None], None] | None = signal.signal(
+        signalnum=signal.SIGTERM, handler=handle_sigterm
+    )
+    try:
+        returncode: int = p.wait()
+    finally:
+        signal.signal(signalnum=signal.SIGTERM, handler=previous_handler)
+
+    if (
+        completion_path is None
+        or termination_forwarded
+        or returncode not in (-signal.SIGSEGV, -signal.SIGABRT, -signal.SIGBUS)
+    ):
+        return returncode
+    try:
+        child_pid, completed_exit_code = map(int, completion_path.read_text().split())
+    except (OSError, ValueError):
+        logger.warning("Completed task status is unavailable or invalid; retaining the subprocess failure.")
+        return returncode
+    if child_pid != p.pid or completed_exit_code not in (0, 1):
+        return returncode
+    logger.warning(
+        f"Task subprocess crashed with signal {-returncode} after output upload; "
+        f"restoring completed SDK exit status {completed_exit_code}."
+    )
+    return completed_exit_code
 
 
 def _compute_array_job_index():
@@ -354,7 +386,18 @@ def _dispatch_execute(
 
     logger.debug("Finished _dispatch_execute")
 
-    if str2bool(os.getenv(FLYTE_FAIL_ON_ERROR)) and error_file_name in output_file_dict:
+    exit_code: int = int(str2bool(os.getenv(FLYTE_FAIL_ON_ERROR)) and error_file_name in output_file_dict)
+    if ctx.user_space_params is not None and ctx.user_space_params.has_attr(_TASK_COMPLETION_PATH):
+        completion_path: str | None = ctx.user_space_params.get(_TASK_COMPLETION_PATH)
+        if completion_path:
+            try:
+                pathlib.Path(completion_path).write_text(f"{os.getpid()} {exit_code}\n")
+            except OSError:
+                logger.warning(
+                    "Could not record completed task status; shutdown recovery is unavailable.", exc_info=True
+                )
+
+    if exit_code:
         """
         If the environment variable FLYTE_FAIL_ON_ERROR is set to true, the task execution will fail if an error file is
         generated. This environment variable is set to true by the plugin author if they want the task to fail on error.
@@ -362,7 +405,7 @@ def _dispatch_execute(
 
         For example, you can see the task fails on Databricks or AWS batch UI by setting this environment variable to true.
         """
-        exit(1)
+        exit(exit_code)
 
 
 def get_traceback_str(e: Exception) -> str:
@@ -426,7 +469,7 @@ def setup_execution(
     prev_checkpoint: Optional[str] = None,
     dynamic_addl_distro: Optional[str] = None,
     dynamic_dest_dir: Optional[str] = None,
-):
+) -> Iterator[FlyteContext]:
     """
 
     :param raw_output_data_prefix: Where to write offloaded data (files, directories, dataframes).
@@ -438,6 +481,7 @@ def setup_execution(
     :param dynamic_dest_dir: See above.
     :return:
     """
+    completion_path: str | None = os.environ.pop(_TASK_COMPLETION_PATH, None)
     exe_project = get_one_of("FLYTE_INTERNAL_EXECUTION_PROJECT", "_F_PRJ")
     exe_domain = get_one_of("FLYTE_INTERNAL_EXECUTION_DOMAIN", "_F_DM")
     exe_name = get_one_of("FLYTE_INTERNAL_EXECUTION_ID", "_F_NM")
@@ -498,6 +542,7 @@ def setup_execution(
         output_metadata_prefix=output_metadata_prefix,
         checkpoint=checkpointer,
         task_id=_identifier.Identifier(_identifier.ResourceType.TASK, tk_project, tk_domain, tk_name, tk_version),
+        **{_TASK_COMPLETION_PATH: completion_path},
     )
 
     metadata = {
@@ -762,7 +807,7 @@ def execute_task_cmd(
 @click.option("--additional-distribution", required=False)
 @click.option("--dest-dir", required=False)
 @click.argument("task-execute-cmd", nargs=-1, type=click.UNPROCESSED)
-def fast_execute_task_cmd(additional_distribution: str, dest_dir: str, task_execute_cmd: List[str]):
+def fast_execute_task_cmd(additional_distribution: str, dest_dir: str, task_execute_cmd: List[str]) -> None:
     """
     Downloads a compressed code distribution specified by additional-distribution and then calls the underlying
     task execute command for the updated code.
@@ -795,7 +840,13 @@ def fast_execute_task_cmd(additional_distribution: str, dest_dir: str, task_exec
             env["PYTHONPATH"] += os.pathsep + dest_dir_resolved
         else:
             env["PYTHONPATH"] = dest_dir_resolved
-    returncode = _run_subprocess(cmd, env)
+    if str2bool(os.getenv(FLYTE_RECOVER_SHUTDOWN_CRASH)):
+        with tempfile.TemporaryDirectory(prefix="flyte-completion-") as completion_dir:
+            completion_path = pathlib.Path(completion_dir) / "completion"
+            env[_TASK_COMPLETION_PATH] = str(completion_path)
+            returncode = _run_subprocess(cmd=cmd, env=env, completion_path=completion_path)
+    else:
+        returncode = _run_subprocess(cmd=cmd, env=env)
     exit(returncode)
 
 

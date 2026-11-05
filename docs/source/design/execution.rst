@@ -21,3 +21,26 @@ The point of running this script, or rather the reason for having any Flyte-rela
 * Capture and handle error reporting: Exceptions thrown in the course of task execution are captured and uploaded to the Flyte control plane for display on the Console.
 * Set up helper utilities like the ``statsd`` handle, logging and logging levels, etc.
 * Ensure configuration options about the Flyte backend, which are passed through by the Flyte engine, are properly loaded in Python memory.
+
+Recovering completed results after a shutdown crash
+==================================================
+
+A native library can crash during interpreter shutdown after Flytekit has already
+uploaded a task's results. By default, ``pyflyte-fast-execute`` reports the child
+process's failure even when those results are available.
+
+Set ``FLYTE_RECOVER_SHUTDOWN_CRASH=true`` in the task environment to let
+``pyflyte-fast-execute`` restore the completed SDK exit status after ``SIGSEGV``,
+``SIGABRT``, or ``SIGBUS``. Recovery requires a completion record from the direct
+child, written after result metadata and deck handling have finished. Missing or
+invalid records, crashes before upload, ordinary nonzero exits, ``SIGTERM``, and
+``SIGKILL`` are not recovered. The launcher also refuses recovery after forwarding
+``SIGTERM`` to the child.
+
+Recovery preserves error reporting: an uploaded error document still describes a
+failed task, and ``FLYTE_FAIL_ON_ERROR=true`` still produces exit status 1. The
+launcher logs each recovered crash and does not skip shutdown hooks. A crash can
+prevent remaining cleanup or hooks from finishing, so enable this option only
+when the uploaded results are sufficient and unfinished cleanup is acceptable.
+This option does not repair the native library or apply to standalone
+``pyflyte-execute`` processes.
