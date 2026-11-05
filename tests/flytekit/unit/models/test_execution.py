@@ -2,6 +2,7 @@ import datetime
 from datetime import timezone
 
 import pytest
+from flyteidl.admin import execution_pb2 as _execution_pb2
 
 from flytekit.models import common as _common_models
 from flytekit.models import execution as _execution
@@ -147,6 +148,11 @@ def test_execution_metadata():
     assert obj2.parent_node_execution == parent_node_execution
     assert obj2.reference_execution == reference_execution
     assert obj2.system_metadata == system_metadata
+
+
+@pytest.mark.parametrize("name, value", _execution_pb2.ExecutionMetadata.ExecutionMode.items())
+def test_execution_mode_matches_idl(name: str, value: int) -> None:
+    assert getattr(_execution.ExecutionMetadata.ExecutionMode, name) == value
 
 
 @pytest.mark.parametrize("literal_value_pair", _parameterizers.LIST_OF_SCALAR_LITERALS_AND_PYTHON_VALUE)
