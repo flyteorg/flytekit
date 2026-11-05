@@ -182,7 +182,9 @@ class TensorflowFunctionTask(PythonFunctionTask[TfJob]):
 
     def _convert_run_policy(self, run_policy: RunPolicy) -> kubeflow_common.RunPolicy:
         return kubeflow_common.RunPolicy(
-            clean_pod_policy=run_policy.clean_pod_policy.value if run_policy.clean_pod_policy.value else None,
+            clean_pod_policy=run_policy.clean_pod_policy.value
+            if run_policy.clean_pod_policy and run_policy.clean_pod_policy.value
+            else None,
             ttl_seconds_after_finished=run_policy.ttl_seconds_after_finished,
             active_deadline_seconds=run_policy.active_deadline_seconds,
             backoff_limit=run_policy.backoff_limit,

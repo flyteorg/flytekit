@@ -254,3 +254,20 @@ def test_tensorflow_task():
     assert my_tensorflow_task.resources.limits == Resources()
     assert my_tensorflow_task.resources.requests == Resources(cpu="1")
     assert my_tensorflow_task.task_type == "tensorflow"
+
+
+def test_tensorflow_task_run_policy_without_clean_pod_policy(serialization_settings: SerializationSettings):
+    task_config = TfJob(
+        worker=Worker(replicas=1),
+        ps=PS(replicas=0),
+        chief=Chief(replicas=0),
+        evaluator=Evaluator(replicas=0),
+        run_policy=RunPolicy(ttl_seconds_after_finished=100),
+    )
+
+    @task(task_config=task_config, requests=Resources(cpu="1"))
+    def my_tensorflow_task(x: int) -> int:
+        return x
+
+    custom = my_tensorflow_task.get_custom(serialization_settings)
+    assert custom["runPolicy"] == {"ttlSecondsAfterFinished": 100}
