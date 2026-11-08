@@ -215,6 +215,46 @@ def test_condition_is_none():
         return conditional("test").if_(result.is_none()).then(success()).else_().then(failed())
 
 
+def test_condition_with_list_index():
+    # Regression test for https://github.com/flyteorg/flyte/issues/6473
+    # Indexing into a list yields a promise whose attr_path must be resolved before the conditional
+    # inspects the value; comparing a list element used to raise AttributeError on a None scalar.
+    @task
+    def check_status() -> typing.List[typing.Optional[bool]]:
+        return [None, True]
+
+    @task
+    def numbers() -> typing.List[int]:
+        return [5, 7]
+
+    @task
+    def success_task() -> str:
+        return "Task succeeded"
+
+    @task
+    def failure_task() -> str:
+        return "Task failed"
+
+    @workflow
+    def wf_none() -> str:
+        status = check_status()[0]
+        return conditional("c").if_(status.is_none()).then(success_task()).else_().then(failure_task())
+
+    @workflow
+    def wf_not_none() -> str:
+        status = check_status()[1]
+        return conditional("c").if_(status.is_none()).then(success_task()).else_().then(failure_task())
+
+    @workflow
+    def wf_primitive() -> str:
+        value = numbers()[0]
+        return conditional("c").if_(value == 5).then(success_task()).else_().then(failure_task())
+
+    assert wf_none() == "Task succeeded"
+    assert wf_not_none() == "Task failed"
+    assert wf_primitive() == "Task succeeded"
+
+
 def test_subworkflow_condition_serialization():
     """Test that subworkflows are correctly extracted from serialized workflows with condiationals."""
 
