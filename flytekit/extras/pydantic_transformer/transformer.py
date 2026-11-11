@@ -1,3 +1,4 @@
+import inspect
 import json
 import os
 from typing import Type
@@ -16,6 +17,15 @@ from flytekit.models import types
 from flytekit.models.annotation import TypeAnnotation as TypeAnnotationModel
 from flytekit.models.literals import Binary, Literal, Scalar
 from flytekit.models.types import LiteralType, TypeStructure
+
+# Computed fields are derived again when the model is constructed, and pydantic rejects them as extra
+# inputs for models with `extra="forbid"`, so leave them out of the serialized value. The option was
+# added in pydantic 2.12.
+_EXCLUDE_COMPUTED_FIELDS = (
+    {"exclude_computed_fields": True}
+    if "exclude_computed_fields" in inspect.signature(BaseModel.model_dump_json).parameters
+    else {}
+)
 
 
 class PydanticTransformer(TypeTransformer[BaseModel]):
@@ -55,7 +65,7 @@ class PydanticTransformer(TypeTransformer[BaseModel]):
         """
         Note: This is deprecated and will be removed in the future.
         """
-        json_str = python_val.model_dump_json()
+        json_str = python_val.model_dump_json(**_EXCLUDE_COMPUTED_FIELDS)
         return Literal(scalar=Scalar(generic=_json_format.Parse(json_str, _struct.Struct())))
 
     def to_literal(
@@ -73,7 +83,7 @@ class PydanticTransformer(TypeTransformer[BaseModel]):
         if str2bool(os.getenv(FLYTE_USE_OLD_DC_FORMAT)):
             return self.to_generic_literal(ctx, python_val, python_type, expected)
 
-        json_str = python_val.model_dump_json()
+        json_str = python_val.model_dump_json(**_EXCLUDE_COMPUTED_FIELDS)
         dict_obj = json.loads(json_str)
         msgpack_bytes = msgpack.dumps(dict_obj)
         return Literal(scalar=Scalar(binary=Binary(value=msgpack_bytes, tag=MESSAGEPACK)))

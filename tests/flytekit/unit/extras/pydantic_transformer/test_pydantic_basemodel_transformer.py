@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Dict, List, Optional, Union
 from unittest.mock import patch
 import mock
+import pydantic
 import pytest
 from google.protobuf import json_format as _json_format
 from google.protobuf import struct_pb2 as _struct
@@ -994,6 +995,45 @@ def test_basemodel_literal_type_annotation():
         c: str = "Hello, Flyte"
 
     assert TypeEngine.to_literal_type(BM).annotation == TypeAnnotation({CACHE_KEY_METADATA: {SERIALIZATION_FORMAT: MESSAGEPACK}})
+
+
+@pytest.mark.skipif(
+    tuple(int(v) for v in pydantic.VERSION.split(".")[:2]) < (2, 12),
+    reason="model_dump_json(exclude_computed_fields=...) needs pydantic 2.12",
+)
+@pytest.mark.parametrize("use_old_dc_format", ["false", "true"])
+def test_basemodel_with_computed_field_and_extra_forbid(use_old_dc_format):
+    from pydantic import ConfigDict, computed_field
+
+    class Inner(BaseModel):
+        model_config = ConfigDict(extra="forbid")
+
+        n_days: int = 30
+
+        @computed_field
+        @property
+        def n_weeks(self) -> int:
+            return self.n_days // 7
+
+    class Outer(BaseModel):
+        model_config = ConfigDict(extra="forbid")
+
+        inner: Inner = Field(default_factory=Inner)
+        name: str = "a"
+
+        @computed_field
+        @property
+        def label(self) -> str:
+            return self.name.upper()
+
+    ctx = FlyteContextManager.current_context()
+    lt = TypeEngine.to_literal_type(Outer)
+    with patch.dict(os.environ, {"FLYTE_USE_OLD_DC_FORMAT": use_old_dc_format}):
+        lv = TypeEngine.to_literal(ctx, Outer(inner=Inner(n_days=14)), Outer, lt)
+    pv = TypeEngine.to_python_value(ctx, lv, Outer)
+    assert pv == Outer(inner=Inner(n_days=14))
+    assert pv.inner.n_weeks == 2
+    assert pv.label == "A"
 
 
 @mock.patch("flytekit.remote.remote_fs.FlytePathResolver")
