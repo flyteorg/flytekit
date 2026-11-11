@@ -11,6 +11,7 @@ import os
 import pathlib
 import tempfile
 import typing
+import weakref
 from time import sleep
 from typing import Any, Dict, Optional, Union, cast
 from uuid import UUID
@@ -263,7 +264,19 @@ class FileAccessProvider(object):
         protocol = get_protocol(path)
         loop = asyncio.get_running_loop()
 
-        return self.get_filesystem(protocol, anonymous=anonymous, path=path, asynchronous=True, loop=loop, **kwargs)
+        fs = self.get_filesystem(protocol, anonymous=anonymous, path=path, asynchronous=True, loop=loop, **kwargs)
+        if isinstance(fs, AsyncFileSystem):
+            # fsspec's instance cache does not take the event loop into account, so after an earlier loop on this
+            # thread has finished (e.g. a previous asyncio.run()), it hands back an instance whose session is bound
+            # to that loop, failing with "Event loop is closed" / "attached to a different loop". Evict and recreate.
+            loop_ref = getattr(fs, "_flytekit_loop_ref", None)
+            if loop_ref is not None and loop_ref() is not loop:
+                type(fs)._cache.pop(fs._fs_token, None)
+                fs = self.get_filesystem(
+                    protocol, anonymous=anonymous, path=path, asynchronous=True, loop=loop, **kwargs
+                )
+            fs._flytekit_loop_ref = weakref.ref(loop)
+        return fs
 
     def get_filesystem_for_path(self, path: str = "", anonymous: bool = False, **kwargs) -> fsspec.AbstractFileSystem:
         protocol = get_protocol(path)
