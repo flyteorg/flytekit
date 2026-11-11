@@ -243,6 +243,23 @@ def resolve_attr_path_in_pb_struct(
     return curr_val
 
 
+def _resolve_attr_path_in_ready_promise(p: Promise) -> _literals_models.Literal:
+    """
+    Resolve the list/map index path of a ready promise down to the leaf literal it points at.
+
+    A promise built by indexing (e.g. ``xs[0]``) keeps the index in ``attr_path`` while ``val`` still holds
+    the whole collection, so comparisons must resolve the leaf before inspecting the value.
+    """
+    curr_val = p.val
+    for attr in p.attr_path:
+        value = curr_val.value
+        if isinstance(value, (_literals_models.LiteralMap, _literals_models.LiteralCollection)):
+            curr_val = value.literals[attr]
+        else:
+            break
+    return curr_val
+
+
 def get_primitive_val(prim: Primitive) -> Any:
     for value in [
         prim.integer,
@@ -294,8 +311,10 @@ class ComparisonExpression(object):
         if isinstance(lhs, Promise):
             self._lhs = lhs
             if lhs.is_ready:
-                if lhs.val.scalar is None or lhs.val.scalar.primitive is None:
-                    union = lhs.val.scalar.union
+                resolved = _resolve_attr_path_in_ready_promise(lhs)
+                scalar = resolved.scalar
+                if scalar is None or scalar.primitive is None:
+                    union = scalar.union if scalar is not None else None
                     if union and union.value.scalar:
                         if union.value.scalar.primitive or union.value.scalar.none_type:
                             self._lhs = union.value
@@ -303,11 +322,15 @@ class ComparisonExpression(object):
                             raise ValueError("Only primitive values can be used in comparison")
                     else:
                         raise ValueError("Only primitive values can be used in comparison")
+                elif lhs.attr_path:
+                    self._lhs = resolved
         if isinstance(rhs, Promise):
             self._rhs = rhs
             if rhs.is_ready:
-                if rhs.val.scalar is None or rhs.val.scalar.primitive is None:
-                    union = rhs.val.scalar.union
+                resolved = _resolve_attr_path_in_ready_promise(rhs)
+                scalar = resolved.scalar
+                if scalar is None or scalar.primitive is None:
+                    union = scalar.union if scalar is not None else None
                     if union and union.value.scalar:
                         if union.value.scalar.primitive or union.value.scalar.none_type:
                             self._rhs = union.value
@@ -315,6 +338,8 @@ class ComparisonExpression(object):
                             raise ValueError("Only primitive values can be used in comparison")
                     else:
                         raise ValueError("Only primitive values can be used in comparison")
+                elif rhs.attr_path:
+                    self._rhs = resolved
         if self._lhs is None:
             self._lhs = type_engine.TypeEngine.to_literal(FlyteContextManager.current_context(), lhs, type(lhs), None)
         if self._rhs is None:
