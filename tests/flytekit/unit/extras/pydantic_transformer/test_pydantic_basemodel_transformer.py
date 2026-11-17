@@ -5,11 +5,11 @@ from pathlib import Path
 from typing import Dict, List, Optional, Union
 from unittest.mock import patch
 import mock
-import pydantic
+import msgpack
 import pytest
 from google.protobuf import json_format as _json_format
 from google.protobuf import struct_pb2 as _struct
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field, computed_field
 
 from flytekit import task, workflow
 from flytekit.core.constants import CACHE_KEY_METADATA, MESSAGEPACK, SERIALIZATION_FORMAT
@@ -997,43 +997,80 @@ def test_basemodel_literal_type_annotation():
     assert TypeEngine.to_literal_type(BM).annotation == TypeAnnotation({CACHE_KEY_METADATA: {SERIALIZATION_FORMAT: MESSAGEPACK}})
 
 
-@pytest.mark.skipif(
-    tuple(int(v) for v in pydantic.VERSION.split(".")[:2]) < (2, 12),
-    reason="model_dump_json(exclude_computed_fields=...) needs pydantic 2.12",
-)
+class ComputedInner(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    n_days: int = 30
+
+    @computed_field
+    @property
+    def n_weeks(self) -> int:
+        return self.n_days // 7
+
+
+class ComputedOuter(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    inner: ComputedInner = Field(default_factory=ComputedInner)
+    inners: List[ComputedInner] = Field(default_factory=list)
+    by_name: Dict[str, ComputedInner] = Field(default_factory=dict)
+    maybe: Optional[ComputedInner] = None
+    name: str = "a"
+
+    @computed_field
+    @property
+    def label(self) -> str:
+        return self.name.upper()
+
+
 @pytest.mark.parametrize("use_old_dc_format", ["false", "true"])
 def test_basemodel_with_computed_field_and_extra_forbid(use_old_dc_format):
-    from pydantic import ConfigDict, computed_field
-
-    class Inner(BaseModel):
-        model_config = ConfigDict(extra="forbid")
-
-        n_days: int = 30
-
-        @computed_field
-        @property
-        def n_weeks(self) -> int:
-            return self.n_days // 7
-
-    class Outer(BaseModel):
-        model_config = ConfigDict(extra="forbid")
-
-        inner: Inner = Field(default_factory=Inner)
-        name: str = "a"
-
-        @computed_field
-        @property
-        def label(self) -> str:
-            return self.name.upper()
-
     ctx = FlyteContextManager.current_context()
-    lt = TypeEngine.to_literal_type(Outer)
+    value = ComputedOuter(
+        inner=ComputedInner(n_days=14),
+        inners=[ComputedInner(n_days=7)],
+        by_name={"x": ComputedInner(n_days=21)},
+        maybe=ComputedInner(n_days=28),
+    )
+    lt = TypeEngine.to_literal_type(ComputedOuter)
     with patch.dict(os.environ, {"FLYTE_USE_OLD_DC_FORMAT": use_old_dc_format}):
-        lv = TypeEngine.to_literal(ctx, Outer(inner=Inner(n_days=14)), Outer, lt)
-    pv = TypeEngine.to_python_value(ctx, lv, Outer)
-    assert pv == Outer(inner=Inner(n_days=14))
+        lv = TypeEngine.get_transformer(ComputedOuter).to_literal(ctx, value, ComputedOuter, lt)
+
+    # Computed values stay in the stored output, so it is unchanged and they still show up in the UI.
+    if use_old_dc_format == "true":
+        stored = _json_format.MessageToDict(lv.scalar.generic)
+    else:
+        stored = msgpack.loads(lv.scalar.binary.value)
+    assert stored["label"] == "A"
+    assert stored["inner"]["n_weeks"] == 2
+    assert stored["inners"][0]["n_weeks"] == 1
+
+    pv = TypeEngine.to_python_value(ctx, lv, ComputedOuter)
+    assert pv == value
     assert pv.inner.n_weeks == 2
+    assert pv.by_name["x"].n_weeks == 3
+    assert pv.maybe.n_weeks == 4
     assert pv.label == "A"
+
+
+def test_basemodel_with_computed_field_and_extra_forbid_between_tasks():
+    @task
+    def make() -> ComputedInner:
+        return ComputedInner(n_days=14)
+
+    @task
+    def make_list() -> List[ComputedInner]:
+        return [ComputedInner(n_days=7), ComputedInner(n_days=21)]
+
+    @task
+    def weeks(p: ComputedInner, ps: List[ComputedInner]) -> List[int]:
+        return [p.n_weeks] + [x.n_weeks for x in ps]
+
+    @workflow
+    def wf() -> List[int]:
+        return weeks(p=make(), ps=make_list())
+
+    assert wf() == [2, 1, 3]
 
 
 @mock.patch("flytekit.remote.remote_fs.FlytePathResolver")
