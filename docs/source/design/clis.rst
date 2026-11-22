@@ -49,6 +49,41 @@ Suppose you execute a script that defines 10 tasks and a workflow that calls onl
 
 It is considered fast registration because when a script is executed using ``pyflyte run``, the script is bundled up and uploaded to FlyteAdmin. When the task is executed in the backend, this zipped file is extracted and used.
 
+Usage
+=====
+Here is an example of how to use the ``pyflyte run`` command. The following code defines a task and a workflow that calls the task.
+
+.. code-block:: python
+
+    @task
+    def my_task(input1: int, input2: int) -> int:
+        return input1 + input2
+    @workflow
+    def my_workflow(input1: int, input2: int) -> int:
+        return my_task(input1=input1, input2=input2)
+
+To run the workflow, use the following command:
+
+.. prompt:: bash $
+
+  pyflyte run workflow.py my_workflow --input1 10 --input2 20
+
+You can also use the ``--inputs-file`` flag to pass either a JSON or YAML file as inputs or pass from pipe instead. Remember to include all required inputs with valid JSON/YAML formats.
+
+.. prompt:: bash
+
+  $ pyflyte run workflow.py my_workflow --inputs-file inputs.json
+  $ cat inputs.json | pyflyte run workflow.py my_workflow
+
+inputs.json
+
+.. code-block:: json
+
+  {
+    "input1": 10,
+    "input2": 20
+  }
+
 .. note ::
 
    If `pigz <https://zlib.net/pigz/>`_ is installed, it will be leveraged by ``pyflyte`` to accelerate the compression of the code tarball.
