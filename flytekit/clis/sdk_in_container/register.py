@@ -34,6 +34,9 @@ Note: This command only works on regular Python packages, not namespace packages
 the root of your project, it finds the first folder that does not have a ``__init__.py`` file.
 """
 
+_original_secho = click.secho
+_original_log_level = logger.level
+
 
 @click.command("register", help=_register_help)
 @project_option_dec
@@ -159,6 +162,20 @@ the root of your project, it finds the first folder that does not have a ``__ini
     help="Skip errors during registration. This is useful when registering multiple packages and you want to skip "
     "errors for some packages.",
 )
+@click.option(
+    "--summary-format",
+    "-f",
+    required=False,
+    type=click.Choice(["json", "yaml"], case_sensitive=False),
+    default=None,
+    help="Output format for registration summary. Lists registered workflows, tasks, and launch plans. 'json' and 'yaml' supported.",
+)
+@click.option(
+    "--quiet",
+    is_flag=True,
+    default=False,
+    help="Suppress output messages, only displaying errors.",
+)
 @click.argument("package-or-module", type=click.Path(exists=True, readable=True, resolve_path=True), nargs=-1)
 @click.pass_context
 def register(
@@ -181,12 +198,25 @@ def register(
     resource_requests: typing.Optional[Resources],
     resource_limits: typing.Optional[Resources],
     skip_errors: bool,
+    summary_format: typing.Optional[str],
+    quiet: bool,
 ):
     """
     see help
     """
+
+    if summary_format is not None:
+        quiet = True
+
+    if quiet:
+        # Mute all secho output through monkey patching
+        click.secho = lambda *args, **kw: None
+        # Output only log at ERROR or CRITICAL level
+        logger.setLevel("ERROR")
+
     # Set the relevant copy option if non_fast is set, this enables the individual file listing behavior
     # that the copy flag uses.
+
     if non_fast:
         click.secho("The --non-fast flag is deprecated, please use --copy none instead", fg="yellow")
         if "--copy" in sys.argv:
@@ -214,42 +244,49 @@ def register(
             "Missing argument 'PACKAGE_OR_MODULE...', at least one PACKAGE_OR_MODULE is required but multiple can be passed",
         )
 
-    # Use extra images in the config file if that file exists
-    config_file = ctx.obj.get(constants.CTX_CONFIG_FILE)
-    if config_file:
-        image_config = patch_image_config(config_file, image_config)
+    try:
+        # Use extra images in the config file if that file exists
+        config_file = ctx.obj.get(constants.CTX_CONFIG_FILE)
+        if config_file:
+            image_config = patch_image_config(config_file, image_config)
 
-    click.secho(
-        f"Running pyflyte register from {os.getcwd()} "
-        f"with images {image_config} "
-        f"and image destination folder {destination_dir} "
-        f"on {len(package_or_module)} package(s) {package_or_module}",
-        dim=True,
-    )
+        click.secho(
+            f"Running pyflyte register from {os.getcwd()} "
+            f"with images {image_config} "
+            f"and image destination folder {destination_dir} "
+            f"on {len(package_or_module)} package(s) {package_or_module}",
+            dim=True,
+        )
 
-    # Create and save FlyteRemote,
-    remote = get_and_save_remote_with_click_context(ctx, project, domain, data_upload_location="flyte://data")
-    click.secho(f"Registering against {remote.config.platform.endpoint}")
-    repo.register(
-        project,
-        domain,
-        image_config,
-        output,
-        destination_dir,
-        service_account,
-        raw_data_prefix,
-        version,
-        deref_symlinks,
-        copy_style=copy,
-        package_or_module=package_or_module,
-        remote=remote,
-        env=env,
-        default_resources=ResourceSpec(
-            requests=resource_requests or Resources(), limits=resource_limits or Resources()
-        ),
-        dry_run=dry_run,
-        activate_launchplans=activate_launchplans,
-        skip_errors=skip_errors,
-        show_files=show_files,
-        verbosity=ctx.obj[constants.CTX_VERBOSE],
-    )
+        # Create and save FlyteRemote,
+        remote = get_and_save_remote_with_click_context(ctx, project, domain, data_upload_location="flyte://data")
+        click.secho(f"Registering against {remote.config.platform.endpoint}")
+        repo.register(
+            project,
+            domain,
+            image_config,
+            output,
+            destination_dir,
+            service_account,
+            raw_data_prefix,
+            version,
+            deref_symlinks,
+            copy_style=copy,
+            package_or_module=package_or_module,
+            remote=remote,
+            env=env,
+            summary_format=summary_format,
+            quiet=quiet,
+            default_resources=ResourceSpec(
+                requests=resource_requests or Resources(), limits=resource_limits or Resources()
+            ),
+            dry_run=dry_run,
+            activate_launchplans=activate_launchplans,
+            skip_errors=skip_errors,
+            show_files=show_files,
+            verbosity=ctx.obj[constants.CTX_VERBOSE],
+        )
+    finally:
+        # Restore original secho
+        click.secho = _original_secho
+        logger.setLevel(_original_log_level)
