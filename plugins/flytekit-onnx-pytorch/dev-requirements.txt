@@ -73,7 +73,7 @@ pillow==10.3.0
     # via
     #   -r dev-requirements.in
     #   torchvision
-protobuf==4.25.8
+protobuf==5.29.6
     # via onnxruntime
 requests==2.32.2
     # via torchvision
