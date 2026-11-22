@@ -18,6 +18,7 @@ from flytekit.core.pod_template import PodTemplate
 from flytekit.core.python_function_task import AsyncPythonFunctionTask, EagerAsyncPythonFunctionTask, PythonFunctionTask
 from flytekit.core.reference_entity import ReferenceEntity, TaskReference
 from flytekit.core.resources import Resources
+from flytekit.core.retry import Retry
 from flytekit.core.utils import str2bool
 from flytekit.deck import DeckField
 from flytekit.extras.accelerators import BaseAccelerator
@@ -98,7 +99,7 @@ def task(
     _task_function: None = ...,
     task_config: Optional[T] = ...,
     cache: Union[bool, Cache] = ...,
-    retries: int = ...,
+    retries: Union[int, Retry] = ...,
     interruptible: Optional[bool] = ...,
     deprecated: str = ...,
     timeout: Union[datetime.timedelta, int] = ...,
@@ -139,7 +140,7 @@ def task(
     _task_function: Callable[P, FuncOut],
     task_config: Optional[T] = ...,
     cache: Union[bool, Cache] = ...,
-    retries: int = ...,
+    retries: Union[int, Retry] = ...,
     interruptible: Optional[bool] = ...,
     deprecated: str = ...,
     timeout: Union[datetime.timedelta, int] = ...,
@@ -179,7 +180,7 @@ def task(
     _task_function: Optional[Callable[P, FuncOut]] = None,
     task_config: Optional[T] = None,
     cache: Union[bool, Cache] = False,
-    retries: int = 0,
+    retries: Union[int, Retry] = 0,
     interruptible: Optional[bool] = None,
     deprecated: str = "",
     timeout: Union[datetime.timedelta, int] = 0,
