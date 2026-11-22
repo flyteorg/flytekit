@@ -43,7 +43,9 @@ class ChatGPTConnector(SyncConnectorBase):
         logger = logging.getLogger("httpx")
         logger.setLevel(logging.WARNING)
 
-        completion = await asyncio.wait_for(client.chat.completions.create(**custom["chatgpt_config"]), TIMEOUT_SECONDS)
+        # Honor a caller-supplied timeout; the OpenAI SDK also accepts this key, so wait_for and the request agree.
+        timeout = custom["chatgpt_config"].get("timeout", TIMEOUT_SECONDS)
+        completion = await asyncio.wait_for(client.chat.completions.create(**custom["chatgpt_config"]), timeout)
         message = completion.choices[0].message.content
         outputs = {"o0": message}
 
