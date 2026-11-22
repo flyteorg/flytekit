@@ -1,4 +1,5 @@
 import dataclasses
+import inspect
 import typing
 from collections import ChainMap
 
@@ -33,7 +34,9 @@ def all_annotations(cls: typing.Type) -> ChainMap:
     Returns a dictionary-like ChainMap that includes annotations for all
     attributes defined in cls or inherited from superclasses.
     """
-    return ChainMap(*(c.__annotations__ for c in cls.__mro__ if "__annotations__" in c.__dict__))
+    # inspect.get_annotations also covers python 3.14, where class annotations are evaluated lazily and are
+    # no longer stored in the class __dict__.
+    return ChainMap(*(inspect.get_annotations(c) for c in cls.__mro__))
 
 
 def extract_node_type(
