@@ -275,9 +275,15 @@ class ImageSpec:
         from flytekit.core.context_manager import ExecutionState, FlyteContextManager
 
         state = FlyteContextManager.current_context().execution_state
-        if state and state.mode and state.mode != ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION:
-            return os.environ.get(_F_IMG_ID) == self.id
-        return True
+        if not state or not state.mode:
+            # No execution is in progress, e.g. the module import during pyflyte register
+            # or pyflyte run --remote, so this process does not run in a container
+            # built from this image spec.
+            return False
+        if state.mode == ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION:
+            # Locally running a workflow; there is no container, but treat it as in-container.
+            return True
+        return os.environ.get(_F_IMG_ID) == self.id
 
     def exist(self) -> Optional[bool]:
         """
