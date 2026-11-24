@@ -288,7 +288,7 @@ class AuthorizationClient(metaclass=_SingletonPerEndpoint):
 
         success = webbrowser.open_new_tab(endpoint)
         if not success:
-            click.secho(f"Please open the following link in your browser to authenticate: {endpoint}")
+            click.secho(f"Please open the following link in your browser to authenticate: {endpoint}", err=True)
 
     def _credentials_from_response(self, auth_token_resp) -> Credentials:
         """
