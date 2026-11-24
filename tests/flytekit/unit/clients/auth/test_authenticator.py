@@ -152,6 +152,31 @@ def test_device_flow_authenticator(mock_refresh: MagicMock, poll_mock: MagicMock
 @patch("flytekit.clients.auth.authenticator.KeyringStore")
 @patch("flytekit.clients.auth.token_client.get_device_code")
 @patch("flytekit.clients.auth.token_client.poll_token_endpoint")
+def test_device_flow_prompts_on_stderr(poll_mock: MagicMock, device_mock: MagicMock, mock_keyring: MagicMock, capsys):
+    mock_keyring.retrieve.return_value = None
+    cfg_store = StaticClientConfigStore(
+        ClientConfig(
+            token_endpoint="token_endpoint",
+            authorization_endpoint="auth_endpoint",
+            redirect_uri="redirect_uri",
+            client_id="client",
+            device_authorization_endpoint="dev",
+        )
+    )
+    authn = DeviceCodeAuthenticator(ENDPOINT, cfg_store, audience="x")
+    device_mock.return_value = DeviceCodeResponse("code", "USER-CODE", "https://verify", 1000, 0)
+    poll_mock.return_value = ("access", "refresh", 100)
+
+    authn.refresh_credentials()
+
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert "https://verify?user_code=USER-CODE" in captured.err
+
+
+@patch("flytekit.clients.auth.authenticator.KeyringStore")
+@patch("flytekit.clients.auth.token_client.get_device_code")
+@patch("flytekit.clients.auth.token_client.poll_token_endpoint")
 @patch("flytekit.clients.auth.token_client.get_token")
 def test_device_flow_authenticator_refresh_token(mock_refresh: MagicMock, poll_mock: MagicMock, device_mock: MagicMock, mock_keyring: MagicMock):
     with pytest.raises(AuthenticationError):

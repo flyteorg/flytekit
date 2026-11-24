@@ -1,6 +1,7 @@
 import base64
 import enum
 import logging
+import sys
 import time
 import typing
 import urllib.parse
@@ -178,14 +179,14 @@ def poll_token_endpoint(
                 http_proxy_url=http_proxy_url,
                 verify=verify,
             )
-            print("Authentication successful!")
+            print("Authentication successful!", file=sys.stderr)
             return access_token, refresh_token, expires_in
         except AuthenticationPending:
             ...
         except Exception as e:
             logger.error("Authentication attempt failed: ", e)
             raise e
-        print("Authentication Pending...")
+        print("Authentication Pending...", file=sys.stderr)
         time.sleep(interval.total_seconds())
         tick = tick + interval
     raise AuthenticationError("Authentication failed!")
