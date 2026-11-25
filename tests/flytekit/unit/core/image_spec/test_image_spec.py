@@ -59,7 +59,8 @@ def test_image_spec(mock_image_spec_builder, monkeypatch):
     assert image_spec.source_root is None
     assert image_spec.env is None
     assert image_spec.pip_index is None
-    assert image_spec.is_container() is True
+    # No execution is in progress here, so we are not in a container built from this spec.
+    assert image_spec.is_container() is False
     assert image_spec.commands == ["echo hello"]
     assert image_spec._is_force_push is True
     assert image_spec.entrypoint == ["/bin/bash"]
@@ -394,3 +395,37 @@ def test_noop_builder_updates_image_name_mapping():
     # Clean up
     ImageBuildEngine._REGISTRY.pop("noop", None)
     ImageBuildEngine._IMAGE_NAME_TO_REAL_NAME.clear()
+
+
+def test_is_container_without_execution_in_progress():
+    """
+    During registration (pyflyte register, pyflyte run --remote) and any plain import,
+    no execution is in progress, so is_container must return False.
+    """
+    image_spec = ImageSpec(registry="localhost:30001")
+    ctx = context_manager.FlyteContext.current_context()
+    assert ctx.execution_state.mode is None
+    assert image_spec.is_container() is False
+
+
+def test_is_container_in_local_workflow_execution():
+    image_spec = ImageSpec(registry="localhost:30001")
+    ctx = context_manager.FlyteContext.current_context()
+    with context_manager.FlyteContextManager.with_context(
+        ctx.with_execution_state(
+            ctx.execution_state.with_params(mode=ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION)
+        )
+    ):
+        assert image_spec.is_container() is True
+
+
+def test_is_container_in_task_execution_compares_image_id(monkeypatch):
+    image_spec = ImageSpec(registry="localhost:30001")
+    ctx = context_manager.FlyteContext.current_context()
+    with context_manager.FlyteContextManager.with_context(
+        ctx.with_execution_state(ctx.execution_state.with_params(mode=ExecutionState.Mode.TASK_EXECUTION))
+    ):
+        monkeypatch.delenv(_F_IMG_ID, raising=False)
+        assert image_spec.is_container() is False
+        monkeypatch.setenv(_F_IMG_ID, image_spec.id)
+        assert image_spec.is_container() is True
