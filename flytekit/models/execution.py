@@ -41,9 +41,13 @@ class SystemMetadata(_common_models.FlyteIdlEntity):
 
 class ExecutionMetadata(_common_models.FlyteIdlEntity):
     class ExecutionMode(object):
-        MANUAL = 0
-        SCHEDULED = 1
-        SYSTEM = 2
+        MANUAL = _execution_pb2.ExecutionMetadata.MANUAL
+        SCHEDULED = _execution_pb2.ExecutionMetadata.SCHEDULED
+        SYSTEM = _execution_pb2.ExecutionMetadata.SYSTEM
+        RELAUNCH = _execution_pb2.ExecutionMetadata.RELAUNCH
+        CHILD_WORKFLOW = _execution_pb2.ExecutionMetadata.CHILD_WORKFLOW
+        RECOVERED = _execution_pb2.ExecutionMetadata.RECOVERED
+        TRIGGER = _execution_pb2.ExecutionMetadata.TRIGGER
 
     def __init__(
         self,
