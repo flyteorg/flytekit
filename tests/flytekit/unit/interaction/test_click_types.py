@@ -518,6 +518,43 @@ def test_nested_dataclass_with_optional_fields():
     assert v.w[0].b == "list_item"
 
 
+def test_pydantic_basemodel_with_computed_field():
+    from pydantic import BaseModel, ConfigDict, computed_field
+
+    class Inner(BaseModel):
+        model_config = ConfigDict(extra="forbid")
+
+        n_days: int = 30
+
+        @computed_field
+        @property
+        def n_weeks(self) -> int:
+            return self.n_days // 7
+
+    class Outer(BaseModel):
+        model_config = ConfigDict(extra="forbid")
+
+        inner: Inner
+        inners: typing.List[Inner]
+
+    # JSON copied from a previous output still has the computed field keys in it.
+    value = Outer(inner=Inner(n_days=14), inners=[Inner(n_days=21)]).model_dump_json()
+    assert '"n_weeks"' in value
+
+    t = JsonParamType(Outer)
+    v = t.convert(value=value, param=None, ctx=None)
+    assert v.inner.n_days == 14
+    assert v.inner.n_weeks == 2
+    assert v.inners[0].n_weeks == 3
+
+    ctx = FlyteContextManager.current_context()
+    literal_converter = FlyteLiteralConverter(
+        ctx, literal_type=TypeEngine.to_literal_type(Outer), python_type=Outer, is_remote=False
+    )
+    v = literal_converter.convert(ctx=ctx, param=None, value=v)
+    assert v.inner.n_weeks == 2
+
+
 @pytest.mark.skipif(
     sys.version_info < (3, 12), reason="handling for windows is nicer with delete_on_close, which doesn't exist before 3.12"
 )

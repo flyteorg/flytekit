@@ -430,6 +430,10 @@ class JsonParamType(click.ParamType):
                     from pydantic import BaseModel as BaseModelV2
 
                     if issubclass(self._python_type, BaseModelV2):
+                        from flytekit.extras.pydantic_transformer.transformer import _strip_computed_fields
+
+                        # JSON copied from a previous output still has the computed fields in it.
+                        parsed_value = _strip_computed_fields(self._python_type, parsed_value)
                         return self._python_type.model_validate_json(
                             json.dumps(parsed_value), strict=False, context={"deserialize": True}
                         )
